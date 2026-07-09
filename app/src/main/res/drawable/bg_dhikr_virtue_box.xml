@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item>
+        <shape android:shape="rectangle">
+            <solid android:color="@color/virtue_box_bg" />
+            <corners android:radius="10dp" />
+        </shape>
+    </item>
+    <item android:gravity="end"
+        android:width="4dp"
+        android:end="0dp"
+        android:top="8dp"
+        android:bottom="8dp">
+        <shape android:shape="rectangle">
+            <solid android:color="@color/urwah_thread_light" />
+            <corners android:radius="2dp" />
+        </shape>
+    </item>
+</layer-list>

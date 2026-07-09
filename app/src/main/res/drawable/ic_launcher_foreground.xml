@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Dome -->
+    <path
+        android:fillColor="#8B6F5E"
+        android:pathData="M54,54m-20,0a20,20 0,1 1,40 0a20,20 0,1 1,-40 0"/>
+    <!-- Minaret left -->
+    <path
+        android:fillColor="#8B6F5E"
+        android:pathData="M28,74v-12h4v-4h-4v-6h6v22z"/>
+    <!-- Minaret right -->
+    <path
+        android:fillColor="#8B6F5E"
+        android:pathData="M80,74v-12h-4v-4h4v-6h-6v22z"/>
+    <!-- Base -->
+    <path
+        android:fillColor="#8B6F5E"
+        android:pathData="M24,74h60v6H24z"/>
+</vector>

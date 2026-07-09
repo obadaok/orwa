@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="black">#000000</color>
+    <color name="white">#FFFFFF</color>
+    <color name="urwah_primary">#8B6F5E</color>
+    <color name="urwah_background">#F7F5F0</color>
+    <color name="urwah_surface">#FDFCF8</color>
+    <color name="urwah_thread_brown">#8B6F5E</color>
+    <color name="urwah_thread_dark">#5E4B40</color>
+    <color name="urwah_thread_light">#C4AFA3</color>
+    <color name="urwah_shadow_faint">#1A8B6F5E</color>
+    <color name="urwah_nav_bg">#FAF8F4</color>
+
+    <!-- Named colors for Kotlin hardcoded values -->
+    <color name="counter_ring_bg">#E8DFD3</color>
+    <color name="counter_ring_progress">#A67C52</color>
+    <color name="counter_text">#3D2E24</color>
+    <color name="counter_check">#D4AF37</color>
+    <color name="favorite_active">#C0392B</color>
+    <color name="favorite_inactive">#8B6F5E</color>
+    <color name="confetti_1">#8B6F5E</color>
+    <color name="confetti_2">#C4AFA3</color>
+    <color name="confetti_3">#E8D5B7</color>
+    <color name="confetti_4">#5E4B40</color>
+    <color name="confetti_5">#D4A574</color>
+    <color name="confetti_6">#A67C52</color>
+
+    <!-- Named colors for drawable hardcoded values -->
+    <color name="virtue_box_bg">#F0EBE5</color>
+    <color name="icon_action_bg">#F3EFE9</color>
+    <color name="icon_action_ripple">#D4C9B8</color>
+    <color name="search_bg">#EDE8E1</color>
+    <color name="count_circle_bg">#F0EBE5</color>
+</resources>

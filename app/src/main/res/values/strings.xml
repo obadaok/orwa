@@ -1,0 +1,10 @@
+<resources>
+    <string name="app_name">عُروة</string>
+    <string name="welcome_msg">استمسك بالعروة الوثقى</string>
+
+    <string name="dhikr_morning">أذكار الصباح</string>
+    <string name="dhikr_evening">أذكار المساء</string>
+    <string name="dhikr_sleep">أذكار النوم</string>
+    <string name="dhikr_food">أذكار الطعام</string>
+    <string name="dhikr_mosque">دخول المسجد</string>
+</resources>

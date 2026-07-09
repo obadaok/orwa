@@ -1,0 +1,205 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="?android:attr/windowBackground">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical">
+
+        <!-- شريط البحث القابل للطي -->
+        <LinearLayout
+            android:id="@+id/layout_search"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:paddingHorizontal="12dp"
+            android:paddingVertical="10dp"
+            android:gravity="center_vertical"
+            android:background="@color/urwah_background">
+
+            <ImageView
+                android:id="@+id/iv_search_icon"
+                android:layout_width="28dp"
+                android:layout_height="28dp"
+                android:src="@drawable/ic_search_black_24dp"
+                android:tint="@color/urwah_thread_brown"
+                android:contentDescription="بحث"
+                android:clickable="true"
+                android:focusable="true"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:padding="4dp" />
+
+            <EditText
+                android:id="@+id/et_search"
+                android:layout_width="0dp"
+                android:layout_height="44dp"
+                android:layout_weight="1"
+                android:layout_marginStart="8dp"
+                android:background="@drawable/bg_search"
+                android:fontFamily="@font/noto_naskh_arabic"
+                android:hint="ابحث عن ذكر..."
+                android:gravity="end"
+                android:inputType="text"
+                android:maxLines="1"
+                android:paddingHorizontal="14dp"
+                android:textColor="@color/urwah_thread_dark"
+                android:textColorHint="@color/urwah_thread_light"
+                android:textSize="14sp"
+                android:visibility="gone" />
+
+            <ImageView
+                android:id="@+id/iv_search_close"
+                android:layout_width="28dp"
+                android:layout_height="28dp"
+                android:layout_marginStart="4dp"
+                android:src="@drawable/ic_close_black_24dp"
+                android:tint="@color/urwah_thread_light"
+                android:contentDescription="إغلاق البحث"
+                android:clickable="true"
+                android:focusable="true"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:padding="4dp"
+                android:visibility="gone" />
+        </LinearLayout>
+
+        <!-- البطاقات البطل (الصباح + المساء) -->
+        <LinearLayout
+            android:id="@+id/layout_hero"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:paddingHorizontal="8dp"
+            android:paddingTop="4dp"
+            android:paddingBottom="4dp"
+            android:weightSum="2">
+
+            <FrameLayout
+                android:id="@+id/hero_morning"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:layout_marginHorizontal="4dp"
+                android:clickable="true"
+                android:focusable="true"
+                android:background="?attr/selectableItemBackground">
+
+                <com.google.android.material.card.MaterialCardView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    app:cardCornerRadius="14dp"
+                    app:cardElevation="0dp"
+                    app:strokeWidth="2dp"
+                    app:strokeColor="@color/urwah_thread_dark"
+                    app:cardBackgroundColor="@color/white"
+                    app:contentPadding="14dp">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:gravity="center">
+
+                        <ImageView
+                            android:id="@+id/hero_morning_icon"
+                            android:layout_width="36dp"
+                            android:layout_height="36dp"
+                            android:src="@drawable/ic_wb_sunny_black_24dp"
+                            android:tint="@color/urwah_thread_brown"
+                            android:contentDescription="أذكار الصباح" />
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="8dp"
+                            android:fontFamily="@font/noto_naskh_arabic"
+                            android:text="أذكار الصباح"
+                            android:textColor="@color/urwah_thread_dark"
+                            android:textSize="13sp"
+                            android:textStyle="bold"
+                            android:gravity="center" />
+                    </LinearLayout>
+                </com.google.android.material.card.MaterialCardView>
+            </FrameLayout>
+
+            <FrameLayout
+                android:id="@+id/hero_evening"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:layout_marginHorizontal="4dp"
+                android:clickable="true"
+                android:focusable="true"
+                android:background="?attr/selectableItemBackground">
+
+                <com.google.android.material.card.MaterialCardView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    app:cardCornerRadius="14dp"
+                    app:cardElevation="0dp"
+                    app:strokeWidth="2dp"
+                    app:strokeColor="@color/urwah_thread_dark"
+                    app:cardBackgroundColor="@color/white"
+                    app:contentPadding="14dp">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:gravity="center">
+
+                        <ImageView
+                            android:id="@+id/hero_evening_icon"
+                            android:layout_width="36dp"
+                            android:layout_height="36dp"
+                            android:src="@drawable/ic_nightlight_black_24dp"
+                            android:tint="@color/urwah_thread_brown"
+                            android:contentDescription="أذكار المساء" />
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="8dp"
+                            android:fontFamily="@font/noto_naskh_arabic"
+                            android:text="أذكار المساء"
+                            android:textColor="@color/urwah_thread_dark"
+                            android:textSize="13sp"
+                            android:textStyle="bold"
+                            android:gravity="center" />
+                    </LinearLayout>
+                </com.google.android.material.card.MaterialCardView>
+            </FrameLayout>
+        </LinearLayout>
+
+        <!-- شريط التبويبات (Chips) -->
+        <HorizontalScrollView
+            android:id="@+id/chip_scroll"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:paddingHorizontal="8dp"
+            android:paddingVertical="4dp"
+            android:scrollbars="none"
+            android:background="@color/urwah_background">
+
+            <com.google.android.material.chip.ChipGroup
+                android:id="@+id/chip_group"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                app:singleSelection="true"
+                app:selectionRequired="false"
+                app:chipSpacingHorizontal="6dp" />
+        </HorizontalScrollView>
+
+        <!-- قائمة التصنيفات -->
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/rv_categories"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:clipToPadding="false"
+            android:padding="6dp"
+            android:paddingBottom="80dp" />
+    </LinearLayout>
+</FrameLayout>

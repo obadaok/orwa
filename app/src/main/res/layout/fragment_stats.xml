@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/urwah_background">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical"
+        android:padding="20dp">
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center"
+            android:fontFamily="@font/noto_naskh_arabic"
+            android:text="الإحصائيات"
+            android:textColor="@color/urwah_thread_brown"
+            android:textSize="22sp"
+            android:textStyle="bold"
+            android:paddingVertical="16dp" />
+
+        <com.google.android.material.card.MaterialCardView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            app:cardCornerRadius="20dp"
+            app:cardElevation="3dp"
+            app:cardBackgroundColor="@color/white"
+            app:contentPadding="20dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical">
+
+                <TextView
+                    android:id="@+id/tv_total_categories"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:fontFamily="@font/noto_naskh_arabic"
+                    android:textColor="@color/urwah_thread_dark"
+                    android:textSize="16sp" />
+
+                <TextView
+                    android:id="@+id/tv_total_dhikrs"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:fontFamily="@font/noto_naskh_arabic"
+                    android:textColor="@color/urwah_thread_dark"
+                    android:textSize="16sp" />
+
+                <TextView
+                    android:id="@+id/tv_total_favorites"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:fontFamily="@font/noto_naskh_arabic"
+                    android:textColor="@color/urwah_thread_dark"
+                    android:textSize="16sp" />
+
+                <TextView
+                    android:id="@+id/tv_total_completed"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:fontFamily="@font/noto_naskh_arabic"
+                    android:textColor="@color/urwah_thread_dark"
+                    android:textSize="16sp" />
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+    </LinearLayout>
+</FrameLayout>
