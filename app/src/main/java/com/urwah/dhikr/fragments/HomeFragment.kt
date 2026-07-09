@@ -12,7 +12,7 @@ import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.InputMethodManager
 import androidx.fragment.app.Fragment
 import androidx.recyclerview.widget.GridLayoutManager
-import com.google.android.material.chip.Chip
+
 import com.urwah.dhikr.CategoryAdapter
 import com.urwah.dhikr.CategoryGroupedItem
 import com.urwah.dhikr.DhikrCategory
@@ -66,7 +66,6 @@ class HomeFragment : Fragment() {
         binding.rvCategories.adapter = adapter
 
         setupHeroButtons(allCategories)
-        setupChips()
         setupSearch()
     }
 
@@ -130,48 +129,6 @@ class HomeFragment : Fragment() {
         val imm = requireContext().getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
         imm.hideSoftInputFromWindow(binding.etSearch.windowToken, 0)
         adapter?.updateList(allGroupedItems)
-    }
-
-    private fun setupChips() {
-        val chipGroup = binding.chipGroup
-        val groupKeys = linkedSetOf<String>()
-        groupKeys.add("الكل")
-
-        for (item in allGroupedItems) {
-            if (item is CategoryGroupedItem.Header) {
-                groupKeys.add(item.title)
-            }
-        }
-
-        for (key in groupKeys) {
-            val chip = layoutInflater.inflate(
-                R.layout.item_chip_filter,
-                chipGroup,
-                false
-            ) as Chip
-            chip.text = key
-            chip.isChecked = key == "الكل"
-
-            chip.setOnCheckedChangeListener { _, isChecked ->
-                if (isChecked) {
-                    scrollToSection(key)
-                }
-            }
-            chipGroup.addView(chip)
-        }
-    }
-
-    private fun scrollToSection(title: String) {
-        if (title == "الكل") {
-            binding.rvCategories.scrollToPosition(0)
-            return
-        }
-        val pos = allGroupedItems.indexOfFirst {
-            it is CategoryGroupedItem.Header && it.title == title
-        }
-        if (pos >= 0) {
-            binding.rvCategories.scrollToPosition(pos)
-        }
     }
 
     private fun filterCategories(query: String) {
