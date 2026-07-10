@@ -16,6 +16,7 @@ import androidx.appcompat.app.AppCompatDelegate
 import androidx.appcompat.widget.SwitchCompat
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
+import androidx.navigation.fragment.findNavController
 import com.urwah.dhikr.NotificationHelper
 import com.urwah.dhikr.R
 import com.urwah.dhikr.databinding.FragmentSettingsBinding
@@ -59,6 +60,10 @@ class SettingsFragment : Fragment() {
 
         val prefs = requireContext().getSharedPreferences("urwah_settings", Context.MODE_PRIVATE)
 
+        binding.ivBack.setOnClickListener {
+            findNavController().popBackStack()
+        }
+
         setupDarkMode(prefs)
 
         setupReminder(
@@ -85,8 +90,15 @@ class SettingsFragment : Fragment() {
     }
 
     private fun setupDarkMode(prefs: SharedPreferences) {
-        val isDark = prefs.getBoolean(KEY_DARK_MODE, false)
-        binding.switchDarkMode.isChecked = isDark
+        val actualIsDark = when (AppCompatDelegate.getDefaultNightMode()) {
+            AppCompatDelegate.MODE_NIGHT_YES -> true
+            AppCompatDelegate.MODE_NIGHT_NO -> false
+            else -> (resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK) == android.content.res.Configuration.UI_MODE_NIGHT_YES
+        }
+        if (!prefs.contains(KEY_DARK_MODE)) {
+            prefs.edit().putBoolean(KEY_DARK_MODE, actualIsDark).apply()
+        }
+        binding.switchDarkMode.isChecked = actualIsDark
 
         binding.switchDarkMode.setOnCheckedChangeListener { _, isChecked ->
             prefs.edit().putBoolean(KEY_DARK_MODE, isChecked).apply()

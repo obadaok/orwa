@@ -1,6 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <menu xmlns:android="http://schemas.android.com/apk/res/android">
     <item
+        android:id="@+id/nav_favorites"
+        android:icon="@drawable/ic_favorite_black_24dp"
+        android:title="المفضلة" />
+    <item
         android:id="@+id/nav_home"
         android:icon="@drawable/ic_home_black_24dp"
         android:title="الرئيسية" />
@@ -8,16 +12,4 @@
         android:id="@+id/nav_stats"
         android:icon="@drawable/ic_auto_awesome_black_24dp"
         android:title="الإحصائيات" />
-    <item
-        android:id="@+id/nav_favorites"
-        android:icon="@drawable/ic_favorite_black_24dp"
-        android:title="المفضلة" />
-    <item
-        android:id="@+id/nav_qibla"
-        android:icon="@drawable/ic_explore_black_24dp"
-        android:title="القبلة" />
-    <item
-        android:id="@+id/nav_settings"
-        android:icon="@drawable/ic_settings_black_24dp"
-        android:title="الإعدادات" />
 </menu>

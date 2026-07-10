@@ -1,8 +1,8 @@
 <resources xmlns:tools="http://schemas.android.com/tools">
     <style name="Theme.Urwah" parent="Theme.MaterialComponents.DayNight.NoActionBar">
         <item name="colorPrimary">@color/urwah_primary</item>
-        <item name="android:windowBackground">@color/urwah_background</item>
-        <item name="android:statusBarColor">@color/urwah_background</item>
+        <item name="android:windowBackground">@color/urwah_carousel_bg</item>
+        <item name="android:statusBarColor">@color/urwah_carousel_bg</item>
         <item name="android:windowLightStatusBar">true</item>
 
         <item name="android:fontFamily">@font/noto_naskh_arabic</item>

@@ -1,7 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <color name="black">#000000</color>
-    <color name="white">#2C2C2C</color>
+    <color name="white">#FFFFFF</color>
+    <color name="card_background">#2C2C2C</color>
+    <color name="icon_on_category_circle">#FFFFFF</color>
     <color name="urwah_primary">#C9A182</color>
     <color name="urwah_background">#121212</color>
     <color name="urwah_surface">#1E1E1E</color>
@@ -31,4 +33,14 @@
     <color name="icon_action_ripple">#5A4A3A</color>
     <color name="search_bg">#2A2420</color>
     <color name="count_circle_bg">#2A2420</color>
+
+    <!-- Home screen redesign colors -->
+    <color name="urwah_carousel_bg">#14120E</color>
+    <color name="urwah_card_glass">#1E1B16</color>
+    <color name="urwah_topbar_icon">#E8DCD0</color>
+    <color name="urwah_overlay_scrim">#AA0C0A08</color>
+    <color name="urwah_card_text_dark">#E8DCD0</color>
+    <color name="urwah_card_text_muted">#A89888</color>
+    <color name="urwah_search_text">#E8DCD0</color>
+    <color name="urwah_search_hint">#7D7566</color>
 </resources>

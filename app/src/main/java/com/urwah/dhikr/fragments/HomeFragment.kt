@@ -2,6 +2,7 @@ package com.urwah.dhikr.fragments
 
 import android.content.Context
 import android.content.Intent
+import androidx.navigation.fragment.findNavController
 import android.os.Bundle
 import android.text.Editable
 import android.text.TextWatcher
@@ -11,7 +12,10 @@ import android.view.ViewGroup
 import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.InputMethodManager
 import androidx.fragment.app.Fragment
-import androidx.recyclerview.widget.GridLayoutManager
+import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.RecyclerView
+import kotlin.math.abs
+import kotlin.math.min
 
 import com.urwah.dhikr.CategoryAdapter
 import com.urwah.dhikr.CategoryGroupedItem
@@ -28,6 +32,9 @@ class HomeFragment : Fragment() {
     private var allGroupedItems = listOf<CategoryGroupedItem>()
     private var adapter: CategoryAdapter? = null
     private var isSearchVisible = false
+
+    private val minScale = 0.82f
+    private val minAlpha = 0.45f
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -47,52 +54,57 @@ class HomeFragment : Fragment() {
 
         allGroupedItems = buildGroupedList(allCategories)
 
-        val glm = GridLayoutManager(requireContext(), 2)
-        glm.spanSizeLookup = object : GridLayoutManager.SpanSizeLookup() {
-            override fun getSpanSize(position: Int): Int {
-                return when (allGroupedItems[position]) {
-                    is CategoryGroupedItem.Header -> 2
-                    is CategoryGroupedItem.Item -> 1
-                }
-            }
-        }
-        binding.rvCategories.layoutManager = glm
+        binding.rvCategories.layoutManager = LinearLayoutManager(requireContext())
 
-        adapter = CategoryAdapter(allGroupedItems) { selected ->
-            val intent = Intent(requireContext(), DhikrDetailsActivity::class.java)
-            intent.putExtra("CATEGORY_NAME", selected.name)
-            startActivity(intent)
-        }
+        adapter = CategoryAdapter(
+            initialItems = allGroupedItems,
+            onItemClick = { selected ->
+                val intent = Intent(requireContext(), DhikrDetailsActivity::class.java)
+                intent.putExtra("CATEGORY_NAME", selected.name)
+                startActivity(intent)
+            }
+        )
         binding.rvCategories.adapter = adapter
 
-        setupHeroButtons(allCategories)
+        setupCenterFocusEffect()
         setupSearch()
+        setupTopbarIcons()
     }
 
-    private fun setupHeroButtons(allCategories: List<DhikrCategory>) {
-        val morningCat = allCategories.find { it.name == "أذكار الصباح" }
-        val eveningCat = allCategories.find { it.name == "أذكار المساء" }
+    private fun setupCenterFocusEffect() {
+        binding.rvCategories.addOnScrollListener(object : RecyclerView.OnScrollListener() {
+            override fun onScrolled(recyclerView: RecyclerView, dx: Int, dy: Int) {
+                applyCenterFocus(recyclerView)
+            }
+        })
+        binding.rvCategories.post { applyCenterFocus(binding.rvCategories) }
+    }
 
-        binding.heroMorning.setOnClickListener {
-            morningCat?.let { cat ->
-                val intent = Intent(requireContext(), DhikrDetailsActivity::class.java)
-                intent.putExtra("CATEGORY_NAME", cat.name)
-                startActivity(intent)
-            }
+    private fun applyCenterFocus(recyclerView: RecyclerView) {
+        val centerY = recyclerView.height / 2f
+        for (i in 0 until recyclerView.childCount) {
+            val child = recyclerView.getChildAt(i)
+            val childCenter = child.top + child.height / 2f
+            val distance = abs(childCenter - centerY)
+            val normalized = min(distance / centerY, 1f)
+            val scale = 1f - normalized * (1f - minScale)
+            val alpha = 1f - normalized * (1f - minAlpha)
+            child.scaleX = scale
+            child.scaleY = scale
+            child.alpha = alpha
         }
-        binding.heroEvening.setOnClickListener {
-            eveningCat?.let { cat ->
-                val intent = Intent(requireContext(), DhikrDetailsActivity::class.java)
-                intent.putExtra("CATEGORY_NAME", cat.name)
-                startActivity(intent)
-            }
+    }
+
+    private fun setupTopbarIcons() {
+        binding.ivSettings.setOnClickListener {
+            findNavController().navigate(R.id.nav_settings)
         }
     }
 
     private fun setupSearch() {
         binding.ivSearchIcon.setOnClickListener { showSearch() }
-
         binding.ivSearchClose.setOnClickListener { hideSearch() }
+        binding.layoutSearchOverlay.setOnClickListener { hideSearch() }
 
         binding.etSearch.setOnEditorActionListener { _, actionId, _ ->
             if (actionId == EditorInfo.IME_ACTION_SEARCH || actionId == EditorInfo.IME_ACTION_DONE) {
@@ -112,9 +124,7 @@ class HomeFragment : Fragment() {
 
     private fun showSearch() {
         isSearchVisible = true
-        binding.ivSearchIcon.visibility = View.GONE
-        binding.etSearch.visibility = View.VISIBLE
-        binding.ivSearchClose.visibility = View.VISIBLE
+        binding.layoutSearchOverlay.visibility = View.VISIBLE
         binding.etSearch.requestFocus()
         val imm = requireContext().getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
         imm.showSoftInput(binding.etSearch, InputMethodManager.SHOW_IMPLICIT)
@@ -122,9 +132,7 @@ class HomeFragment : Fragment() {
 
     private fun hideSearch() {
         isSearchVisible = false
-        binding.ivSearchIcon.visibility = View.VISIBLE
-        binding.etSearch.visibility = View.GONE
-        binding.ivSearchClose.visibility = View.GONE
+        binding.layoutSearchOverlay.visibility = View.GONE
         binding.etSearch.setText("")
         val imm = requireContext().getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
         imm.hideSoftInputFromWindow(binding.etSearch.windowToken, 0)
@@ -169,10 +177,9 @@ class HomeFragment : Fragment() {
         val misc = mutableListOf<DhikrCategory>()
 
         for (cat in categories) {
-            if (cat.name == "أذكار الصباح" || cat.name == "أذكار المساء") continue
-
             val name = cat.name
             val group = when {
+                name == "أذكار الصباح" || name == "أذكار المساء" -> "أذكار اليوم"
                 name.contains("النوم") || name.contains("الاستيقاظ") || name.contains("الرؤيا") -> "النوم والاستيقاظ"
                 name.contains("المسجد") || name.contains("الأذان") || name.contains("الصلاة") ||
                     name.contains("السجود") || name.contains("الركوع") || name.contains("التشهد") ||
@@ -216,8 +223,14 @@ class HomeFragment : Fragment() {
             groups["متنوعة"] = misc
         }
 
-        val result = mutableListOf<CategoryGroupedItem>()
+        val orderedGroups = linkedMapOf<String, MutableList<DhikrCategory>>()
+        groups["أذكار اليوم"]?.let { orderedGroups["أذكار اليوم"] = it }
         for ((title, cats) in groups) {
+            if (title != "أذكار اليوم") orderedGroups[title] = cats
+        }
+
+        val result = mutableListOf<CategoryGroupedItem>()
+        for ((title, cats) in orderedGroups) {
             result.add(CategoryGroupedItem.Header(title))
             for (cat in cats) {
                 result.add(CategoryGroupedItem.Item(cat))

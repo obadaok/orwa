@@ -22,26 +22,22 @@ class CircularCounterView(context: Context, attrs: AttributeSet? = null) : View(
     private val ringBg = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.STROKE
         strokeWidth = 8f
-        color = ContextCompat.getColor(context, R.color.counter_ring_bg)
         strokeCap = Paint.Cap.ROUND
         isAntiAlias = true
     }
     private val ringProgress = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.STROKE
         strokeWidth = 8f
-        color = ContextCompat.getColor(context, R.color.counter_ring_progress)
         strokeCap = Paint.Cap.ROUND
         isAntiAlias = true
     }
     private val textPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = ContextCompat.getColor(context, R.color.counter_text)
         textAlign = Paint.Align.CENTER
         textSize = 34f
         isFakeBoldText = true
         isAntiAlias = true
     }
     private val checkPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = ContextCompat.getColor(context, R.color.counter_check)
         textAlign = Paint.Align.CENTER
         textSize = 40f
         isFakeBoldText = true
@@ -49,6 +45,22 @@ class CircularCounterView(context: Context, attrs: AttributeSet? = null) : View(
     }
 
     private val rect = RectF()
+
+    init {
+        resolveColors()
+    }
+
+    override fun onAttachedToWindow() {
+        super.onAttachedToWindow()
+        resolveColors()
+    }
+
+    private fun resolveColors() {
+        ringBg.color = ContextCompat.getColor(context, R.color.counter_ring_bg)
+        ringProgress.color = ContextCompat.getColor(context, R.color.counter_ring_progress)
+        textPaint.color = ContextCompat.getColor(context, R.color.counter_text)
+        checkPaint.color = ContextCompat.getColor(context, R.color.counter_check)
+    }
 
     fun setProgress(current: Int, target: Int) {
         this.current = current

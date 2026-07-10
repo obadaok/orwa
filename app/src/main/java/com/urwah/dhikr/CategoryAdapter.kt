@@ -62,8 +62,7 @@ class CategoryAdapter(
                 itemHolder.name.text = cat.name
 
                 val dhikrCount = DhikrDataProvider.getDhikrs(cat.name).size
-                itemHolder.count.text = "$dhikrCount"
-                itemHolder.count.visibility = View.VISIBLE
+                itemHolder.count.text = "$dhikrCount أذكار"
 
                 itemHolder.icon.post {
                     itemHolder.icon.setImageResource(cat.iconResId)

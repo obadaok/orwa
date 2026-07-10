@@ -22,15 +22,27 @@ class ConfettiView(context: Context, attrs: AttributeSet? = null) : View(context
     private val paint = Paint(Paint.ANTI_ALIAS_FLAG)
     private var startTime = 0L
     private var isRunning = false
+    private lateinit var colors: List<Int>
 
-    private val colors = listOf(
-        ContextCompat.getColor(context, R.color.confetti_1),
-        ContextCompat.getColor(context, R.color.confetti_2),
-        ContextCompat.getColor(context, R.color.confetti_3),
-        ContextCompat.getColor(context, R.color.confetti_4),
-        ContextCompat.getColor(context, R.color.confetti_5),
-        ContextCompat.getColor(context, R.color.confetti_6)
-    )
+    init {
+        resolveColors()
+    }
+
+    override fun onAttachedToWindow() {
+        super.onAttachedToWindow()
+        resolveColors()
+    }
+
+    private fun resolveColors() {
+        colors = listOf(
+            ContextCompat.getColor(context, R.color.confetti_1),
+            ContextCompat.getColor(context, R.color.confetti_2),
+            ContextCompat.getColor(context, R.color.confetti_3),
+            ContextCompat.getColor(context, R.color.confetti_4),
+            ContextCompat.getColor(context, R.color.confetti_5),
+            ContextCompat.getColor(context, R.color.confetti_6)
+        )
+    }
 
     data class Particle(
         var x: Float, var y: Float,
