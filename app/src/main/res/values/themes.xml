@@ -1,16 +1,39 @@
 <resources xmlns:tools="http://schemas.android.com/tools">
     <style name="Theme.Urwah" parent="Theme.MaterialComponents.DayNight.NoActionBar">
         <item name="colorPrimary">@color/urwah_primary</item>
+        <item name="colorControlHighlight">@color/urwah_shadow_faint</item>
         <item name="android:windowBackground">@color/urwah_carousel_bg</item>
         <item name="android:statusBarColor">@color/urwah_carousel_bg</item>
         <item name="android:windowLightStatusBar">true</item>
 
-        <item name="android:fontFamily">@font/noto_naskh_arabic</item>
+        <item name="android:fontFamily">@font/stc_forward</item>
     </style>
 
     <style name="UrwahTitleStyle">
         <item name="android:textColor">@color/urwah_thread_dark</item>
         <item name="android:textSize">20sp</item>
         <item name="android:textStyle">bold</item>
+    </style>
+
+    <style name="Theme.Urwah.Splash" parent="Theme.Urwah">
+        <item name="android:windowBackground">@color/splash_background</item>
+        <item name="android:statusBarColor">@color/splash_background</item>
+        <item name="android:navigationBarColor">@color/splash_background</item>
+        <item name="android:windowLightStatusBar">true</item>
+    </style>
+
+    <style name="NumberPickerTheme" parent="Theme.MaterialComponents.DayNight.NoActionBar">
+        <item name="android:textColorPrimary">@color/urwah_thread_dark</item>
+        <item name="android:textColorSecondary">@color/urwah_thread_light</item>
+    </style>
+
+    <style name="TimePickerTheme" parent="Theme.MaterialComponents.DayNight.Dialog">
+        <item name="colorPrimary">@color/urwah_thread_brown</item>
+        <item name="colorPrimaryVariant">@color/urwah_thread_dark</item>
+        <item name="colorOnPrimary">@android:color/white</item>
+        <item name="colorAccent">@color/urwah_thread_brown</item>
+        <item name="colorControlHighlight">@color/urwah_shadow_faint</item>
+        <item name="android:textColorPrimary">@color/urwah_thread_dark</item>
+        <item name="android:textColorSecondary">@color/urwah_thread_light</item>
     </style>
 </resources>

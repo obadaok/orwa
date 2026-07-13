@@ -9,7 +9,7 @@
         android:layout_height="wrap_content"
         android:layout_gravity="center"
         android:drawablePadding="16dp"
-        android:fontFamily="@font/noto_naskh_arabic"
+        android:fontFamily="@font/stc_forward"
         android:gravity="center"
         android:text="ابحث عن الأذكار"
         android:textColor="@color/urwah_thread_light"

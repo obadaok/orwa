@@ -1,15 +1,23 @@
 <?xml version="1.0" encoding="utf-8"?>
 <menu xmlns:android="http://schemas.android.com/apk/res/android">
     <item
-        android:id="@+id/nav_favorites"
-        android:icon="@drawable/ic_favorite_black_24dp"
-        android:title="المفضلة" />
-    <item
         android:id="@+id/nav_home"
         android:icon="@drawable/ic_home_black_24dp"
         android:title="الرئيسية" />
     <item
+        android:id="@+id/nav_quran"
+        android:icon="@drawable/ic_quran"
+        android:title="المصحف" />
+    <item
+        android:id="@+id/nav_khatma"
+        android:icon="@drawable/ic_book_black_24dp"
+        android:title="الختمات" />
+    <item
+        android:id="@+id/nav_favorites"
+        android:icon="@drawable/ic_favorite_black_24dp"
+        android:title="المفضلة" />
+    <item
         android:id="@+id/nav_stats"
-        android:icon="@drawable/ic_auto_awesome_black_24dp"
+        android:icon="@drawable/ic_stats_chart_24dp"
         android:title="الإحصائيات" />
 </menu>

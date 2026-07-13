@@ -22,6 +22,7 @@ import com.urwah.dhikr.CategoryGroupedItem
 import com.urwah.dhikr.DhikrCategory
 import com.urwah.dhikr.DhikrDataProvider
 import com.urwah.dhikr.DhikrDetailsActivity
+import com.urwah.dhikr.DhikrListAdapter
 import com.urwah.dhikr.R
 import com.urwah.dhikr.databinding.FragmentHomeBinding
 
@@ -47,6 +48,8 @@ class HomeFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+
+        DhikrListAdapter.checkAndResetDaily(requireContext())
 
         val allCategories = DhikrDataProvider.getAllCategories().map { name ->
             DhikrCategory(name, DhikrDataProvider.getCategoryIcon(name))

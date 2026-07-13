@@ -5,15 +5,16 @@
     android:layout_height="wrap_content"
     android:layout_marginHorizontal="8dp"
     android:layout_marginVertical="10dp"
-    app:cardCornerRadius="20dp"
+    app:cardCornerRadius="14dp"
     app:cardElevation="0dp"
-    app:strokeWidth="0dp"
-    app:cardBackgroundColor="@color/urwah_card_glass">
+    app:strokeWidth="2dp"
+    app:strokeColor="@color/urwah_thread_dark"
+    app:cardBackgroundColor="@color/urwah_card_bg">
 
     <FrameLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:padding="18dp">
+        android:padding="16dp">
 
         <LinearLayout
             android:layout_width="match_parent"
@@ -33,6 +34,16 @@
                     android:layout_gravity="center"
                     android:tint="@color/icon_on_category_circle"
                     android:contentDescription="@null" />
+
+                <ImageView
+                    android:id="@+id/ivCategoryComplete"
+                    android:layout_width="20dp"
+                    android:layout_height="20dp"
+                    android:layout_gravity="bottom|end"
+                    android:src="@drawable/ic_check_circle_24dp"
+                    android:tint="@color/counter_check"
+                    android:visibility="gone"
+                    android:contentDescription="مكتمل" />
             </FrameLayout>
 
             <LinearLayout
@@ -46,8 +57,8 @@
                     android:id="@+id/tv_category_name"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:fontFamily="@font/noto_naskh_arabic"
-                    android:textColor="@color/urwah_card_text_dark"
+                    android:fontFamily="@font/stc_forward"
+                    android:textColor="@color/urwah_thread_dark"
                     android:textSize="17sp"
                     android:textStyle="bold" />
 
@@ -56,8 +67,8 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="4dp"
-                    android:fontFamily="@font/noto_naskh_arabic"
-                    android:textColor="@color/urwah_card_text_muted"
+                    android:fontFamily="@font/stc_forward"
+                    android:textColor="@color/urwah_thread_light"
                     android:textSize="13sp" />
             </LinearLayout>
         </LinearLayout>

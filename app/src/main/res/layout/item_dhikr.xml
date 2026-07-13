@@ -1,41 +1,35 @@
 <?xml version="1.0" encoding="utf-8"?>
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:layout_marginHorizontal="12dp"
     android:layout_marginTop="6dp"
     android:layout_marginBottom="10dp">
 
-    <View
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:background="@drawable/bg_dhikr_shadow_rect" />
-
-    <com.google.android.material.card.MaterialCardView
-        android:id="@+id/cardDhikrItem"
+    <FrameLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginEnd="5dp"
-        android:layout_marginBottom="5dp"
-        app:cardBackgroundColor="@color/card_background"
-        app:cardCornerRadius="14dp"
-        app:cardElevation="0dp"
-        app:strokeWidth="2dp"
-        app:strokeColor="@color/urwah_thread_dark"
-        app:contentPadding="16dp">
+        android:layout_marginEnd="6dp"
+        android:layout_marginBottom="6dp">
 
         <LinearLayout
+            android:id="@+id/cardDhikrItem"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="vertical">
+            android:background="@drawable/bg_surah_header_box"
+            android:clickable="true"
+            android:focusable="true"
+            android:foreground="@drawable/bg_ripple_rounded"
+            android:orientation="vertical"
+            android:paddingHorizontal="20dp"
+            android:paddingVertical="18dp">
 
             <!-- Header: dhikr text + counter -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:gravity="center_vertical">
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
 
                 <TextView
                     android:id="@+id/txtDhikrText"
@@ -43,11 +37,13 @@
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
                     android:layout_marginEnd="12dp"
-                    android:fontFamily="@font/noto_naskh_arabic"
+                    android:fontFamily="@font/stc_forward"
                     android:gravity="center"
+                    android:justificationMode="inter_word"
                     android:lineSpacingExtra="6dp"
                     android:textColor="@color/urwah_thread_dark"
-                    android:textSize="18sp" />
+                    android:textIsSelectable="false"
+                    android:textSize="20sp" />
 
                 <com.urwah.dhikr.CircularCounterView
                     android:id="@+id/circularCounter"
@@ -71,7 +67,7 @@
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
-                    android:fontFamily="@font/noto_naskh_arabic"
+                    android:fontFamily="@font/stc_forward"
                     android:gravity="center"
                     android:lineSpacingExtra="4dp"
                     android:textColor="@color/urwah_thread_dark"
@@ -84,7 +80,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginTop="6dp"
                 android:alpha="0.55"
-                android:fontFamily="@font/noto_naskh_arabic"
+                android:fontFamily="@font/stc_forward"
                 android:textColor="@color/urwah_thread_light"
                 android:textSize="11sp"
                 android:visibility="gone" />
@@ -145,12 +141,12 @@
                     android:contentDescription="نسخ" />
             </LinearLayout>
         </LinearLayout>
-    </com.google.android.material.card.MaterialCardView>
 
-    <com.urwah.dhikr.ConfettiView
-        android:id="@+id/confettiView"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:clickable="false"
-        android:focusable="false" />
+        <com.urwah.dhikr.ConfettiView
+            android:id="@+id/confettiView"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:clickable="false"
+            android:focusable="false" />
+    </FrameLayout>
 </FrameLayout>

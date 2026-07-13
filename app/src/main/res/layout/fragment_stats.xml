@@ -8,69 +8,99 @@
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:orientation="vertical"
-        android:padding="20dp">
+        android:orientation="vertical">
 
-        <TextView
+        <LinearLayout
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:gravity="center"
-            android:fontFamily="@font/noto_naskh_arabic"
-            android:text="الإحصائيات"
-            android:textColor="@color/urwah_thread_brown"
-            android:textSize="22sp"
-            android:textStyle="bold"
-            android:paddingVertical="16dp" />
+            android:layout_height="56dp"
+            android:background="@color/urwah_nav_bg"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:paddingHorizontal="8dp">
 
-        <com.google.android.material.card.MaterialCardView
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:fontFamily="@font/stc_forward"
+                android:gravity="center"
+                android:text="إحصائياتي"
+                android:textColor="@color/urwah_thread_dark"
+                android:textSize="20sp"
+                android:textStyle="bold" />
+
+            <ImageView
+                android:id="@+id/iv_settings_stats"
+                android:layout_width="44dp"
+                android:layout_height="44dp"
+                android:src="@drawable/ic_settings_black_24dp"
+                android:tint="@color/urwah_topbar_icon"
+                android:contentDescription="الإعدادات"
+                android:clickable="true"
+                android:focusable="true"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:padding="10dp" />
+        </LinearLayout>
+
+        <View
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"
-            app:cardCornerRadius="20dp"
-            app:cardElevation="3dp"
-            app:cardBackgroundColor="@color/card_background"
-            app:contentPadding="20dp">
+            android:layout_height="1dp"
+            android:background="@color/urwah_shadow_faint" />
+
+        <ScrollView
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:clipToPadding="false"
+            android:padding="16dp">
 
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="vertical">
 
-                <TextView
-                    android:id="@+id/tv_total_categories"
-                    android:layout_width="wrap_content"
+                <com.google.android.material.card.MaterialCardView
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:fontFamily="@font/noto_naskh_arabic"
-                    android:textColor="@color/urwah_thread_dark"
-                    android:textSize="16sp" />
+                    app:cardCornerRadius="14dp"
+                    app:cardElevation="0dp"
+                    app:strokeWidth="2dp"
+                    app:strokeColor="@color/urwah_thread_dark"
+                    app:cardBackgroundColor="@color/urwah_card_bg"
+                    app:contentPadding="20dp">
 
-                <TextView
-                    android:id="@+id/tv_total_dhikrs"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
-                    android:fontFamily="@font/noto_naskh_arabic"
-                    android:textColor="@color/urwah_thread_dark"
-                    android:textSize="16sp" />
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical">
 
-                <TextView
-                    android:id="@+id/tv_total_favorites"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
-                    android:fontFamily="@font/noto_naskh_arabic"
-                    android:textColor="@color/urwah_thread_dark"
-                    android:textSize="16sp" />
+                        <TextView
+                            android:id="@+id/tv_total_completed"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:fontFamily="@font/stc_forward"
+                            android:textColor="@color/urwah_thread_dark"
+                            android:textSize="16sp" />
 
-                <TextView
-                    android:id="@+id/tv_total_completed"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
-                    android:fontFamily="@font/noto_naskh_arabic"
-                    android:textColor="@color/urwah_thread_dark"
-                    android:textSize="16sp" />
+                        <TextView
+                            android:id="@+id/tv_completed_today"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="8dp"
+                            android:fontFamily="@font/stc_forward"
+                            android:textColor="@color/urwah_thread_dark"
+                            android:textSize="16sp" />
+
+                        <TextView
+                            android:id="@+id/tv_total_favorites"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="8dp"
+                            android:fontFamily="@font/stc_forward"
+                            android:textColor="@color/urwah_thread_dark"
+                            android:textSize="16sp" />
+                    </LinearLayout>
+                </com.google.android.material.card.MaterialCardView>
             </LinearLayout>
-        </com.google.android.material.card.MaterialCardView>
+        </ScrollView>
     </LinearLayout>
 </FrameLayout>

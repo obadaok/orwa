@@ -18,7 +18,6 @@ import android.view.ViewGroup
 import android.widget.ImageView
 import android.widget.TextView
 import android.widget.Toast
-import androidx.cardview.widget.CardView
 import androidx.core.content.ContextCompat
 import androidx.core.content.res.ResourcesCompat
 import androidx.recyclerview.widget.LinearLayoutManager
@@ -26,7 +25,9 @@ import androidx.recyclerview.widget.RecyclerView
 
 class DhikrListAdapter(
     initialItems: List<DhikrItem>,
-    private val onAllCompleted: (() -> Unit)? = null
+    private val categoryName: String = "",
+    private val onAllCompleted: (() -> Unit)? = null,
+    private val onProgressChanged: ((String, Int, Int) -> Unit)? = null
 ) : RecyclerView.Adapter<DhikrListAdapter.ViewHolder>() {
 
     private val currentList = initialItems.toMutableList()
@@ -34,9 +35,22 @@ class DhikrListAdapter(
     private val completed = MutableList(currentList.size) { false }
 
     private var uthmanicFont: Typeface? = null
+    private var progressPrefs: android.content.SharedPreferences? = null
+
+    fun setSavedProgress(context: android.content.Context, savedCompleted: Set<Int>) {
+        progressPrefs = context.getSharedPreferences("urwah_dhikr_progress", Context.MODE_PRIVATE)
+        val completedIds = savedCompleted.flatMap { id ->
+            currentList.filter { it.id == id }.map { currentList.indexOf(it) }
+        }.filter { it >= 0 }
+        for (i in completedIds) {
+            counts[i] = currentList[i].repeats
+            completed[i] = true
+        }
+        notifyDataSetChanged()
+    }
 
     class ViewHolder(view: View) : RecyclerView.ViewHolder(view) {
-        val card: CardView = view.findViewById(R.id.cardDhikrItem)
+        val card: View = view.findViewById(R.id.cardDhikrItem)
         val txtText: TextView = view.findViewById(R.id.txtDhikrText)
         val containerVirtue: View = view.findViewById(R.id.containerVirtue)
         val txtVirtue: TextView = view.findViewById(R.id.txtVirtue)
@@ -61,7 +75,7 @@ class DhikrListAdapter(
         val context = holder.itemView.context
         val isDone = completed[position]
 
-        holder.txtText.text = applyDhikrFormatting(item.arabic)
+        holder.txtText.text = resolveDhikrText(context, item)
         holder.circularCounter.setProgress(counts[position], item.repeats)
         holder.card.alpha = if (isDone) 0.55f else 1f
         holder.card.isEnabled = !isDone
@@ -99,6 +113,7 @@ class DhikrListAdapter(
 
             if (newCount >= item.repeats) {
                 completed[position] = true
+                saveItemCompleted(item.id)
                 celebrate(holder)
                 animateCompletionThenReorder(holder, position)
                 if (completed.all { it }) {
@@ -181,16 +196,13 @@ class DhikrListAdapter(
                 sb.append(SpannableString(text.substring(lastEnd, match.range.first)))
             }
 
-            // فصل الآية في فقرتها الخاصة حتى لا تشترك سطراً مع نص عادي بخط مختلف
             if (sb.isNotEmpty() && !sb.endsWith("\n")) sb.append("\n")
 
-            val verse = SpannableString(match.value)
+            val inner = match.value.removePrefix("﴿").removeSuffix("﴾")
+            val verse = SpannableString(inner)
             uthmanicFont?.let {
                 verse.setSpan(CustomTypefaceSpan(it), 0, verse.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
             }
-            // لا تغميق صناعي فوق خط عثماني مخصص، لأنه يشوّه سماكة الحروف
-            // ويُظهرها غير متناسقة مع باقي النص. حجم نسبي موحّد بدل النص العادي
-            // لأن خط عثماني طه بالتشكيل الكامل يبدو أكبر بصرياً من خط النسخ بنفس الحجم.
             verse.setSpan(
                 RelativeSizeSpan(VERSE_RELATIVE_SIZE), 0, verse.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
             )
@@ -207,9 +219,88 @@ class DhikrListAdapter(
         return if (matched) sb else text
     }
 
+    private fun resolveDhikrText(context: Context, item: DhikrItem): CharSequence {
+        val title = item.title
+        if (!title.startsWith("سورة")) return applyDhikrFormatting(item.arabic)
+
+        val surahName = title.removePrefix("سورة ").trim()
+        val surahNum = SurahDataProvider.allSurahs
+            .sortedByDescending { it.name.length }
+            .find {
+                it.name.contains(surahName, ignoreCase = true) || surahName.contains(it.name, ignoreCase = true)
+            }?.number ?: return applyDhikrFormatting(item.arabic)
+
+        val surahData = com.urwah.dhikr.QuranDataLoader.getSurah(context, surahNum) ?: return applyDhikrFormatting(item.arabic)
+        val uthmanicFont = ResourcesCompat.getFont(context, R.font.uthmanic_hafs) ?: return applyDhikrFormatting(item.arabic)
+        val hindi = arrayOf("٠", "١", "٢", "٣", "٤", "٥", "٦", "٧", "٨", "٩")
+
+        val sb = SpannableStringBuilder()
+        if (surahNum != 9) {
+            sb.append("بِسۡمِ ٱللَّهِ ٱلرَّحۡمَٰنِ ٱلرَّحِيمِ\n")
+        }
+        for (ayah in surahData.ayahs) {
+            val start = sb.length
+            val numStr = ayah.number.toString().map { hindi[it - '0'] }.joinToString("")
+            val text = "${ayah.text} $numStr"
+            sb.append(text)
+            sb.setSpan(CustomTypefaceSpan(uthmanicFont), start, sb.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+            sb.setSpan(RelativeSizeSpan(VERSE_RELATIVE_SIZE), start, sb.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+            sb.append("\n─\n")
+        }
+        if (sb.endsWith("\n")) sb.delete(sb.length - 1, sb.length)
+        return sb
+    }
+
     companion object {
         // اضبط هذه القيمة إذا بدا حجم الآيات أكبر أو أصغر من باقي النص بعد التجربة على الجهاز
         private const val VERSE_RELATIVE_SIZE = 0.94f
+
+        private const val PREFS_NAME = "urwah_dhikr_progress"
+        private const val KEY_LAST_DATE = "last_date"
+
+        fun getCompletedIds(context: android.content.Context, category: String): Set<Int> {
+            val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            return prefs.getStringSet(category, emptySet())?.mapNotNull { it.toIntOrNull() }?.toSet() ?: emptySet()
+        }
+
+        fun saveCompletedIds(context: android.content.Context, category: String, ids: Set<Int>) {
+            val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            prefs.edit().putStringSet(category, ids.map { it.toString() }.toSet()).apply()
+        }
+
+        fun isCategoryComplete(context: android.content.Context, category: String): Boolean {
+            val completed = getCompletedIds(context, category)
+            val total = DhikrDataProvider.getDhikrs(category).size
+            return total > 0 && completed.size >= total
+        }
+
+        fun resetCategory(context: android.content.Context, category: String) {
+            val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            prefs.edit().remove(category).apply()
+        }
+
+        fun checkAndResetDaily(context: android.content.Context) {
+            val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            val today = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.US).format(java.util.Date())
+            val lastDate = prefs.getString(KEY_LAST_DATE, "")
+            if (lastDate != today) {
+                prefs.edit().clear().putString(KEY_LAST_DATE, today).apply()
+            }
+        }
+
+        fun resetAllProgress(context: android.content.Context) {
+            val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            prefs.edit().clear().putString(KEY_LAST_DATE,
+                java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.US).format(java.util.Date())
+            ).apply()
+        }
+    }
+
+    private fun saveItemCompleted(itemId: Int) {
+        val prefs = progressPrefs ?: return
+        val set = prefs.getStringSet(categoryName, mutableSetOf())?.toMutableSet() ?: mutableSetOf()
+        set.add(itemId.toString())
+        prefs.edit().putStringSet(categoryName, set).apply()
     }
 
     private fun updateFavoriteIcon(imageView: ImageView, itemId: Int) {
@@ -231,18 +322,16 @@ class DhikrListAdapter(
     private fun animateCompletionThenReorder(holder: ViewHolder, position: Int) {
         holder.card.postDelayed({
             holder.card.animate()
-                .alpha(0.3f)
-                .scaleX(0.92f)
-                .scaleY(0.92f)
+                .alpha(0f)
+                .scaleX(0.85f)
+                .scaleY(0.85f)
                 .setDuration(350)
                 .withEndAction {
-                    holder.card.alpha = 0.55f
-                    holder.card.scaleX = 1f
-                    holder.card.scaleY = 1f
+                    holder.card.alpha = 0f
                     moveCompletedItemToEnd(holder, position)
                 }
                 .start()
-        }, 900)
+        }, 600)
     }
 
     private fun moveCompletedItemToEnd(holder: ViewHolder, position: Int) {

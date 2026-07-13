@@ -59,6 +59,7 @@ class SettingsFragment : Fragment() {
         super.onViewCreated(view, savedInstanceState)
 
         val prefs = requireContext().getSharedPreferences("urwah_settings", Context.MODE_PRIVATE)
+        val quranPrefs = requireContext().getSharedPreferences("urwah_quran", Context.MODE_PRIVATE)
 
         binding.ivBack.setOnClickListener {
             findNavController().popBackStack()
@@ -87,6 +88,48 @@ class SettingsFragment : Fragment() {
             defaultHour = 22, defaultMinute = 0,
             prefs = prefs
         )
+
+        setupQuranSettings(quranPrefs)
+    }
+
+    private fun setupQuranSettings(prefs: SharedPreferences) {
+        val ayahDisplayMode = prefs.getBoolean("ayah_single_line", true)
+        val qiraatMode = prefs.getString("qiraat", "hafs") ?: "hafs"
+
+        binding.tvAyahDisplayMode.text = if (ayahDisplayMode) "كل آية في سطر مستقل" else "عرض متواصل"
+        binding.tvQiraatMode.text = if (qiraatMode == "hafs") "حفص عن عاصم" else "ورش عن نافع"
+
+        binding.tvAyahDisplayMode.setOnClickListener {
+            val current = prefs.getBoolean("ayah_single_line", true)
+            val options = arrayOf("كل آية في سطر مستقل", "عرض متواصل")
+            val checked = if (current) 0 else 1
+            android.app.AlertDialog.Builder(requireContext())
+                .setTitle("طريقة عرض الآيات")
+                .setSingleChoiceItems(options, checked) { dialog, which ->
+                    val newValue = which == 0
+                    prefs.edit().putBoolean("ayah_single_line", newValue).apply()
+                    binding.tvAyahDisplayMode.text = options[which]
+                    dialog.dismiss()
+                }
+                .setNegativeButton("إلغاء", null)
+                .show()
+        }
+
+        binding.tvQiraatMode.setOnClickListener {
+            val current = prefs.getString("qiraat", "hafs") ?: "hafs"
+            val options = arrayOf("حفص عن عاصم", "ورش عن نافع")
+            val checked = if (current == "hafs") 0 else 1
+            android.app.AlertDialog.Builder(requireContext())
+                .setTitle("رواية المصحف")
+                .setSingleChoiceItems(options, checked) { dialog, which ->
+                    val newValue = if (which == 0) "hafs" else "warsh"
+                    prefs.edit().putString("qiraat", newValue).apply()
+                    binding.tvQiraatMode.text = options[which]
+                    dialog.dismiss()
+                }
+                .setNegativeButton("إلغاء", null)
+                .show()
+        }
     }
 
     private fun setupDarkMode(prefs: SharedPreferences) {
@@ -124,7 +167,7 @@ class SettingsFragment : Fragment() {
         switchView.isChecked = isEnabled
 
         timeText.setOnClickListener {
-            TimePickerDialog(requireContext(), { _, h, m ->
+            TimePickerDialog(requireContext(), R.style.TimePickerTheme, { _, h, m ->
                 prefs.edit().putInt(hourKey, h).putInt(minKey, m).apply()
                 timeText.text = formatTime(h, m)
                 if (switchView.isChecked) {

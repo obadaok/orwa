@@ -5,6 +5,13 @@
         <item name="android:statusBarColor">@color/urwah_carousel_bg</item>
         <item name="android:windowLightStatusBar">false</item>
 
-        <item name="android:fontFamily">@font/noto_naskh_arabic</item>
+        <item name="android:fontFamily">@font/stc_forward</item>
+    </style>
+
+    <style name="Theme.Urwah.Splash" parent="Theme.Urwah">
+        <item name="android:windowBackground">@color/splash_background</item>
+        <item name="android:statusBarColor">@color/splash_background</item>
+        <item name="android:navigationBarColor">@color/splash_background</item>
+        <item name="android:windowLightStatusBar">false</item>
     </style>
 </resources>

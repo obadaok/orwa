@@ -155,11 +155,35 @@ object DhikrDataProvider {
         DhikrItem(
             id = 3001,
             category = "أذكار المساء",
-            title = "",
-            arabic = "بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ ﴿قُلْ هُوَ اللَّهُ أَحَدٌ * اللَّهُ الصَّمَدُ * لَمْ يَلِدْ وَلَمْ يُولَدْ * وَلَمْ يَكُن لَّهُ كُفُوًا أَحَدٌ﴾. بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ ﴿قُلْ أَعُوذُ بِرَبِّ الْفَلَقِ * مِن شَرِّ مَا خَلَقَ * وَمِن شَرِّ غَاسِقٍ إِذَا وَقَبَ * وَمِن شَرِّ النَّفَّاثَاتِ فِي الْعُقَدِ * وَمِن شَرِّ حَاسِدٍ إِذَا حَسَدَ﴾. بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ ﴿قُلْ أَعُوذُ بِرَبِّ النَّاسِ * مَلِكِ النَّاسِ * إِلَٰهِ النَّاسِ * مِن شَرِّ الْوَسْوَاسِ الْخَنَّاسِ * الَّذِي يُوَسْوِسُ فِي صُدُورِ النَّاسِ * مِنَ الْجِنَّةِ وَالنَّاسِ﴾",
+            title = "سورة الإخلاص",
+            arabic = "بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ ﴿قُلْ هُوَ اللَّهُ أَحَدٌ * اللَّهُ الصَّمَدُ * لَمْ يَلِدْ وَلَمْ يُولَدْ * وَلَمْ يَكُن لَّهُ كُفُوًا أَحَدٌ﴾",
             repeats = 3,
-            virtue = "من قالها ثلاث مرات حين يُمسي كفَته من كل شيء",
-            reference = "أخرجه أبو داود (4/322)، والترمذي (5/567) وصححه الألباني",
+            virtue = "",
+            reference = "",
+            source = "السنة",
+            hadithGrade = "صحيح",
+            notes = ""
+        ),
+        DhikrItem(
+            id = 3022,
+            category = "أذكار المساء",
+            title = "سورة الفلق",
+            arabic = "بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ ﴿قُلْ أَعُوذُ بِرَبِّ الْفَلَقِ * مِن شَرِّ مَا خَلَقَ * وَمِن شَرِّ غَاسِقٍ إِذَا وَقَبَ * وَمِن شَرِّ النَّفَّاثَاتِ فِي الْعُقَدِ * وَمِن شَرِّ حَاسِدٍ إِذَا حَسَدَ﴾",
+            repeats = 3,
+            virtue = "",
+            reference = "",
+            source = "السنة",
+            hadithGrade = "صحيح",
+            notes = ""
+        ),
+        DhikrItem(
+            id = 3023,
+            category = "أذكار المساء",
+            title = "سورة الناس",
+            arabic = "بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ ﴿قُلْ أَعُوذُ بِرَبِّ النَّاسِ * مَلِكِ النَّاسِ * إِلَٰهِ النَّاسِ * مِن شَرِّ الْوَسْوَاسِ الْخَنَّاسِ * الَّذِي يُوَسْوِسُ فِي صُدُورِ النَّاسِ * مِنَ الْجِنَّةِ وَالنَّاسِ﴾",
+            repeats = 3,
+            virtue = "",
+            reference = "",
             source = "السنة",
             hadithGrade = "صحيح",
             notes = ""
@@ -386,14 +410,38 @@ object DhikrDataProvider {
         DhikrItem(
             id = 4000,
             category = "أذكار النوم",
-            title = "النفث في الكفين بالمعوذات",
-            arabic = "((يَجْمَعُ كَفَّيْهِ ثُمَّ يَنْفُثُ فِيهِمَا فَيَقْرَأُ فِيهِمَا: ﴿قُلْ هُوَ اللَّهُ أَحَدٌ * اللَّهُ الصَّمَدُ * لَمْ يَلِدْ وَلَمْ يُولَدْ * وَلَمْ يَكُن لَّهُ كُفُواً أَحَدٌ﴾، ﴿قُلْ أَعُوذُ بِرَبِّ الْفَلَقِ * مِن شَرِّ مَا خَلَقَ * وَمِن شَرِّ غَاسِقٍ إِذَا وَقَبَ * وَمِن شَرِّ النَّفَّاثَاتِ فِي الْعُقَدِ * وَمِن شَرِّ حَاسِدٍ إِذَا حَسَدَ﴾، ﴿قُلْ أَعُوذُ بِرَبِّ النَّاسِ * مَلِكِ النَّاسِ * إِلَهِ النَّاسِ * مِن شَرِّ الْوَسْوَاسِ الْخَنَّاسِ * الَّذِي يُوَسْوِسُ فِي صُدُورِ النَّاسِ * مِنَ الْجِنَّةِ وَ النَّاسِ﴾ ثُمَّ يَمْسَحُ بِهِمَا مَا اسْتَطَاعَ مِنْ جَسَدِهِ يَبْدَأُ بِهِمَا عَلَى رَأْسِهِ وَوَجْهِهِ وَمَا أَقبَلَ مِنْ جَسَدِهِ))",
+            title = "سورة الإخلاص",
+            arabic = "بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ ﴿قُلْ هُوَ اللَّهُ أَحَدٌ * اللَّهُ الصَّمَدُ * لَمْ يَلِدْ وَلَمْ يُولَدْ * وَلَمْ يَكُن لَّهُ كُفُواً أَحَدٌ﴾",
             repeats = 3,
-            virtue = "تحصين وحفظ شامل للجسد والنفس طوال الليل",
+            virtue = "",
             reference = "",
             source = "السنة",
             hadithGrade = "صحيح",
-            notes = ""
+            notes = "يُقرأ في الكفين ثم يُنفث ويمسح بهما الجسد"
+        ),
+        DhikrItem(
+            id = 4022,
+            category = "أذكار النوم",
+            title = "سورة الفلق",
+            arabic = "بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ ﴿قُلْ أَعُوذُ بِرَبِّ الْفَلَقِ * مِن شَرِّ مَا خَلَقَ * وَمِن شَرِّ غَاسِقٍ إِذَا وَقَبَ * وَمِن شَرِّ النَّفَّاثَاتِ فِي الْعُقَدِ * وَمِن شَرِّ حَاسِدٍ إِذَا حَسَدَ﴾",
+            repeats = 3,
+            virtue = "",
+            reference = "",
+            source = "السنة",
+            hadithGrade = "صحيح",
+            notes = "يُقرأ في الكفين ثم يُنفث ويمسح بهما الجسد"
+        ),
+        DhikrItem(
+            id = 4023,
+            category = "أذكار النوم",
+            title = "سورة الناس",
+            arabic = "بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ ﴿قُلْ أَعُوذُ بِرَبِّ النَّاسِ * مَلِكِ النَّاسِ * إِلَهِ النَّاسِ * مِن شَرِّ الْوَسْوَاسِ الْخَنَّاسِ * الَّذِي يُوَسْوِسُ فِي صُدُورِ النَّاسِ * مِنَ الْجِنَّةِ وَ النَّاسِ﴾",
+            repeats = 3,
+            virtue = "",
+            reference = "",
+            source = "السنة",
+            hadithGrade = "صحيح",
+            notes = "يُقرأ في الكفين ثم يُنفث ويمسح بهما الجسد"
         ),
         DhikrItem(
             id = 4001,
@@ -470,14 +518,38 @@ object DhikrDataProvider {
         DhikrItem(
             id = 4007,
             category = "أذكار النوم",
-            title = "التسبيح والتحميد والتكبير",
-            arabic = "سُبْحَانَ اللَّهِ (33 مرةً)\nالْحَمْدُ لِلَّهِ (33 مرةً)\nاللَّهُ أَكْبَرُ (34 مرةً)",
-            repeats = 1,
-            virtue = "من قالها عند النوم كانت له خيراً من خادم (تمنح الجسم القوة والنشاط في اليوم التالي)",
+            title = "سبحان الله",
+            arabic = "سُبْحَانَ اللَّهِ",
+            repeats = 33,
+            virtue = "",
             reference = "",
             source = "السنة",
             hadithGrade = "صحيح",
-            notes = "المجموع مئة (33+33+34)"
+            notes = ""
+        ),
+        DhikrItem(
+            id = 4025,
+            category = "أذكار النوم",
+            title = "الحمد لله",
+            arabic = "الْحَمْدُ لِلَّهِ",
+            repeats = 33,
+            virtue = "",
+            reference = "",
+            source = "السنة",
+            hadithGrade = "صحيح",
+            notes = ""
+        ),
+        DhikrItem(
+            id = 4026,
+            category = "أذكار النوم",
+            title = "الله أكبر",
+            arabic = "اللَّهُ أَكْبَرُ",
+            repeats = 34,
+            virtue = "من قالها عند النوم كانت له خيراً من خادم",
+            reference = "",
+            source = "السنة",
+            hadithGrade = "صحيح",
+            notes = ""
         ),
         DhikrItem(
             id = 4008,
@@ -1457,9 +1529,33 @@ object DhikrDataProvider {
         DhikrItem(
             id = 69,
             category = "الأذكار بعد السلام من الصلاة",
-            title = "",
-            arabic = "((سُبْحَانَ اللَّهِ، وَالْحَمْدُ لِلَّهِ، وَاللَّهُ أَكْبَرُ (ثلاثاً وثلاثين) لاَ إِلَهَ إِلاَّ اللَّهُ وَحْدَهُ لاَ شَرِيكَ لَهُ، لَهُ الْمُلْكُ وَلَهُ الْحَمْدُ وَهُوَ عَلَى كُلِّ شَيْءٍ قَدِيرٌ)).",
+            title = "سبحان الله",
+            arabic = "سُبْحَانَ اللَّهِ",
             repeats = 33,
+            virtue = "",
+            reference = "",
+            source = "السنة",
+            hadithGrade = "صحيح",
+            notes = ""
+        ),
+        DhikrItem(
+            id = 6025,
+            category = "الأذكار بعد السلام من الصلاة",
+            title = "الحمد لله",
+            arabic = "الْحَمْدُ لِلَّهِ",
+            repeats = 33,
+            virtue = "",
+            reference = "",
+            source = "السنة",
+            hadithGrade = "صحيح",
+            notes = ""
+        ),
+        DhikrItem(
+            id = 6026,
+            category = "الأذكار بعد السلام من الصلاة",
+            title = "الله أكبر",
+            arabic = "اللَّهُ أَكْبَرُ",
+            repeats = 34,
             virtue = "",
             reference = "",
             source = "السنة",
@@ -1469,14 +1565,38 @@ object DhikrDataProvider {
         DhikrItem(
             id = 70,
             category = "الأذكار بعد السلام من الصلاة",
-            title = "",
-            arabic = "بسم الله الرحمن الرحيم ﴿قُلْ هُوَ اللَّهُ أَحَدٌ* اللَّهُ الصَّمَدُ* لَمْ يَلِدْ وَلَمْ يُولَدْ* وَلَمْ يَكُن لَّهُ كُفُواً أَحَدٌ﴾، بسم الله الرحمن الرحيم ﴿قُلْ أَعُوذُ بِرَبِّ الْفَلَقِ* مِن شَرِّ مَا خَلَقَ* وَمِن شَرِّ غَاسِقٍ إِذَا وَقَبَ* وَمِن شَرِّ النَّفَّاثَاتِ فِي الْعُقَدِ* وَمِن شَرِّ حَاسِدٍ إِذَا حَسَدَ﴾،بسم الله الرحمن الرحيم ﴿قُلْ أَعُوذُ بِرَبِّ النَّاسِ* مَلِكِ النَّاسِ* إِلَهِ النَّاسِ* مِن شَرِّ الْوَسْوَاسِ الْخَنَّاسِ* الَّذِي يُوَسْوِسُ فِي صُدُورِ النَّاسِ* مِنَ الْجِنَّةِ وَ النَّاسِ﴾ بَعْدَ كُلِّ صَلاَةٍ.",
+            title = "سورة الإخلاص",
+            arabic = "بسم الله الرحمن الرحيم ﴿قُلْ هُوَ اللَّهُ أَحَدٌ* اللَّهُ الصَّمَدُ* لَمْ يَلِدْ وَلَمْ يُولَدْ* وَلَمْ يَكُن لَّهُ كُفُواً أَحَدٌ﴾",
             repeats = 1,
             virtue = "",
             reference = "",
             source = "السنة",
             hadithGrade = "صحيح",
-            notes = ""
+            notes = "تُقرأ بعد كل صلاة"
+        ),
+        DhikrItem(
+            id = 6022,
+            category = "الأذكار بعد السلام من الصلاة",
+            title = "سورة الفلق",
+            arabic = "بسم الله الرحمن الرحيم ﴿قُلْ أَعُوذُ بِرَبِّ الْفَلَقِ* مِن شَرِّ مَا خَلَقَ* وَمِن شَرِّ غَاسِقٍ إِذَا وَقَبَ* وَمِن شَرِّ النَّفَّاثَاتِ فِي الْعُقَدِ* وَمِن شَرِّ حَاسِدٍ إِذَا حَسَدَ﴾",
+            repeats = 1,
+            virtue = "",
+            reference = "",
+            source = "السنة",
+            hadithGrade = "صحيح",
+            notes = "تُقرأ بعد كل صلاة"
+        ),
+        DhikrItem(
+            id = 6023,
+            category = "الأذكار بعد السلام من الصلاة",
+            title = "سورة الناس",
+            arabic = "بسم الله الرحمن الرحيم ﴿قُلْ أَعُوذُ بِرَبِّ النَّاسِ* مَلِكِ النَّاسِ* إِلَهِ النَّاسِ* مِن شَرِّ الْوَسْوَاسِ الْخَنَّاسِ* الَّذِي يُوَسْوِسُ فِي صُدُورِ النَّاسِ* مِنَ الْجِنَّةِ وَ النَّاسِ﴾",
+            repeats = 1,
+            virtue = "",
+            reference = "",
+            source = "السنة",
+            hadithGrade = "صحيح",
+            notes = "تُقرأ بعد كل صلاة"
         ),
         DhikrItem(
             id = 71,
@@ -3731,11 +3851,35 @@ object DhikrDataProvider {
         DhikrItem(
             id = 2002,
             category = "أذكار الصباح",
-            title = "",
-            arabic = "بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ ﴿قُلْ هُوَ اللَّهُ أَحَدٌ * اللَّهُ الصَّمَدُ * لَمْ يَلِدْ وَلَمْ يُولَدْ * وَلَمْ يَكُن لَّهُ كُفُوًا أَحَدٌ﴾. بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ ﴿قُلْ أَعُوذُ بِرَبِّ الْفَلَقِ * مِن شَرِّ مَا خَلَقَ * وَمِن شَرِّ غَاسِقٍ إِذَا وَقَبَ * وَمِن شَرِّ النَّفَّاثَاتِ فِي الْعُقَدِ * وَمِن شَرِّ حَاسِدٍ إِذَا حَسَدَ﴾. بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ ﴿قُلْ أَعُوذُ بِرَبِّ النَّاسِ * مَلِكِ النَّاسِ * إِلَٰهِ النَّاسِ * مِن شَرِّ الْوَسْوَاسِ الْخَنَّاسِ * الَّذِي يُوَسْوِسُ فِي صُدُورِ النَّاسِ * مِنَ الْجِنَّةِ وَالنَّاسِ﴾",
+            title = "سورة الإخلاص",
+            arabic = "بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ ﴿قُلْ هُوَ اللَّهُ أَحَدٌ * اللَّهُ الصَّمَدُ * لَمْ يَلِدْ وَلَمْ يُولَدْ * وَلَمْ يَكُن لَّهُ كُفُوًا أَحَدٌ﴾",
             repeats = 3,
-            virtue = "تكفي قائلها من كل شيء",
-            reference = "أخرجه أبو داود (4/322)، والترمذي (5/567) وصححه الألباني",
+            virtue = "",
+            reference = "",
+            source = "السنة",
+            hadithGrade = "صحيح",
+            notes = ""
+        ),
+        DhikrItem(
+            id = 2022,
+            category = "أذكار الصباح",
+            title = "سورة الفلق",
+            arabic = "بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ ﴿قُلْ أَعُوذُ بِرَبِّ الْفَلَقِ * مِن شَرِّ مَا خَلَقَ * وَمِن شَرِّ غَاسِقٍ إِذَا وَقَبَ * وَمِن شَرِّ النَّفَّاثَاتِ فِي الْعُقَدِ * وَمِن شَرِّ حَاسِدٍ إِذَا حَسَدَ﴾",
+            repeats = 3,
+            virtue = "",
+            reference = "",
+            source = "السنة",
+            hadithGrade = "صحيح",
+            notes = ""
+        ),
+        DhikrItem(
+            id = 2023,
+            category = "أذكار الصباح",
+            title = "سورة الناس",
+            arabic = "بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ ﴿قُلْ أَعُوذُ بِرَبِّ النَّاسِ * مَلِكِ النَّاسِ * إِلَٰهِ النَّاسِ * مِن شَرِّ الْوَسْوَاسِ الْخَنَّاسِ * الَّذِي يُوَسْوِسُ فِي صُدُورِ النَّاسِ * مِنَ الْجِنَّةِ وَالنَّاسِ﴾",
+            repeats = 3,
+            virtue = "",
+            reference = "",
             source = "السنة",
             hadithGrade = "صحيح",
             notes = ""
@@ -4034,26 +4178,26 @@ object DhikrDataProvider {
 
     fun getCategoryIcon(categoryName: String): Int {
         return when {
-            categoryName.contains("الصباح") || categoryName.contains("المساء") -> R.drawable.ic_wb_sunny_black_24dp
+            categoryName.contains("الصباح") || categoryName.contains("المساء") -> R.drawable.ic_sunrise_24dp
             categoryName.contains("النوم") -> R.drawable.ic_bedtime_black_24dp
             categoryName.contains("الاستيقاظ") -> R.drawable.ic_alarm_black_24dp
-            categoryName.contains("الطعام") || categoryName.contains("الأكل") -> R.drawable.ic_restaurant_black_24dp
-            categoryName.contains("الشراب") || categoryName.contains("الشرب") -> R.drawable.ic_local_cafe_black_24dp
+            categoryName.contains("الطعام") || categoryName.contains("الأكل") -> R.drawable.ic_food_24dp
+            categoryName.contains("الشراب") || categoryName.contains("الشرب") -> R.drawable.ic_coffee_cup_24dp
             categoryName.contains("المطر") || categoryName.contains("الاستسقاء") ||
                 categoryName.contains("الاستصحاء") || categoryName.contains("نزول المطر") -> R.drawable.ic_wb_cloudy_black_24dp
             categoryName.contains("الرعد") -> R.drawable.ic_wb_cloudy_black_24dp
             categoryName.contains("المسجد") -> R.drawable.ic_mosque_black_24dp
             categoryName.contains("المنزل") || categoryName.contains("القرية") -> R.drawable.ic_home_black_24dp
             categoryName.contains("السفر") || categoryName.contains("الركوب") ||
-                categoryName.contains("المسافر") || categoryName.contains("الرجوع من") -> R.drawable.ic_flight_black_24dp
-            categoryName.contains("الثوب") || categoryName.contains("لبس") -> R.drawable.ic_checkroom_black_24dp
-            categoryName.contains("الهلال") || categoryName.contains("رؤية") -> R.drawable.ic_nightlight_black_24dp
-            categoryName.contains("الوضوء") -> R.drawable.ic_water_drop_black_24dp
-            categoryName.contains("الريح") || categoryName.contains("الرياح") -> R.drawable.ic_air_black_24dp
-            categoryName.contains("الخلاء") -> R.drawable.ic_cleaning_services_black_24dp
-            categoryName.contains("الختم") -> R.drawable.ic_book_black_24dp
+                categoryName.contains("المسافر") || categoryName.contains("الرجوع من") -> R.drawable.ic_plane_24dp
+            categoryName.contains("الثوب") || categoryName.contains("لبس") -> R.drawable.ic_clothing_24dp
+            categoryName.contains("الهلال") || categoryName.contains("رؤية") -> R.drawable.ic_moon_stars_24dp
+            categoryName.contains("الوضوء") -> R.drawable.ic_wudu_24dp
+            categoryName.contains("الريح") || categoryName.contains("الرياح") -> R.drawable.ic_windy_24dp
+            categoryName.contains("الخلاء") -> R.drawable.ic_toilet_24dp
+            categoryName.contains("الختم") -> R.drawable.ic_book_quran_24dp
             categoryName.contains("السوق") || categoryName.contains("المجالس") ||
-                categoryName.contains("المجلس") -> R.drawable.ic_storefront_black_24dp
+                categoryName.contains("المجلس") -> R.drawable.ic_people_gathering_24dp
             categoryName.contains("السجود") || categoryName.contains("الركوع") ||
                 categoryName.contains("الصلاة") || categoryName.contains("الاستفتاح") ||
                 categoryName.contains("التشهد") || categoryName.contains("الآذان") ||
@@ -4063,23 +4207,23 @@ object DhikrDataProvider {
                 categoryName.contains("القبر") || categoryName.contains("الجنازة") ||
                 categoryName.contains("الدفن") || categoryName.contains("زيارة القبور") ||
                 categoryName.contains("المحتضر") || categoryName.contains("التعزية") ||
-                categoryName.contains("المصيبة") || categoryName.contains("إغماض") -> R.drawable.ic_healing_black_24dp
+                categoryName.contains("المصيبة") || categoryName.contains("إغماض") -> R.drawable.ic_medical_24dp
             categoryName.contains("المرض") || categoryName.contains("المريض") ||
-                categoryName.contains("عيادة") -> R.drawable.ic_local_hospital_black_24dp
+                categoryName.contains("عيادة") -> R.drawable.ic_medical_24dp
             categoryName.contains("الخير") || categoryName.contains("الفضل") ||
                 categoryName.contains("التسبيح") || categoryName.contains("الذكر") ->
-                R.drawable.ic_auto_awesome_black_24dp
+                R.drawable.ic_star_crescent_24dp
             categoryName.contains("الحج") || categoryName.contains("العمرة") ||
                 categoryName.contains("عرفة") || categoryName.contains("الصفا") ||
                 categoryName.contains("المشعر") || categoryName.contains("الجمار") ||
                 categoryName.contains("الركن") || categoryName.contains("التلبية") ->
-                R.drawable.ic_explore_black_24dp
+                R.drawable.ic_star_crescent_24dp
             categoryName.contains("الكرب") || categoryName.contains("الهم") ||
                 categoryName.contains("الحزن") || categoryName.contains("الضيق") ||
                 categoryName.contains("الدين") || categoryName.contains("الوسوسة") ||
                 categoryName.contains("الذنب") || categoryName.contains("الخوف") ||
-                categoryName.contains("الغضب") -> R.drawable.ic_sentiment_dissatisfied_black_24dp
-            else -> R.drawable.ic_category_black_24dp
+                categoryName.contains("الغضب") -> R.drawable.ic_angry_24dp
+            else -> R.drawable.ic_star_crescent_24dp
         }
     }
 }

@@ -17,8 +17,8 @@
     <color name="counter_ring_bg">#E8DFD3</color>
     <color name="counter_ring_progress">#A67C52</color>
     <color name="counter_text">#3D2E24</color>
-    <color name="counter_check">#D4AF37</color>
-    <color name="favorite_active">#C0392B</color>
+    <color name="counter_check">#8B6F5E</color>
+    <color name="favorite_active">#D4AF37</color>
     <color name="favorite_inactive">#8B6F5E</color>
     <color name="confetti_1">#8B6F5E</color>
     <color name="confetti_2">#C4AFA3</color>
@@ -43,4 +43,14 @@
     <color name="urwah_card_text_muted">#C4AFA3</color>
     <color name="urwah_search_text">#5E4B40</color>
     <color name="urwah_search_hint">#C4AFA3</color>
+
+    <!-- New Brutalist design colors -->
+    <color name="urwah_card_bg">#FFFDFA</color>
+
+    <!-- Splash screen colors -->
+    <color name="splash_background">#F7F5F0</color>
+    <color name="splash_logo_color">#896C5C</color>
+
+    <!-- Swipe delete color -->
+    <color name="delete_swipe_bg">#33CC5555</color>
 </resources>

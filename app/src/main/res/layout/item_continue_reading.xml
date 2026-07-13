@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:paddingHorizontal="16dp"
+    android:paddingTop="6dp"
+    android:paddingBottom="2dp"
+    android:clickable="true"
+    android:focusable="true"
+    android:foreground="?attr/selectableItemBackground">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center"
+        android:orientation="horizontal"
+        android:paddingVertical="12dp"
+        android:background="@drawable/bg_dhikr_virtue_box">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="متابعة القراءة"
+            android:fontFamily="@font/stc_forward"
+            android:textColor="@color/urwah_thread_brown"
+            android:textSize="13sp" />
+
+        <View
+            android:layout_width="4dp"
+            android:layout_height="4dp"
+            android:layout_marginHorizontal="8dp"
+            android:background="@drawable/bg_ayah_number" />
+
+        <TextView
+            android:id="@+id/tvContinueSurahName"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:fontFamily="@font/stc_forward"
+            android:textColor="@color/urwah_thread_dark"
+            android:textSize="14sp"
+            android:textStyle="bold" />
+
+        <View
+            android:layout_width="4dp"
+            android:layout_height="4dp"
+            android:layout_marginHorizontal="6dp"
+            android:background="@drawable/bg_ayah_number" />
+
+        <TextView
+            android:id="@+id/tvContinueAyahNum"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:fontFamily="@font/stc_forward"
+            android:textColor="@color/urwah_thread_light"
+            android:textSize="13sp" />
+    </LinearLayout>
+</LinearLayout>

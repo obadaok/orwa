@@ -27,6 +27,7 @@ class CategoryAdapter(
         val icon: ImageView = view.findViewById(R.id.iv_category_icon)
         val name: TextView = view.findViewById(R.id.tv_category_name)
         val count: TextView = view.findViewById(R.id.tv_category_count)
+        val checkmark: View = view.findViewById(R.id.ivCategoryComplete)
     }
 
     override fun getItemViewType(position: Int): Int {
@@ -67,6 +68,9 @@ class CategoryAdapter(
                 itemHolder.icon.post {
                     itemHolder.icon.setImageResource(cat.iconResId)
                 }
+
+                val isComplete = DhikrListAdapter.isCategoryComplete(holder.itemView.context, cat.name)
+                itemHolder.checkmark.visibility = if (isComplete) View.VISIBLE else View.GONE
 
                 itemHolder.itemView.setOnClickListener { onItemClick(cat) }
             }
