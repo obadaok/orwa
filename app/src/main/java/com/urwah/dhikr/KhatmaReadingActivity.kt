@@ -371,36 +371,40 @@ class KhatmaReadingActivity : AppCompatActivity() {
     private fun startAutoScroll(speedPercent: Int) {
         stopAutoScroll()
         isAutoScrolling = true
-        val scrollStep = (speedPercent * 2).coerceIn(2, 40)
-        val interval = (100 - speedPercent + 10).coerceIn(10, 100).toLong()
+        val pixelsPerSecond = (speedPercent * 3 + 10).coerceIn(20, 310)
 
-        autoScrollHandler = Handler(Looper.getMainLooper())
         autoScrollRunnable = object : Runnable {
+            private var lastTime = System.nanoTime()
+
             override fun run() {
                 if (!isAutoScrolling) return
+                val now = System.nanoTime()
+                val delta = ((now - lastTime) / 1_000_000f).coerceIn(1f, 50f)
+                lastTime = now
 
-                val maxScroll = scrollView.getChildAt(0)?.height?.minus(scrollView.height) ?: return
-                val newScroll = scrollView.scrollY + scrollStep
+                val step = (pixelsPerSecond * delta / 1000f).toInt().coerceAtLeast(1)
+
+                val scrollContent = scrollView.getChildAt(0) ?: return
+                val maxScroll = (scrollContent.height - scrollView.height).coerceAtLeast(0)
+                val newScroll = scrollView.scrollY + step
 
                 if (newScroll >= maxScroll) {
-                    scrollView.smoothScrollTo(0, maxScroll)
+                    scrollView.scrollTo(0, maxScroll)
                     stopAutoScroll()
                     Toast.makeText(this@KhatmaReadingActivity, "وصلت لنهاية الورد", Toast.LENGTH_SHORT).show()
                     return
                 }
 
-                scrollView.smoothScrollBy(0, scrollStep)
-                autoScrollHandler?.postDelayed(this, interval)
+                scrollView.scrollBy(0, step)
+                scrollView.postOnAnimation(this)
             }
         }
-        autoScrollHandler?.post(autoScrollRunnable!!)
+        autoScrollRunnable?.let { scrollView.postOnAnimation(it) }
     }
 
     private fun stopAutoScroll() {
         isAutoScrolling = false
-        autoScrollRunnable?.let { autoScrollHandler?.removeCallbacks(it) }
         autoScrollRunnable = null
-        autoScrollHandler = null
     }
 
     private fun toHindiDigits(number: Int): String {
