@@ -9,7 +9,7 @@
         android:id="@+id/tvWirdRange"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:fontFamily="@font/stc_forward"
+        android:fontFamily="@font/alyamama"
         android:gravity="center"
         android:lineSpacingExtra="4dp"
         android:textColor="@color/urwah_thread_dark"

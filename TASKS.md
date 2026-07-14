@@ -118,3 +118,56 @@
 ## 24. ✅ طريقة عرض الآيات
 - [x] إعدادات طريقة عرض الآيات (كل سطر / متواصل) فعّالة الآن
 - [x] في الوضع المتواصل: جميع الآيات في TextView واحد مع فواصل بينها
+
+---
+
+## 25. ✅ استخدام خطوط Alyamama
+- [x] استبدال خطوط `stc_forward` بـ `Alyamama` في جميع ملفات XML (97 مرجعاً)
+- [x] استبدال `R.font.stc_forward` بـ `R.font.alyamama` في ملفات Kotlin (4 مراجع)
+- [x] إنشاء `alyamama.xml` font family بأوزان 300-900
+- [x] إضافة 7 أوزان من Alyamama (Light, Regular, Medium, SemiBold, Bold, ExtraBold, Black)
+- [x] تحديث `themes.xml` و `values-night/themes.xml` لاستخدام `@font/alyamama`
+
+## 26. ✅ سحب لحذف في صفحة الأذكار (إصلاح)
+- [x] إصلاح خلفية الحذف لتتبع الحواف الدائرية للبطاقة
+- [x] إصلاح خلل تصغير البطاقة وظهور المستطيل الأحمر
+- [x] إصلاح عدم عودة البطاقة الافتراضية بعد محاولة حذفها
+- [x] إضافة `clearView` لإعادة الترجمة عند انتهاء السحب
+- [x] إخفاء deleteBackground أثناء animation الإكمال
+
+## 27. ✅ إضافة ذكر مخصص
+- [x] زر "+" في شريط عنوان صفحة الأذكار
+- [x] نافذة `dialog_add_dhikr.xml` بنفس تنسيق نافذة إضافة ختمة
+- [x] `CustomDhikrManager.kt` للتخزين في SharedPreferences
+- [x] عرض الأذكار المخصصة في نفس القائمة
+- [x] سحب لحذف الأذكار المخصصة فقط
+
+## 28. ✅ عرض القرآن في الأذكار (تحسين)
+- [x] تطبيق الخط العثماني فقط على نص الآية وليس الرقم
+- [x] تحسين الفواصل بين الآيات
+- [x] عرض البسملة بنفس خط المصحف
+
+## 29. ✅ ظل البطاقات في الوضع الداكن
+- [x] إنشاء لون `urwah_card_shadow` منفصل
+- [x] تعريفه في `values/colors.xml` (فاتح = بني غامق)
+- [x] تعريفه في `values-night/colors.xml` (داكن = أسود)
+
+## 30. ✅ زر العلامة المرجعية في الوضع المتواصل
+- [x] تغيير `showActionPopup` لاستخدام `showAtLocation` بدلاً من `showAsDropDown`
+- [x] استخدام `selectedAyahNumber` بدلاً من `highlightedAyahs.firstOrNull()` لضمان الصحة
+
+## 31. ✅ حفظ موضع القراءة في الوضع المتواصل
+- [x] إضافة حقل `continuousAyahOffsets` لتتبّع نطاقات الآيات
+- [x] تحديث `onPause` لحساب الآية الظاهرة من scroll position باستخدام `Layout.getLineForVertical`
+
+## 32. ✅ رواية ورش
+- [x] تحميل بيانات ورش من KFGQPC (warshData_v10.json) وتحويلها لصيغة التطبيق
+- [x] حفظها في `assets/quran_warsh.json` (6214 آية)
+- [x] تحديث `QuranDataLoader` لدعم تبديل الرواية (cache منفصل لكل رواية)
+- [x] إضافة `getQiraat`/`setQiraat`/`invalidateCache` لإدارة الرواية
+- [x] تحديث `SettingsFragment` لاستخدام `QuranDataLoader.setQiraat` و `invalidateCache`
+- [x] المصحف (SurahDetailActivity) يستخدم `QuranDataLoader.getSurah` → يتبع الرواية تلقائياً
+- [x] الختمات (KhatmaReadingActivity) تستخدم `QuranDataLoader.load` → يتبع الرواية تلقائياً
+- [x] الأذكار (DhikrListAdapter) تستخدم `QuranDataLoader.getSurah` → يتبع الرواية تلقائياً
+- [x] تحديث خط ورش من v10 إلى v21 (أحدث إصدار من KFGQPC عبر sarayan/zedsalim)
+- [x] تحديث خط حفص من الإصدار القديم إلى v20 (أحدث إصدار من KFGQPC)

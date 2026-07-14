@@ -35,7 +35,7 @@
                     android:gravity="center"
                     android:textColor="@color/icon_on_category_circle"
                     android:textSize="15sp"
-                    android:fontFamily="@font/stc_forward"
+                    android:fontFamily="@font/alyamama"
                     android:textStyle="bold"
                     android:contentDescription="@null" />
             </FrameLayout>
@@ -60,7 +60,7 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="2dp"
-                    android:fontFamily="@font/stc_forward"
+                    android:fontFamily="@font/alyamama"
                     android:textColor="@color/urwah_thread_light"
                     android:textSize="13sp" />
             </LinearLayout>

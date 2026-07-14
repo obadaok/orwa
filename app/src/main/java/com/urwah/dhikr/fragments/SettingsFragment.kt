@@ -4,6 +4,7 @@ import android.Manifest
 import android.app.TimePickerDialog
 import android.content.Context
 import android.content.SharedPreferences
+import com.urwah.dhikr.QuranDataLoader
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
@@ -94,7 +95,7 @@ class SettingsFragment : Fragment() {
 
     private fun setupQuranSettings(prefs: SharedPreferences) {
         val ayahDisplayMode = prefs.getBoolean("ayah_single_line", true)
-        val qiraatMode = prefs.getString("qiraat", "hafs") ?: "hafs"
+        val qiraatMode = QuranDataLoader.getQiraat(requireContext())
 
         binding.tvAyahDisplayMode.text = if (ayahDisplayMode) "كل آية في سطر مستقل" else "عرض متواصل"
         binding.tvQiraatMode.text = if (qiraatMode == "hafs") "حفص عن عاصم" else "ورش عن نافع"
@@ -116,14 +117,15 @@ class SettingsFragment : Fragment() {
         }
 
         binding.tvQiraatMode.setOnClickListener {
-            val current = prefs.getString("qiraat", "hafs") ?: "hafs"
+            val current = QuranDataLoader.getQiraat(requireContext())
             val options = arrayOf("حفص عن عاصم", "ورش عن نافع")
             val checked = if (current == "hafs") 0 else 1
             android.app.AlertDialog.Builder(requireContext())
                 .setTitle("رواية المصحف")
                 .setSingleChoiceItems(options, checked) { dialog, which ->
                     val newValue = if (which == 0) "hafs" else "warsh"
-                    prefs.edit().putString("qiraat", newValue).apply()
+                    QuranDataLoader.setQiraat(requireContext(), newValue)
+                    QuranDataLoader.invalidateCache()
                     binding.tvQiraatMode.text = options[which]
                     dialog.dismiss()
                 }

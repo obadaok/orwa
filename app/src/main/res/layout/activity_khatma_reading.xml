@@ -32,7 +32,7 @@
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:fontFamily="@font/stc_forward"
+                android:fontFamily="@font/alyamama"
                 android:gravity="center"
                 android:textColor="@color/urwah_thread_dark"
                 android:textSize="16sp"
@@ -43,7 +43,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginEnd="12dp"
-                android:fontFamily="@font/stc_forward"
+                android:fontFamily="@font/alyamama"
                 android:textColor="@color/urwah_thread_brown"
                 android:textSize="14sp" />
         </LinearLayout>

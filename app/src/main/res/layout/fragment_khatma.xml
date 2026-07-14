@@ -18,7 +18,7 @@
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:gravity="center"
-        android:fontFamily="@font/stc_forward"
+        android:fontFamily="@font/alyamama"
         android:text="لا توجد ختمات بعد\nاضغط + للبدء"
         android:textColor="@color/urwah_thread_light"
         android:textSize="16sp"
@@ -53,7 +53,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="الختمات"
-            android:fontFamily="@font/stc_forward"
+            android:fontFamily="@font/alyamama"
             android:textColor="@color/urwah_thread_dark"
             android:textSize="20sp"
             android:textStyle="bold" />

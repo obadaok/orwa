@@ -221,7 +221,7 @@ class KhatmaReadingActivity : AppCompatActivity() {
         if (isDayCompleted) {
             val actionBtn = Button(this).apply {
                 text = "تقبل الله منكم"
-                typeface = ResourcesCompat.getFont(this@KhatmaReadingActivity, R.font.stc_forward)
+                typeface = ResourcesCompat.getFont(this@KhatmaReadingActivity, R.font.alyamama)
                 textSize = 15f
                 setTextColor(Color.WHITE)
                 setBackgroundResource(R.drawable.bg_primary_button)
@@ -252,7 +252,7 @@ class KhatmaReadingActivity : AppCompatActivity() {
 
             val tvPrompt = TextView(this).apply {
                 text = "هل أكملت هذا الورد؟"
-                typeface = ResourcesCompat.getFont(this@KhatmaReadingActivity, R.font.stc_forward)
+                typeface = ResourcesCompat.getFont(this@KhatmaReadingActivity, R.font.alyamama)
                 textSize = 15f
                 setTextColor(textColor)
                 gravity = Gravity.CENTER

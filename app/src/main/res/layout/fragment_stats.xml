@@ -22,7 +22,7 @@
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:fontFamily="@font/stc_forward"
+                android:fontFamily="@font/alyamama"
                 android:gravity="center"
                 android:text="إحصائياتي"
                 android:textColor="@color/urwah_thread_dark"
@@ -77,7 +77,7 @@
                             android:id="@+id/tv_total_completed"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:fontFamily="@font/stc_forward"
+                            android:fontFamily="@font/alyamama"
                             android:textColor="@color/urwah_thread_dark"
                             android:textSize="16sp" />
 
@@ -86,7 +86,7 @@
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:layout_marginTop="8dp"
-                            android:fontFamily="@font/stc_forward"
+                            android:fontFamily="@font/alyamama"
                             android:textColor="@color/urwah_thread_dark"
                             android:textSize="16sp" />
 
@@ -95,7 +95,7 @@
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:layout_marginTop="8dp"
-                            android:fontFamily="@font/stc_forward"
+                            android:fontFamily="@font/alyamama"
                             android:textColor="@color/urwah_thread_dark"
                             android:textSize="16sp" />
                     </LinearLayout>

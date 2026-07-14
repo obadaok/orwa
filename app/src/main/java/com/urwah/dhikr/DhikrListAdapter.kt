@@ -51,6 +51,7 @@ class DhikrListAdapter(
 
     class ViewHolder(view: View) : RecyclerView.ViewHolder(view) {
         val card: View = view.findViewById(R.id.cardDhikrItem)
+        val deleteBackground: View? = view.findViewById(R.id.deleteBackground)
         val txtText: TextView = view.findViewById(R.id.txtDhikrText)
         val containerVirtue: View = view.findViewById(R.id.containerVirtue)
         val txtVirtue: TextView = view.findViewById(R.id.txtVirtue)
@@ -153,6 +154,8 @@ class DhikrListAdapter(
         }
     }
 
+    fun getItem(position: Int): DhikrItem? = currentList.getOrNull(position)
+
     override fun getItemCount() = currentList.size
 
     override fun onViewAttachedToWindow(holder: ViewHolder) {
@@ -236,18 +239,26 @@ class DhikrListAdapter(
 
         val sb = SpannableStringBuilder()
         if (surahNum != 9) {
-            sb.append("بِسۡمِ ٱللَّهِ ٱلرَّحۡمَٰنِ ٱلرَّحِيمِ\n")
+            val bStart = sb.length
+            sb.append("بِسۡمِ ٱللَّهِ ٱلرَّحۡمَٰنِ ٱلرَّحِيمِ")
+            sb.setSpan(CustomTypefaceSpan(uthmanicFont), bStart, sb.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+            sb.setSpan(RelativeSizeSpan(0.94f), bStart, sb.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+            sb.append("\n\n")
         }
-        for (ayah in surahData.ayahs) {
-            val start = sb.length
+        for (i in surahData.ayahs.indices) {
+            val ayah = surahData.ayahs[i]
+            val ayahStart = sb.length
+            sb.append(ayah.text)
+            sb.setSpan(CustomTypefaceSpan(uthmanicFont), ayahStart, sb.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+            sb.setSpan(RelativeSizeSpan(0.94f), ayahStart, sb.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+
             val numStr = ayah.number.toString().map { hindi[it - '0'] }.joinToString("")
-            val text = "${ayah.text} $numStr"
-            sb.append(text)
-            sb.setSpan(CustomTypefaceSpan(uthmanicFont), start, sb.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
-            sb.setSpan(RelativeSizeSpan(VERSE_RELATIVE_SIZE), start, sb.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
-            sb.append("\n─\n")
+            sb.append(" $numStr")
+
+            if (i != surahData.ayahs.lastIndex) {
+                sb.append("\n\n─\n\n")
+            }
         }
-        if (sb.endsWith("\n")) sb.delete(sb.length - 1, sb.length)
         return sb
     }
 
@@ -327,10 +338,14 @@ class DhikrListAdapter(
                 .scaleY(0.85f)
                 .setDuration(350)
                 .withEndAction {
-                    holder.card.alpha = 0f
+                    holder.card.alpha = 1f
+                    holder.card.scaleX = 1f
+                    holder.card.scaleY = 1f
+                    holder.deleteBackground?.alpha = 0f
                     moveCompletedItemToEnd(holder, position)
                 }
                 .start()
+            holder.deleteBackground?.animate()?.alpha(0f)?.setDuration(150)?.start()
         }, 600)
     }
 

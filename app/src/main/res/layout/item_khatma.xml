@@ -15,7 +15,7 @@
             android:id="@+id/tvKhatmaName"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:fontFamily="@font/stc_forward"
+            android:fontFamily="@font/alyamama"
             android:textColor="@color/urwah_thread_dark"
             android:textSize="16sp"
             android:textStyle="bold" />
@@ -25,7 +25,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="4dp"
-            android:fontFamily="@font/stc_forward"
+            android:fontFamily="@font/alyamama"
             android:textColor="@color/urwah_thread_brown"
             android:textSize="13sp" />
 
@@ -41,7 +41,7 @@
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:fontFamily="@font/stc_forward"
+                android:fontFamily="@font/alyamama"
                 android:textColor="@color/urwah_thread_brown"
                 android:textSize="14sp"
                 android:textStyle="bold" />
@@ -51,7 +51,7 @@
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:fontFamily="@font/stc_forward"
+                android:fontFamily="@font/alyamama"
                 android:textColor="@color/urwah_thread_light"
                 android:textSize="13sp" />
 

@@ -1,20 +1,28 @@
 package com.urwah.dhikr
 
 import android.content.Context
+import android.graphics.Canvas
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.widget.Button
+import android.widget.EditText
 import android.widget.ImageButton
+import android.widget.NumberPicker
 import android.widget.TextView
+import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
+import androidx.recyclerview.widget.ItemTouchHelper
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 
 class DhikrDetailsActivity : AppCompatActivity() {
 
     private var completionDialog: AlertDialog? = null
+    private lateinit var rvDhikrList: RecyclerView
+    private var adapter: DhikrListAdapter? = null
+    private var categoryName: String = ""
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -22,7 +30,7 @@ class DhikrDetailsActivity : AppCompatActivity() {
 
         FavoritesManager.init(this)
 
-        val categoryName = intent.getStringExtra("CATEGORY_NAME") ?: "أذكار"
+        categoryName = intent.getStringExtra("CATEGORY_NAME") ?: "أذكار"
 
         val txtTitle = findViewById<TextView>(R.id.txtCategoryTitle)
         txtTitle.text = categoryName
@@ -30,14 +38,13 @@ class DhikrDetailsActivity : AppCompatActivity() {
         val btnBack = findViewById<ImageButton>(R.id.btnBack)
         btnBack.setOnClickListener { onBackPressed() }
 
-        val btnReset = findViewById<ImageButton>(R.id.btnResetDhikr)
-        btnReset.setOnClickListener {
+        findViewById<ImageButton>(R.id.btnResetDhikr).setOnClickListener {
             val dialogView = LayoutInflater.from(this).inflate(R.layout.dialog_delete_bookmark, null)
             dialogView.findViewById<TextView>(R.id.tvDeleteMessage).text =
                 "هل أنت متأكد من إعادة تعيين التقدم في $categoryName؟\nسيتم مسح جميع الإنجازات."
 
             val dialog = AlertDialog.Builder(this)
-                .setView(dialogView as android.view.View)
+                .setView(dialogView)
                 .create()
             dialog.window?.setBackgroundDrawableResource(android.R.color.transparent)
 
@@ -55,24 +62,140 @@ class DhikrDetailsActivity : AppCompatActivity() {
             dialog.show()
         }
 
-        val rvDhikrList = findViewById<RecyclerView>(R.id.rvDhikrList)
+        findViewById<ImageButton>(R.id.btnAddDhikr).setOnClickListener {
+            showAddDhikrDialog()
+        }
+
+        rvDhikrList = findViewById(R.id.rvDhikrList)
         rvDhikrList.layoutManager = LinearLayoutManager(this)
 
-        val items = DhikrDataProvider.getDhikrs(categoryName)
+        setupSwipeToDelete()
+        loadItems()
+    }
+
+    private fun loadItems() {
+        val items = CustomDhikrManager.getAllDhikrItems(this, categoryName)
         val savedDone = DhikrListAdapter.getCompletedIds(this, categoryName)
 
-        val adapter = DhikrListAdapter(
+        adapter = DhikrListAdapter(
             initialItems = items,
             categoryName = categoryName,
             onAllCompleted = { showCompletionDialog(categoryName) }
         )
-        adapter.setSavedProgress(this, savedDone)
+        adapter?.setSavedProgress(this, savedDone)
         rvDhikrList.adapter = adapter
 
         rvDhikrList.itemAnimator?.apply {
             moveDuration = 450
             changeDuration = 250
         }
+    }
+
+    private fun setupSwipeToDelete() {
+        val touchHelper = ItemTouchHelper(object : ItemTouchHelper.SimpleCallback(0, ItemTouchHelper.LEFT or ItemTouchHelper.RIGHT) {
+            override fun onMove(rv: RecyclerView, viewHolder: RecyclerView.ViewHolder, target: RecyclerView.ViewHolder) = false
+
+            override fun onSwiped(viewHolder: RecyclerView.ViewHolder, direction: Int) {
+                val pos = viewHolder.adapterPosition
+                val item = adapter?.getItem(pos)
+                if (item == null || item.id < 10000) {
+                    Toast.makeText(this@DhikrDetailsActivity, "لا يمكن حذف الأذكار الافتراضية", Toast.LENGTH_SHORT).show()
+                    return
+                }
+                showDeleteConfirmation(item, pos)
+            }
+
+            override fun onChildDraw(c: Canvas, rv: RecyclerView, vh: RecyclerView.ViewHolder, dX: Float, dY: Float, actionState: Int, isCurrentlyActive: Boolean) {
+                val pos = vh.adapterPosition
+                if (pos == RecyclerView.NO_POSITION) return
+                val item = adapter?.getItem(pos)
+                val isDeletable = item != null && item.id >= 10000
+
+                val content = vh.itemView.findViewById<View>(R.id.cardDhikrItem) ?: return
+                val bg = vh.itemView.findViewById<View>(R.id.deleteBackground) ?: return
+
+                if (!isDeletable || !isCurrentlyActive) {
+                    val dampedDx = dX.coerceIn(-content.width.toFloat(), content.width.toFloat()) * 0.1f
+                    content.translationX = dampedDx
+                    bg.alpha = 0f
+                    return
+                }
+
+                val clampedDx = dX.coerceIn(-content.width.toFloat(), content.width.toFloat())
+                content.translationX = clampedDx
+                val absDx = kotlin.math.abs(clampedDx)
+                val fraction = minOf(absDx / content.width.toFloat(), 1f)
+                bg.alpha = fraction * 0.6f
+            }
+
+            override fun clearView(rv: RecyclerView, vh: RecyclerView.ViewHolder) {
+                super.clearView(rv, vh)
+                val content = vh.itemView.findViewById<View>(R.id.cardDhikrItem)
+                content?.translationX = 0f
+                content?.animate()?.translationX(0f)?.setDuration(200)?.start()
+                val bg = vh.itemView.findViewById<View>(R.id.deleteBackground)
+                bg?.alpha = 0f
+            }
+        })
+        touchHelper.attachToRecyclerView(rvDhikrList)
+    }
+
+    private fun showDeleteConfirmation(item: DhikrItem, pos: Int) {
+        adapter?.notifyItemChanged(pos)
+
+        val dialogView = LayoutInflater.from(this).inflate(R.layout.dialog_delete_bookmark, null)
+        dialogView.findViewById<TextView>(R.id.tvDeleteMessage).text =
+            "حذف هذا الذكر؟"
+
+        val dialog = AlertDialog.Builder(this)
+            .setView(dialogView)
+            .create()
+        dialog.window?.setBackgroundDrawableResource(android.R.color.transparent)
+
+        dialogView.findViewById<View>(R.id.btnDeleteConfirm).setOnClickListener {
+            CustomDhikrManager.delete(this, item.id)
+            dialog.dismiss()
+            loadItems()
+        }
+        dialogView.findViewById<View>(R.id.btnDeleteCancel).setOnClickListener {
+            dialog.dismiss()
+            loadItems()
+        }
+
+        dialog.show()
+    }
+
+    private fun showAddDhikrDialog() {
+        val dialogView = LayoutInflater.from(this).inflate(R.layout.dialog_add_dhikr, null)
+        val etText = dialogView.findViewById<EditText>(R.id.etDhikrText)
+        val pickerRepeats = dialogView.findViewById<NumberPicker>(R.id.pickerRepeats)
+        val etVirtue = dialogView.findViewById<EditText>(R.id.etVirtue)
+
+        pickerRepeats.minValue = 1
+        pickerRepeats.maxValue = 100
+        pickerRepeats.value = 1
+
+        val dialog = AlertDialog.Builder(this)
+            .setView(dialogView)
+            .create()
+        dialog.window?.setBackgroundDrawableResource(android.R.color.transparent)
+
+        dialogView.findViewById<Button>(R.id.btnSaveDhikr).setOnClickListener {
+            val text = etText.text.toString().trim()
+            if (text.isEmpty()) {
+                Toast.makeText(this, "الرجاء إدخال نص الذكر", Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
+            }
+            CustomDhikrManager.add(this, categoryName, text, pickerRepeats.value, etVirtue.text.toString().trim())
+            dialog.dismiss()
+            loadItems()
+            Toast.makeText(this, "تمت إضافة الذكر", Toast.LENGTH_SHORT).show()
+        }
+        dialogView.findViewById<Button>(R.id.btnCancelDhikr).setOnClickListener {
+            dialog.dismiss()
+        }
+
+        dialog.show()
     }
 
     override fun onDestroy() {

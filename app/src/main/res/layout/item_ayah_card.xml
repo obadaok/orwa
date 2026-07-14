@@ -34,7 +34,7 @@
                     android:layout_height="wrap_content"
                     android:layout_gravity="start"
                     android:background="@drawable/bg_ayah_number"
-                    android:fontFamily="@font/stc_forward"
+                    android:fontFamily="@font/alyamama"
                     android:gravity="center"
                     android:paddingHorizontal="10dp"
                     android:paddingVertical="4dp"

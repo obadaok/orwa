@@ -47,6 +47,7 @@ class SurahDetailActivity : AppCompatActivity() {
     private var isNavigating: Boolean = false
     private var selectedAyahNumber: Int = -1
     private var continuousViewRef: TextView? = null
+    private var continuousAyahOffsets: List<Pair<Int, Int>>? = null
     private val basmalaText = "بِسۡمِ ٱللَّهِ ٱلرَّحۡمَٰنِ ٱلرَّحِيمِ"
 
     companion object {
@@ -165,17 +166,37 @@ class SurahDetailActivity : AppCompatActivity() {
     override fun onPause() {
         super.onPause()
         if (isKhatmaMode) return
-        val ayahViews = containerAyahs.findAyahViews()
-        val scrollY = scrollView.scrollY
-        var closestAyah = 1
-        for (v in ayahViews) {
-            val top = v.top
-            if (top >= scrollY) {
-                closestAyah = (v.tag as? Int) ?: 1
-                break
+
+        val quranPrefs = getSharedPreferences("urwah_quran", Context.MODE_PRIVATE)
+        val singleLineMode = quranPrefs.getBoolean("ayah_single_line", true)
+
+        if (singleLineMode) {
+            val ayahViews = containerAyahs.findAyahViews()
+            val scrollY = scrollView.scrollY
+            var closestAyah = 1
+            for (v in ayahViews) {
+                val top = v.top
+                if (top >= scrollY) {
+                    closestAyah = (v.tag as? Int) ?: 1
+                    break
+                }
+            }
+            ReadingTracker.savePosition(this, surahInfo.number, closestAyah)
+        } else {
+            continuousViewRef?.let { tv ->
+                val scrollY = scrollView.scrollY
+                val tvTop = tv.top
+                val visibleY = (scrollY - tvTop).coerceAtLeast(0)
+                val layout = tv.layout
+                if (layout != null && visibleY < layout.height) {
+                    val line = layout.getLineForVertical(visibleY)
+                    val offset = layout.getLineStart(line)
+                    val idx = continuousAyahOffsets?.indexOfFirst { (s, e) -> offset >= s && offset < e } ?: -1
+                    val closestAyah = if (idx >= 0) ayahs[idx].number else 1
+                    ReadingTracker.savePosition(this, surahInfo.number, closestAyah)
+                }
             }
         }
-        ReadingTracker.savePosition(this, surahInfo.number, closestAyah)
     }
 
     private fun isDarkMode(): Boolean {
@@ -189,7 +210,7 @@ class SurahDetailActivity : AppCompatActivity() {
 
     private fun renderAyahsInSingleCard(container: LinearLayout, ayahs: List<AyahData>, surahNumber: Int, isDark: Boolean) {
         container.removeAllViews()
-        val uthmanicTypeface = ResourcesCompat.getFont(this, R.font.uthmanic_hafs)
+        val uthmanicTypeface = ResourcesCompat.getFont(this, QuranDataLoader.getUthmanicFontRes(this))
         val ayahColor = if (isDark) Color.parseColor("#e8e0d6") else Color.parseColor("#5E4B40")
         val dividerColor = Color.parseColor("#1A8B6F5E")
         val highlightColor = if (isDark) Color.parseColor("#338B6F5E") else Color.parseColor("#1A8B6F5E")
@@ -321,6 +342,7 @@ class SurahDetailActivity : AppCompatActivity() {
             }
             container.addView(continuousView)
             continuousViewRef = continuousView
+            continuousAyahOffsets = ayahOffsets
         }
     }
 
@@ -358,7 +380,8 @@ class SurahDetailActivity : AppCompatActivity() {
         actionPopup?.isOutsideTouchable = true
 
         popupView.findViewById<View>(R.id.btnAddBookmark).setOnClickListener {
-            val ayahNum = highlightedAyahs.firstOrNull() ?: return@setOnClickListener
+            val ayahNum = selectedAyahNumber
+            if (ayahNum <= 0) return@setOnClickListener
             actionPopup?.dismiss()
             actionPopup = null
             clearHighlights()
@@ -370,7 +393,7 @@ class SurahDetailActivity : AppCompatActivity() {
         }
 
         anchor.post {
-            actionPopup?.showAsDropDown(anchor, 0, dpToPx(8f), Gravity.CENTER_HORIZONTAL)
+            actionPopup?.showAtLocation(anchor, Gravity.TOP or Gravity.CENTER_HORIZONTAL, 0, anchor.top + dpToPx(60f))
         }
     }
 
@@ -511,7 +534,7 @@ class SurahDetailActivity : AppCompatActivity() {
     private fun showContinueReadingButton() {
         val btn = Button(this).apply {
             text = "متابعة القراءة"
-            typeface = ResourcesCompat.getFont(this@SurahDetailActivity, R.font.stc_forward)
+            typeface = ResourcesCompat.getFont(this@SurahDetailActivity, R.font.alyamama)
             textSize = 15f
             setTextColor(Color.WHITE)
             setBackgroundResource(R.drawable.bg_primary_button)
@@ -610,7 +633,7 @@ class SurahDetailActivity : AppCompatActivity() {
     private fun addNextSurahButton() {
         val btn = Button(this).apply {
             text = "السورة التالية"
-            typeface = ResourcesCompat.getFont(this@SurahDetailActivity, R.font.stc_forward)
+            typeface = ResourcesCompat.getFont(this@SurahDetailActivity, R.font.alyamama)
             textSize = 15f
             setTextColor(Color.WHITE)
             setBackgroundResource(R.drawable.bg_primary_button)

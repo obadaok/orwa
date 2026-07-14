@@ -16,12 +16,44 @@ data class QuranSurah(
 
 object QuranDataLoader {
 
-    private var surahMap: Map<Int, QuranSurah>? = null
+    private const val PREFS_NAME = "urwah_quran"
+    private const val KEY_QIRAAT = "qiraat"
+
+    private var hafsCache: Map<Int, QuranSurah>? = null
+    private var warshCache: Map<Int, QuranSurah>? = null
+
+    fun getQiraat(context: Context): String {
+        return context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            .getString(KEY_QIRAAT, "hafs") ?: "hafs"
+    }
+
+    fun setQiraat(context: Context, qiraat: String) {
+        context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            .edit().putString(KEY_QIRAAT, qiraat).apply()
+    }
 
     fun load(context: Context): Map<Int, QuranSurah> {
-        surahMap?.let { return it }
+        val qiraat = getQiraat(context)
+        return loadWithQiraat(context, qiraat)
+    }
 
-        val jsonString = readJsonFromAssets(context)
+    fun loadHafs(context: Context): Map<Int, QuranSurah> {
+        return loadWithQiraat(context, "hafs")
+    }
+
+    fun loadWarsh(context: Context): Map<Int, QuranSurah> {
+        return loadWithQiraat(context, "warsh")
+    }
+
+    private fun loadWithQiraat(context: Context, qiraat: String): Map<Int, QuranSurah> {
+        if (qiraat == "warsh") {
+            warshCache?.let { return it }
+        } else {
+            hafsCache?.let { return it }
+        }
+
+        val fileName = if (qiraat == "warsh") "quran_warsh.json" else "quran_uthmani.json"
+        val jsonString = readJsonFromAssets(context, fileName)
         val root = JSONObject(jsonString)
 
         val result = mutableMapOf<Int, QuranSurah>()
@@ -45,12 +77,29 @@ object QuranDataLoader {
             result[surahNum] = QuranSurah(surahNum, name, ayahs, loc)
         }
 
-        surahMap = result
+        if (qiraat == "warsh") {
+            warshCache = result
+        } else {
+            hafsCache = result
+        }
         return result
     }
 
     fun getSurah(context: Context, surahNumber: Int): QuranSurah? {
         return load(context)[surahNumber]
+    }
+
+    fun getAyahCount(context: Context, surahNumber: Int): Int {
+        return load(context)[surahNumber]?.ayahs?.size ?: 0
+    }
+
+    fun invalidateCache() {
+        hafsCache = null
+        warshCache = null
+    }
+
+    fun getUthmanicFontRes(context: Context): Int {
+        return if (getQiraat(context) == "warsh") R.font.uthmanic_warsh else R.font.uthmanic_hafs
     }
 
     private fun normalizeText(text: String): String {
@@ -59,8 +108,8 @@ object QuranDataLoader {
             .replace('\u06E0', '\u0652')
     }
 
-    private fun readJsonFromAssets(context: Context): String {
-        val inputStream = context.assets.open("quran_uthmani.json")
+    private fun readJsonFromAssets(context: Context, fileName: String): String {
+        val inputStream = context.assets.open(fileName)
         val reader = BufferedReader(InputStreamReader(inputStream, "UTF-8"))
         val sb = StringBuilder()
         var line: String?

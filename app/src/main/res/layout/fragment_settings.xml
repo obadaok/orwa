@@ -40,7 +40,7 @@
             android:layout_marginStart="4dp"
             android:layout_marginEnd="44dp"
             android:gravity="center"
-            android:fontFamily="@font/stc_forward"
+            android:fontFamily="@font/alyamama"
             android:text="الإعدادات"
             android:textColor="@color/urwah_thread_dark"
             android:textSize="20sp"
@@ -94,7 +94,7 @@
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
                         android:layout_marginStart="12dp"
-                        android:fontFamily="@font/stc_forward"
+                        android:fontFamily="@font/alyamama"
                         android:text="الوضع الداكن"
                         android:textColor="@color/urwah_thread_dark"
                         android:textSize="16sp"
@@ -141,7 +141,7 @@
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:fontFamily="@font/stc_forward"
+                        android:fontFamily="@font/alyamama"
                         android:text="التذكيرات"
                         android:textColor="@color/urwah_thread_dark"
                         android:textSize="18sp"
@@ -172,7 +172,7 @@
                             <TextView
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
-                                android:fontFamily="@font/stc_forward"
+                                android:fontFamily="@font/alyamama"
                                 android:text="أذكار الصباح"
                                 android:textColor="@color/urwah_thread_dark"
                                 android:textSize="15sp" />
@@ -182,7 +182,7 @@
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
                                 android:layout_marginTop="2dp"
-                                android:fontFamily="@font/stc_forward"
+                                android:fontFamily="@font/alyamama"
                                 android:text="06:00 ص"
                                 android:textColor="@color/urwah_thread_brown"
                                 android:textSize="13sp"
@@ -230,7 +230,7 @@
                             <TextView
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
-                                android:fontFamily="@font/stc_forward"
+                                android:fontFamily="@font/alyamama"
                                 android:text="أذكار المساء"
                                 android:textColor="@color/urwah_thread_dark"
                                 android:textSize="15sp" />
@@ -240,7 +240,7 @@
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
                                 android:layout_marginTop="2dp"
-                                android:fontFamily="@font/stc_forward"
+                                android:fontFamily="@font/alyamama"
                                 android:text="05:00 م"
                                 android:textColor="@color/urwah_thread_brown"
                                 android:textSize="13sp"
@@ -288,7 +288,7 @@
                             <TextView
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
-                                android:fontFamily="@font/stc_forward"
+                                android:fontFamily="@font/alyamama"
                                 android:text="أذكار النوم"
                                 android:textColor="@color/urwah_thread_dark"
                                 android:textSize="15sp" />
@@ -298,7 +298,7 @@
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
                                 android:layout_marginTop="2dp"
-                                android:fontFamily="@font/stc_forward"
+                                android:fontFamily="@font/alyamama"
                                 android:text="10:00 م"
                                 android:textColor="@color/urwah_thread_brown"
                                 android:textSize="13sp"
@@ -350,7 +350,7 @@
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:fontFamily="@font/stc_forward"
+                        android:fontFamily="@font/alyamama"
                         android:text="إعدادات المصحف والختمات"
                         android:textColor="@color/urwah_thread_dark"
                         android:textSize="18sp"
@@ -381,7 +381,7 @@
                             <TextView
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
-                                android:fontFamily="@font/stc_forward"
+                                android:fontFamily="@font/alyamama"
                                 android:text="طريقة عرض الآيات"
                                 android:textColor="@color/urwah_thread_dark"
                                 android:textSize="15sp" />
@@ -391,7 +391,7 @@
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
                                 android:layout_marginTop="2dp"
-                                android:fontFamily="@font/stc_forward"
+                                android:fontFamily="@font/alyamama"
                                 android:text="كل آية في سطر مستقل"
                                 android:textColor="@color/urwah_thread_brown"
                                 android:textSize="13sp"
@@ -432,7 +432,7 @@
                             <TextView
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
-                                android:fontFamily="@font/stc_forward"
+                                android:fontFamily="@font/alyamama"
                                 android:text="رواية المصحف"
                                 android:textColor="@color/urwah_thread_dark"
                                 android:textSize="15sp" />
@@ -442,7 +442,7 @@
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
                                 android:layout_marginTop="2dp"
-                                android:fontFamily="@font/stc_forward"
+                                android:fontFamily="@font/alyamama"
                                 android:text="حفص عن عاصم"
                                 android:textColor="@color/urwah_thread_brown"
                                 android:textSize="13sp"

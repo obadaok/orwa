@@ -90,7 +90,7 @@
                     android:layout_height="46dp"
                     android:layout_weight="1"
                     android:background="@android:color/transparent"
-                    android:fontFamily="@font/stc_forward"
+                    android:fontFamily="@font/alyamama"
                     android:hint="ابحث عن ذكر..."
                     android:gravity="end|center_vertical"
                     android:inputType="text"

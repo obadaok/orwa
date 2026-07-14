@@ -5,7 +5,7 @@
         <item name="android:statusBarColor">@color/urwah_carousel_bg</item>
         <item name="android:windowLightStatusBar">false</item>
 
-        <item name="android:fontFamily">@font/stc_forward</item>
+        <item name="android:fontFamily">@font/alyamama</item>
     </style>
 
     <style name="Theme.Urwah.Splash" parent="Theme.Urwah">

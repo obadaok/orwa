@@ -10,7 +10,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_gravity="center"
-        android:fontFamily="@font/stc_forward"
+        android:fontFamily="@font/alyamama"
         android:text="حذف العلامة"
         android:textColor="@color/urwah_thread_dark"
         android:textSize="18sp"
@@ -27,7 +27,7 @@
         android:id="@+id/tvDeleteMessage"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:fontFamily="@font/stc_forward"
+        android:fontFamily="@font/alyamama"
         android:gravity="center"
         android:textColor="@color/urwah_thread_dark"
         android:textSize="14sp" />
@@ -51,7 +51,7 @@
             android:layout_weight="1"
             android:layout_marginEnd="8dp"
             android:background="@drawable/bg_primary_button"
-            android:fontFamily="@font/stc_forward"
+            android:fontFamily="@font/alyamama"
             android:text="حذف"
             android:textColor="@android:color/white"
             android:textSize="14sp" />
@@ -63,7 +63,7 @@
             android:layout_weight="1"
             android:layout_marginStart="8dp"
             android:background="@drawable/bg_secondary_button"
-            android:fontFamily="@font/stc_forward"
+            android:fontFamily="@font/alyamama"
             android:text="إلغاء"
             android:textColor="@color/urwah_thread_dark"
             android:textSize="14sp" />

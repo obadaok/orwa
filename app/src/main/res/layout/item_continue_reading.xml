@@ -22,7 +22,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="متابعة القراءة"
-            android:fontFamily="@font/stc_forward"
+            android:fontFamily="@font/alyamama"
             android:textColor="@color/urwah_thread_brown"
             android:textSize="13sp" />
 
@@ -36,7 +36,7 @@
             android:id="@+id/tvContinueSurahName"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:fontFamily="@font/stc_forward"
+            android:fontFamily="@font/alyamama"
             android:textColor="@color/urwah_thread_dark"
             android:textSize="14sp"
             android:textStyle="bold" />
@@ -51,7 +51,7 @@
             android:id="@+id/tvContinueAyahNum"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:fontFamily="@font/stc_forward"
+            android:fontFamily="@font/alyamama"
             android:textColor="@color/urwah_thread_light"
             android:textSize="13sp" />
     </LinearLayout>
