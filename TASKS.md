@@ -171,3 +171,8 @@
 - [x] الأذكار (DhikrListAdapter) تستخدم `QuranDataLoader.getSurah` → يتبع الرواية تلقائياً
 - [x] تحديث خط ورش من v10 إلى v21 (أحدث إصدار من KFGQPC عبر sarayan/zedsalim)
 - [x] تحديث خط حفص من الإصدار القديم إلى v20 (أحدث إصدار من KFGQPC)
+
+## 33. ✅ أيقونات عروة
+- [x] تحويل 19 SVG من مجلد ايقونات عروة إلى Android VectorDrawable
+- [x] تلوينها بـ `@color/urwah_primary` (بني التطبيق)
+- [x] وضعها في `drawable/` بأسماء موحّدة (ic_*.xml)
