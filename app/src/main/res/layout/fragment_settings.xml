@@ -25,7 +25,7 @@
             android:id="@+id/iv_back"
             android:layout_width="44dp"
             android:layout_height="44dp"
-            android:src="@drawable/ic_arrow_back_black_24dp"
+            android:src="@drawable/ic_arrow_back"
             android:tint="@color/urwah_thread_dark"
             android:contentDescription="رجوع"
             android:clickable="true"
@@ -367,7 +367,7 @@
                         <ImageView
                             android:layout_width="22dp"
                             android:layout_height="22dp"
-                            android:src="@drawable/ic_book_quran_24dp"
+                            android:src="@drawable/ic_quran"
                             android:tint="@color/urwah_thread_brown"
                             android:contentDescription="عرض الآيات" />
 
@@ -418,7 +418,7 @@
                         <ImageView
                             android:layout_width="22dp"
                             android:layout_height="22dp"
-                            android:src="@drawable/ic_book_24dp"
+                            android:src="@drawable/ic_bookmark"
                             android:tint="@color/urwah_thread_brown"
                             android:contentDescription="الرواية" />
 

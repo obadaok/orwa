@@ -1,11 +1,15 @@
 package com.urwah.dhikr
 
+import android.app.AlertDialog
 import android.content.res.Configuration
 import android.graphics.Color
 import android.os.Build
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.view.Gravity
 import android.view.LayoutInflater
+import android.view.MotionEvent
 import android.view.View
 import android.widget.Button
 import android.widget.ImageButton
@@ -13,6 +17,7 @@ import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.ProgressBar
 import android.widget.TextView
+import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.res.ResourcesCompat
 import androidx.core.widget.NestedScrollView
@@ -35,6 +40,9 @@ class KhatmaReadingActivity : AppCompatActivity() {
     private var isDayCompleted = false
     private var isDark = false
     private var currentDayAyahs = listOf<AyahData>()
+    private var autoScrollHandler: Handler? = null
+    private var autoScrollRunnable: Runnable? = null
+    private var isAutoScrolling = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -75,10 +83,22 @@ class KhatmaReadingActivity : AppCompatActivity() {
         allQuran = QuranDataLoader.load(this)
         loadDayAyahs()
         renderKhatma()
+
+        scrollView.setOnTouchListener { _, event ->
+            if (isAutoScrolling && event.action == MotionEvent.ACTION_MOVE) {
+                stopAutoScroll()
+            }
+            false
+        }
+
+        findViewById<ImageButton>(R.id.btnAutoScroll).setOnClickListener {
+            showAutoScrollDialog()
+        }
     }
 
     override fun onPause() {
         super.onPause()
+        stopAutoScroll()
         saveScrollPosition()
     }
 
@@ -120,7 +140,7 @@ class KhatmaReadingActivity : AppCompatActivity() {
 
     private fun renderKhatma() {
         containerAyahs.removeAllViews()
-        val uthmanicTypeface = ResourcesCompat.getFont(this, R.font.uthmanic_hafs)
+        val uthmanicTypeface = ResourcesCompat.getFont(this, QuranDataLoader.getUthmanicFontRes(this))
         val ayahColor = if (isDark) Color.parseColor("#e8e0d6") else Color.parseColor("#5E4B40")
         val dividerColor = Color.parseColor("#1A8B6F5E")
 
@@ -263,7 +283,7 @@ class KhatmaReadingActivity : AppCompatActivity() {
             promptRow.addView(tvPrompt)
 
             val btnCheck = ImageView(this).apply {
-                setImageResource(R.drawable.ic_check_circle_24dp)
+                setImageResource(R.drawable.ic_confirm)
                 setColorFilter(Color.parseColor("#8B6F5E"))
                 val size = dpToPx(44f)
                 layoutParams = LinearLayout.LayoutParams(size, size)
@@ -316,6 +336,71 @@ class KhatmaReadingActivity : AppCompatActivity() {
             )
         }
         containerAyahs.addView(margin)
+    }
+
+    private fun showAutoScrollDialog() {
+        val view = LayoutInflater.from(this).inflate(R.layout.dialog_auto_scroll, null)
+        val slider = view.findViewById<android.widget.SeekBar>(R.id.scrollSpeedSlider)
+        val tvSpeed = view.findViewById<TextView>(R.id.tvScrollSpeedValue)
+
+        slider.setOnSeekBarChangeListener(object : android.widget.SeekBar.OnSeekBarChangeListener {
+            override fun onProgressChanged(sb: android.widget.SeekBar, progress: Int, fromUser: Boolean) {
+                tvSpeed.text = "${progress}%"
+            }
+            override fun onStartTrackingTouch(sb: android.widget.SeekBar) {}
+            override fun onStopTrackingTouch(sb: android.widget.SeekBar) {}
+        })
+
+        val dialog = AlertDialog.Builder(this)
+            .setView(view)
+            .create()
+        dialog.window?.setBackgroundDrawableResource(android.R.color.transparent)
+
+        view.findViewById<Button>(R.id.btnConfirmAutoScroll).setOnClickListener {
+            val speed = slider.progress.coerceIn(10, 100)
+            startAutoScroll(speed)
+            dialog.dismiss()
+        }
+        view.findViewById<Button>(R.id.btnCancelAutoScroll).setOnClickListener {
+            dialog.dismiss()
+        }
+
+        dialog.show()
+    }
+
+    private fun startAutoScroll(speedPercent: Int) {
+        stopAutoScroll()
+        isAutoScrolling = true
+        val scrollStep = (speedPercent * 2).coerceIn(2, 40)
+        val interval = (100 - speedPercent + 10).coerceIn(10, 100).toLong()
+
+        autoScrollHandler = Handler(Looper.getMainLooper())
+        autoScrollRunnable = object : Runnable {
+            override fun run() {
+                if (!isAutoScrolling) return
+
+                val maxScroll = scrollView.getChildAt(0)?.height?.minus(scrollView.height) ?: return
+                val newScroll = scrollView.scrollY + scrollStep
+
+                if (newScroll >= maxScroll) {
+                    scrollView.smoothScrollTo(0, maxScroll)
+                    stopAutoScroll()
+                    Toast.makeText(this@KhatmaReadingActivity, "وصلت لنهاية الورد", Toast.LENGTH_SHORT).show()
+                    return
+                }
+
+                scrollView.smoothScrollBy(0, scrollStep)
+                autoScrollHandler?.postDelayed(this, interval)
+            }
+        }
+        autoScrollHandler?.post(autoScrollRunnable!!)
+    }
+
+    private fun stopAutoScroll() {
+        isAutoScrolling = false
+        autoScrollRunnable?.let { autoScrollHandler?.removeCallbacks(it) }
+        autoScrollRunnable = null
+        autoScrollHandler = null
     }
 
     private fun toHindiDigits(number: Int): String {

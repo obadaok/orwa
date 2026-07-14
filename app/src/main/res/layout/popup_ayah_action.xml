@@ -15,7 +15,7 @@
         android:background="?attr/selectableItemBackgroundBorderless"
         android:contentDescription="إضافة علامة مرجعية"
         android:padding="10dp"
-        android:src="@drawable/ic_bookmark_filled"
+        android:src="@drawable/ic_bookmark"
         android:tint="@color/urwah_topbar_icon" />
 
     <View
@@ -32,7 +32,7 @@
         android:background="?attr/selectableItemBackgroundBorderless"
         android:contentDescription="إلغاء التحديد"
         android:padding="10dp"
-        android:src="@drawable/ic_close_black_24dp"
+        android:src="@drawable/ic_cancel"
         android:tint="@color/urwah_thread_light" />
 
 </LinearLayout>

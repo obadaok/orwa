@@ -4187,7 +4187,7 @@ object DhikrDataProvider {
                 categoryName.contains("الاستصحاء") || categoryName.contains("نزول المطر") -> R.drawable.ic_wb_cloudy_black_24dp
             categoryName.contains("الرعد") -> R.drawable.ic_wb_cloudy_black_24dp
             categoryName.contains("المسجد") -> R.drawable.ic_mosque_black_24dp
-            categoryName.contains("المنزل") || categoryName.contains("القرية") -> R.drawable.ic_home_black_24dp
+            categoryName.contains("المنزل") || categoryName.contains("القرية") -> R.drawable.ic_home
             categoryName.contains("السفر") || categoryName.contains("الركوب") ||
                 categoryName.contains("المسافر") || categoryName.contains("الرجوع من") -> R.drawable.ic_plane_24dp
             categoryName.contains("الثوب") || categoryName.contains("لبس") -> R.drawable.ic_clothing_24dp
@@ -4195,7 +4195,7 @@ object DhikrDataProvider {
             categoryName.contains("الوضوء") -> R.drawable.ic_wudu_24dp
             categoryName.contains("الريح") || categoryName.contains("الرياح") -> R.drawable.ic_windy_24dp
             categoryName.contains("الخلاء") -> R.drawable.ic_toilet_24dp
-            categoryName.contains("الختم") -> R.drawable.ic_book_quran_24dp
+            categoryName.contains("الختم") -> R.drawable.ic_quran
             categoryName.contains("السوق") || categoryName.contains("المجالس") ||
                 categoryName.contains("المجلس") -> R.drawable.ic_people_gathering_24dp
             categoryName.contains("السجود") || categoryName.contains("الركوع") ||

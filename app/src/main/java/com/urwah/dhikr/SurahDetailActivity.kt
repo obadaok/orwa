@@ -7,6 +7,8 @@ import android.content.res.Configuration
 import android.graphics.Color
 import android.os.Build
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.text.SpannableStringBuilder
 import android.text.Spanned
 import android.text.style.BackgroundColorSpan
@@ -21,6 +23,7 @@ import android.widget.ImageButton
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.PopupWindow
+import android.widget.SeekBar
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
@@ -49,6 +52,11 @@ class SurahDetailActivity : AppCompatActivity() {
     private var continuousViewRef: TextView? = null
     private var continuousAyahOffsets: List<Pair<Int, Int>>? = null
     private val basmalaText = "بِسۡمِ ٱللَّهِ ٱلرَّحۡمَٰنِ ٱلرَّحِيمِ"
+
+    private var autoScrollHandler: Handler? = null
+    private var autoScrollRunnable: Runnable? = null
+    private var isAutoScrolling = false
+    private var isPageMode = false
 
     companion object {
         private val ENGLISH_NAMES = mapOf(
@@ -120,11 +128,21 @@ class SurahDetailActivity : AppCompatActivity() {
             onBackPressedDispatcher.onBackPressed()
         }
 
-        findViewById<ImageButton>(R.id.btnShareSurah).setOnClickListener {
-            shareWholeSurah()
+        findViewById<ImageButton>(R.id.btnAutoScroll).setOnClickListener {
+            showAutoScrollDialog()
+        }
+
+        findViewById<ImageButton>(R.id.btnViewMode).setOnClickListener {
+            toggleViewMode()
         }
 
         scrollView = findViewById(R.id.scrollView)
+        scrollView.setOnTouchListener { _, event ->
+            if (isAutoScrolling && event.action == MotionEvent.ACTION_MOVE) {
+                stopAutoScroll()
+            }
+            false
+        }
         containerAyahs = findViewById(R.id.containerAyahs)
         isDark = isDarkMode()
         ayahRowMap = mutableMapOf()
@@ -165,6 +183,7 @@ class SurahDetailActivity : AppCompatActivity() {
 
     override fun onPause() {
         super.onPause()
+        stopAutoScroll()
         if (isKhatmaMode) return
 
         val quranPrefs = getSharedPreferences("urwah_quran", Context.MODE_PRIVATE)
@@ -613,6 +632,87 @@ class SurahDetailActivity : AppCompatActivity() {
 
     private fun dpToPx(dp: Float): Int =
         (dp * resources.displayMetrics.density).toInt()
+
+    private fun showAutoScrollDialog() {
+        val view = LayoutInflater.from(this).inflate(R.layout.dialog_auto_scroll, null)
+        val slider = view.findViewById<SeekBar>(R.id.scrollSpeedSlider)
+        val tvSpeed = view.findViewById<TextView>(R.id.tvScrollSpeedValue)
+
+        slider.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+            override fun onProgressChanged(sb: SeekBar, progress: Int, fromUser: Boolean) {
+                tvSpeed.text = "${progress}%"
+            }
+            override fun onStartTrackingTouch(sb: SeekBar) {}
+            override fun onStopTrackingTouch(sb: SeekBar) {}
+        })
+
+        val dialog = AlertDialog.Builder(this)
+            .setView(view)
+            .create()
+        dialog.window?.setBackgroundDrawableResource(android.R.color.transparent)
+
+        view.findViewById<Button>(R.id.btnConfirmAutoScroll).setOnClickListener {
+            val speed = slider.progress.coerceIn(10, 100)
+            startAutoScroll(speed)
+            dialog.dismiss()
+        }
+        view.findViewById<Button>(R.id.btnCancelAutoScroll).setOnClickListener {
+            dialog.dismiss()
+        }
+
+        dialog.show()
+    }
+
+    private fun startAutoScroll(speedPercent: Int) {
+        stopAutoScroll()
+        isAutoScrolling = true
+        val scrollStep = (speedPercent * 2).coerceIn(2, 40)
+        val interval = (100 - speedPercent + 10).coerceIn(10, 100).toLong()
+
+        autoScrollHandler = Handler(Looper.getMainLooper())
+        autoScrollRunnable = object : Runnable {
+            override fun run() {
+                if (!isAutoScrolling) return
+
+                val maxScroll = scrollView.getChildAt(0)?.height?.minus(scrollView.height) ?: return
+                val newScroll = scrollView.scrollY + scrollStep
+
+                if (newScroll >= maxScroll) {
+                    scrollView.smoothScrollTo(0, maxScroll)
+                    stopAutoScroll()
+                    Toast.makeText(this@SurahDetailActivity, "وصلت لنهاية السورة", Toast.LENGTH_SHORT).show()
+                    return
+                }
+
+                scrollView.smoothScrollBy(0, scrollStep)
+                autoScrollHandler?.postDelayed(this, interval)
+            }
+        }
+        autoScrollHandler?.post(autoScrollRunnable!!)
+    }
+
+    private fun stopAutoScroll() {
+        isAutoScrolling = false
+        autoScrollRunnable?.let { autoScrollHandler?.removeCallbacks(it) }
+        autoScrollRunnable = null
+        autoScrollHandler = null
+    }
+
+    private fun toggleViewMode() {
+        isPageMode = !isPageMode
+        val btnViewMode = findViewById<ImageButton>(R.id.btnViewMode)
+        val btnAutoScroll = findViewById<ImageButton>(R.id.btnAutoScroll)
+
+        if (isPageMode) {
+            btnAutoScroll.visibility = View.GONE
+            btnViewMode.setImageResource(R.drawable.ic_chevron_left_24dp)
+            Toast.makeText(this, "وضع الصفحات", Toast.LENGTH_SHORT).show()
+        } else {
+            btnAutoScroll.visibility = View.VISIBLE
+            btnViewMode.setImageResource(R.drawable.ic_book_black_24dp)
+            Toast.makeText(this, "الوضع الطولي", Toast.LENGTH_SHORT).show()
+        }
+    }
 
     private fun shareWholeSurah() {
         val builder = StringBuilder()

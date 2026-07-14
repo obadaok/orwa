@@ -67,7 +67,7 @@ class DhikrListAdapter(
         val view = LayoutInflater.from(parent.context)
             .inflate(R.layout.item_dhikr, parent, false)
         val holder = ViewHolder(view)
-        uthmanicFont = ResourcesCompat.getFont(parent.context, R.font.uthmanic_hafs)
+        uthmanicFont = ResourcesCompat.getFont(parent.context, QuranDataLoader.getUthmanicFontRes(parent.context))
         return holder
     }
 
@@ -234,7 +234,7 @@ class DhikrListAdapter(
             }?.number ?: return applyDhikrFormatting(item.arabic)
 
         val surahData = com.urwah.dhikr.QuranDataLoader.getSurah(context, surahNum) ?: return applyDhikrFormatting(item.arabic)
-        val uthmanicFont = ResourcesCompat.getFont(context, R.font.uthmanic_hafs) ?: return applyDhikrFormatting(item.arabic)
+        val uthmanicFont = ResourcesCompat.getFont(context, QuranDataLoader.getUthmanicFontRes(context)) ?: return applyDhikrFormatting(item.arabic)
         val hindi = arrayOf("٠", "١", "٢", "٣", "٤", "٥", "٦", "٧", "٨", "٩")
 
         val sb = SpannableStringBuilder()

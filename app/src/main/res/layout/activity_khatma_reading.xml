@@ -24,7 +24,7 @@
                 android:background="?attr/selectableItemBackgroundBorderless"
                 android:contentDescription="رجوع"
                 android:padding="10dp"
-                android:src="@drawable/ic_arrow_back_black_24dp"
+                android:src="@drawable/ic_arrow_back"
                 android:tint="@color/urwah_thread_dark" />
 
             <TextView
@@ -42,10 +42,20 @@
                 android:id="@+id/tvProgress"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginEnd="12dp"
+                android:layout_marginEnd="4dp"
                 android:fontFamily="@font/alyamama"
                 android:textColor="@color/urwah_thread_brown"
                 android:textSize="14sp" />
+
+            <ImageButton
+                android:id="@+id/btnAutoScroll"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="التمرير التلقائي"
+                android:padding="8dp"
+                android:src="@drawable/ic_play_arrow"
+                android:tint="@color/urwah_thread_dark" />
         </LinearLayout>
 
         <View

@@ -40,7 +40,7 @@
                     android:layout_width="20dp"
                     android:layout_height="20dp"
                     android:layout_gravity="bottom|end"
-                    android:src="@drawable/ic_check_circle_24dp"
+                    android:src="@drawable/ic_confirm"
                     android:tint="@color/counter_check"
                     android:visibility="gone"
                     android:contentDescription="مكتمل" />

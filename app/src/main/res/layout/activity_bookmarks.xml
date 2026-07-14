@@ -20,7 +20,7 @@
             android:background="?attr/selectableItemBackgroundBorderless"
             android:contentDescription="رجوع"
             android:padding="10dp"
-            android:src="@drawable/ic_arrow_back_black_24dp"
+            android:src="@drawable/ic_arrow_back"
             android:tint="@color/urwah_thread_dark" />
 
         <TextView

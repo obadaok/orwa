@@ -24,7 +24,7 @@
                 android:layout_height="44dp"
                 android:background="?attr/selectableItemBackgroundBorderless"
                 android:padding="10dp"
-                android:src="@drawable/ic_arrow_back_black_24dp"
+                android:src="@drawable/ic_arrow_back"
                 android:tint="@color/urwah_thread_dark"
                 android:contentDescription="رجوع" />
 
