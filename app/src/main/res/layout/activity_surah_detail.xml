@@ -64,7 +64,8 @@
             android:contentDescription="طريقة العرض"
             android:padding="8dp"
             android:src="@drawable/ic_book_black_24dp"
-            android:tint="@color/urwah_thread_dark" />
+            android:tint="@color/urwah_thread_dark"
+            android:visibility="gone" />
 
         <ImageButton
             android:id="@+id/btnBookmarks"

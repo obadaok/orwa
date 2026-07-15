@@ -110,6 +110,79 @@
             </com.google.android.material.card.MaterialCardView>
         </FrameLayout>
 
+        <!-- بطاقة الاهتزاز عند الضغط -->
+        <FrameLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="14dp">
+
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:background="@drawable/bg_dhikr_shadow_rect" />
+
+            <com.google.android.material.card.MaterialCardView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="5dp"
+                android:layout_marginBottom="5dp"
+                app:cardCornerRadius="14dp"
+                app:cardElevation="0dp"
+                app:strokeWidth="2dp"
+                app:strokeColor="@color/urwah_thread_dark"
+                app:cardBackgroundColor="@color/card_background"
+                app:contentPadding="16dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal">
+
+                    <ImageView
+                        android:layout_width="26dp"
+                        android:layout_height="26dp"
+                        android:layout_marginStart="14dp"
+                        android:src="@drawable/ic_vibration_24dp"
+                        android:tint="@color/urwah_thread_brown"
+                        android:contentDescription="الاهتزاز عند الضغط" />
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:layout_marginStart="12dp"
+                        android:orientation="vertical">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:fontFamily="@font/alyamama"
+                            android:text="الاهتزاز عند الضغط"
+                            android:textColor="@color/urwah_thread_dark"
+                            android:textSize="16sp"
+                            android:textStyle="bold" />
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="2dp"
+                            android:fontFamily="@font/alyamama"
+                            android:text="اهتزاز خفيف عند النقر على البطاقات والأزرار"
+                            android:textColor="@color/urwah_thread_brown"
+                            android:textSize="13sp" />
+                    </LinearLayout>
+
+                    <androidx.appcompat.widget.SwitchCompat
+                        android:id="@+id/switch_vibration"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        app:thumbTint="@color/selector_switch_thumb"
+                        app:trackTint="@color/selector_switch_track" />
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+        </FrameLayout>
+
         <!-- بطاقة التذكيرات -->
         <FrameLayout
             android:layout_width="match_parent"
@@ -315,6 +388,122 @@
                             app:thumbTint="@color/selector_switch_thumb"
                             app:trackTint="@color/selector_switch_track" />
                     </LinearLayout>
+
+                    <View
+                        android:layout_width="match_parent"
+                        android:layout_height="1dp"
+                        android:layout_marginVertical="14dp"
+                        android:background="@color/urwah_shadow_faint" />
+
+                    <!-- سورة الملك -->
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal">
+
+                        <ImageView
+                            android:layout_width="22dp"
+                            android:layout_height="22dp"
+                            android:src="@drawable/ic_book_black_24dp"
+                            android:tint="@color/urwah_thread_brown"
+                            android:contentDescription="سورة الملك" />
+
+                        <LinearLayout
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:layout_marginStart="12dp"
+                            android:orientation="vertical">
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:fontFamily="@font/alyamama"
+                                android:text="سورة الملك ﷺ"
+                                android:textColor="@color/urwah_thread_dark"
+                                android:textSize="15sp" />
+
+                            <TextView
+                                android:id="@+id/tv_mulk_time"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="2dp"
+                                android:fontFamily="@font/alyamama"
+                                android:text="10:00 م"
+                                android:textColor="@color/urwah_thread_brown"
+                                android:textSize="13sp"
+                                android:clickable="true"
+                                android:focusable="true"
+                                android:background="?attr/selectableItemBackground"
+                                android:paddingVertical="2dp" />
+                        </LinearLayout>
+
+                        <androidx.appcompat.widget.SwitchCompat
+                            android:id="@+id/switch_mulk"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            app:thumbTint="@color/selector_switch_thumb"
+                            app:trackTint="@color/selector_switch_track" />
+                    </LinearLayout>
+
+                    <View
+                        android:layout_width="match_parent"
+                        android:layout_height="1dp"
+                        android:layout_marginVertical="14dp"
+                        android:background="@color/urwah_shadow_faint" />
+
+                    <!-- سورة الكهف (الجمعة) -->
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal">
+
+                        <ImageView
+                            android:layout_width="22dp"
+                            android:layout_height="22dp"
+                            android:src="@drawable/ic_book_black_24dp"
+                            android:tint="@color/urwah_thread_brown"
+                            android:contentDescription="سورة الكهف" />
+
+                        <LinearLayout
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:layout_marginStart="12dp"
+                            android:orientation="vertical">
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:fontFamily="@font/alyamama"
+                                android:text="سورة الكهف (الجمعة)"
+                                android:textColor="@color/urwah_thread_dark"
+                                android:textSize="15sp" />
+
+                            <TextView
+                                android:id="@+id/tv_kahf_time"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="2dp"
+                                android:fontFamily="@font/alyamama"
+                                android:text="06:00 ص"
+                                android:textColor="@color/urwah_thread_brown"
+                                android:textSize="13sp"
+                                android:clickable="true"
+                                android:focusable="true"
+                                android:background="?attr/selectableItemBackground"
+                                android:paddingVertical="2dp" />
+                        </LinearLayout>
+
+                        <androidx.appcompat.widget.SwitchCompat
+                            android:id="@+id/switch_kahf"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            app:thumbTint="@color/selector_switch_thumb"
+                            app:trackTint="@color/selector_switch_track" />
+                    </LinearLayout>
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
         </FrameLayout>
@@ -451,6 +640,193 @@
                                 android:background="?attr/selectableItemBackground"
                                 android:paddingVertical="2dp" />
                         </LinearLayout>
+                    </LinearLayout>
+
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+        </FrameLayout>
+
+        <!-- بطاقة حول التطبيق -->
+        <FrameLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="14dp">
+
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:background="@drawable/bg_dhikr_shadow_rect" />
+
+            <com.google.android.material.card.MaterialCardView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="5dp"
+                android:layout_marginBottom="5dp"
+                app:cardCornerRadius="14dp"
+                app:cardElevation="0dp"
+                app:strokeWidth="2dp"
+                app:strokeColor="@color/urwah_thread_dark"
+                app:cardBackgroundColor="@color/card_background"
+                app:contentPadding="16dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:fontFamily="@font/alyamama"
+                        android:text="@string/about_title"
+                        android:textColor="@color/urwah_thread_dark"
+                        android:textSize="18sp"
+                        android:textStyle="bold" />
+
+                    <!-- وصف التطبيق -->
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="12dp"
+                        android:fontFamily="@font/alyamama"
+                        android:text="@string/about_description"
+                        android:textColor="@color/urwah_thread_brown"
+                        android:textSize="13sp"
+                        android:lineSpacingExtra="4dp" />
+
+                    <!-- المطور -->
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="6dp"
+                        android:fontFamily="@font/alyamama"
+                        android:text="@string/about_developer"
+                        android:textColor="@color/urwah_thread_light"
+                        android:textSize="12sp" />
+
+                    <View
+                        android:layout_width="match_parent"
+                        android:layout_height="1dp"
+                        android:layout_marginVertical="12dp"
+                        android:background="@color/urwah_shadow_faint" />
+
+                    <!-- سياسة الخصوصية -->
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal"
+                        android:clickable="true"
+                        android:focusable="true"
+                        android:background="?attr/selectableItemBackground"
+                        android:paddingVertical="8dp"
+                        android:id="@+id/row_privacy">
+
+                        <ImageView
+                            android:layout_width="22dp"
+                            android:layout_height="22dp"
+                            android:src="@drawable/ic_book_quran_24dp"
+                            android:tint="@color/urwah_thread_brown"
+                            android:contentDescription="@string/about_privacy" />
+
+                        <TextView
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:layout_marginStart="12dp"
+                            android:fontFamily="@font/alyamama"
+                            android:text="@string/about_privacy"
+                            android:textColor="@color/urwah_thread_dark"
+                            android:textSize="15sp" />
+
+                        <ImageView
+                            android:layout_width="18dp"
+                            android:layout_height="18dp"
+                            android:src="@drawable/ic_chevron_left_24dp"
+                            android:tint="@color/urwah_thread_light"
+                            android:contentDescription="@null" />
+                    </LinearLayout>
+
+                    <View
+                        android:layout_width="match_parent"
+                        android:layout_height="1dp"
+                        android:background="@color/urwah_shadow_faint" />
+
+                    <!-- شروط الاستخدام -->
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal"
+                        android:clickable="true"
+                        android:focusable="true"
+                        android:background="?attr/selectableItemBackground"
+                        android:paddingVertical="8dp"
+                        android:id="@+id/row_terms">
+
+                        <ImageView
+                            android:layout_width="22dp"
+                            android:layout_height="22dp"
+                            android:src="@drawable/ic_book_24dp"
+                            android:tint="@color/urwah_thread_brown"
+                            android:contentDescription="@string/about_terms" />
+
+                        <TextView
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:layout_marginStart="12dp"
+                            android:fontFamily="@font/alyamama"
+                            android:text="@string/about_terms"
+                            android:textColor="@color/urwah_thread_dark"
+                            android:textSize="15sp" />
+
+                        <ImageView
+                            android:layout_width="18dp"
+                            android:layout_height="18dp"
+                            android:src="@drawable/ic_chevron_left_24dp"
+                            android:tint="@color/urwah_thread_light"
+                            android:contentDescription="@null" />
+                    </LinearLayout>
+
+                    <View
+                        android:layout_width="match_parent"
+                        android:layout_height="1dp"
+                        android:layout_marginVertical="12dp"
+                        android:background="@color/urwah_shadow_faint" />
+
+                    <!-- الإصدار -->
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal">
+
+                        <ImageView
+                            android:layout_width="22dp"
+                            android:layout_height="22dp"
+                            android:src="@drawable/ic_stats_chart_24dp"
+                            android:tint="@color/urwah_thread_brown"
+                            android:contentDescription="@string/about_version" />
+
+                        <TextView
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:layout_marginStart="12dp"
+                            android:fontFamily="@font/alyamama"
+                            android:text="@string/about_version"
+                            android:textColor="@color/urwah_thread_dark"
+                            android:textSize="15sp" />
+
+                        <TextView
+                            android:id="@+id/tv_version_name"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:fontFamily="@font/alyamama"
+                            android:text="1.0.0"
+                            android:textColor="@color/urwah_thread_light"
+                            android:textSize="14sp" />
                     </LinearLayout>
 
                 </LinearLayout>

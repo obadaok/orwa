@@ -30,7 +30,6 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.res.ResourcesCompat
 import androidx.core.widget.NestedScrollView
 import androidx.recyclerview.widget.LinearLayoutManager
-import androidx.recyclerview.widget.PagerSnapHelper
 import androidx.recyclerview.widget.RecyclerView
 
 class SurahDetailActivity : AppCompatActivity() {
@@ -54,14 +53,17 @@ class SurahDetailActivity : AppCompatActivity() {
     private var continuousAyahOffsets: List<Pair<Int, Int>>? = null
     private val basmalaText = "بِسۡمِ ٱللَّهِ ٱلرَّحۡمَٰنِ ٱلرَّحِيمِ"
 
+    private val quranPrefs by lazy {
+        getSharedPreferences("urwah_quran", Context.MODE_PRIVATE)
+    }
+
     private var autoScrollHandler: Handler? = null
     private var autoScrollRunnable: Runnable? = null
     private var isAutoScrolling = false
+    private var autoScrollPixelsPerSecond = 5f
+    private var autoScrollGeneration = 0L
 
-    private var isPageMode = false
-    private lateinit var pageRecyclerView: RecyclerView
-    private var pageViewAdapter: PageViewAdapter? = null
-    private var pageModePages: List<PageViewAdapter.PageData> = emptyList()
+
 
     companion object {
         private val ENGLISH_NAMES = mapOf(
@@ -137,9 +139,9 @@ class SurahDetailActivity : AppCompatActivity() {
             showAutoScrollDialog()
         }
 
-        findViewById<ImageButton>(R.id.btnViewMode).setOnClickListener {
-            toggleViewMode()
-        }
+        // findViewById<ImageButton>(R.id.btnViewMode).setOnClickListener {
+        //     toggleViewMode()
+        // }
 
         scrollView = findViewById(R.id.scrollView)
         scrollView.setOnTouchListener { _, event ->
@@ -152,10 +154,6 @@ class SurahDetailActivity : AppCompatActivity() {
         isDark = isDarkMode()
         ayahRowMap = mutableMapOf()
         renderAyahsInSingleCard(containerAyahs, ayahs, surahInfo.number, isDark)
-
-        pageRecyclerView = findViewById(R.id.pageRecyclerView)
-        pageRecyclerView.layoutManager = LinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false)
-        PagerSnapHelper().attachToRecyclerView(pageRecyclerView)
 
         if (!isKhatmaMode && surahNumber < 114) {
             addNextSurahButton()
@@ -173,6 +171,13 @@ class SurahDetailActivity : AppCompatActivity() {
         if (lastAyah > 0) {
             scrollView.post {
                 scrollToAyah(lastAyah)
+            }
+        } else {
+            val savedPos = ReadingTracker.getPosition(this)
+            if (savedPos != null && savedPos.surahNumber == surahNumber) {
+                scrollView.post {
+                    scrollToAyah(savedPos.ayahNumber)
+                }
             }
         }
 
@@ -193,7 +198,7 @@ class SurahDetailActivity : AppCompatActivity() {
     override fun onPause() {
         super.onPause()
         stopAutoScroll()
-        if (isKhatmaMode || isPageMode) return
+        if (isKhatmaMode) return
 
         val quranPrefs = getSharedPreferences("urwah_quran", Context.MODE_PRIVATE)
         val singleLineMode = quranPrefs.getBoolean("ayah_single_line", true)
@@ -271,11 +276,11 @@ class SurahDetailActivity : AppCompatActivity() {
 
                 val tvAyah = TextView(this).apply {
                     typeface = uthmanicTypeface
-                    textSize = 22f
+                    textSize = 29f
                     setTextColor(ayahColor)
                     textDirection = View.TEXT_DIRECTION_RTL
                     gravity = Gravity.START
-                    setLineSpacing(8f, 1f)
+                    setLineSpacing(4f, 1f)
                     letterSpacing = 0f
                     includeFontPadding = true
                     if (Build.VERSION.SDK_INT >= 26) {
@@ -320,11 +325,11 @@ class SurahDetailActivity : AppCompatActivity() {
                 text = sb
                 tag = sb  // store original for clearHighlights
                 typeface = uthmanicTypeface
-                textSize = 22f
+                textSize = 29f
                 setTextColor(ayahColor)
                 textDirection = View.TEXT_DIRECTION_RTL
                 gravity = Gravity.START
-                setLineSpacing(8f, 1f)
+                setLineSpacing(4f, 1f)
                 letterSpacing = 0f
                 includeFontPadding = true
                 if (Build.VERSION.SDK_INT >= 26) {
@@ -600,14 +605,73 @@ class SurahDetailActivity : AppCompatActivity() {
     }
 
     private fun scrollToAyah(ayahNumber: Int) {
-        val ayahViews = containerAyahs.findAyahViews()
-        val target = ayahViews.find { it.tag == ayahNumber } ?: return
+        if (continuousViewRef != null && continuousAyahOffsets != null) {
+            scrollToAyahContinuous(ayahNumber)
+            return
+        }
+        val target = containerAyahs.findAyahViews().find { it.tag == ayahNumber }
+        if (target == null) {
+            scheduleScrollToAyah(ayahNumber, 3)
+            return
+        }
+        performScrollToView(target)
+    }
+
+    private fun scrollToAyahContinuous(ayahNumber: Int) {
+        val tv = continuousViewRef ?: return
+        val offsets = continuousAyahOffsets ?: return
+        val idx = ayahs.indexOfFirst { it.number == ayahNumber }
+        if (idx < 0 || idx >= offsets.size) return
+        val (start, _) = offsets[idx]
+        scrollView.post {
+            tv.post {
+                val layout = tv.layout ?: return@post
+                if (start >= layout.text.length) return@post
+                val line = layout.getLineForOffset(start)
+                val targetY = tv.top + layout.getLineTop(line)
+                val scrollContent = scrollView.getChildAt(0) ?: return@post
+                var p = tv.parent
+                var offset = targetY
+                while (p is View && p != scrollContent) {
+                    offset += (p as View).top
+                    p = (p as View).parent
+                }
+                scrollView.scrollTo(0, (offset - dpToPx(40f)).coerceAtLeast(0))
+            }
+        }
+    }
+
+    private fun scheduleScrollToAyah(ayahNumber: Int, retries: Int) {
+        if (retries <= 0) return
+        scrollView.postDelayed({
+            if (continuousViewRef != null && continuousAyahOffsets != null) {
+                scrollToAyahContinuous(ayahNumber)
+                return@postDelayed
+            }
+            val target = containerAyahs.findAyahViews().find { it.tag == ayahNumber }
+            if (target != null) {
+                performScrollToView(target)
+            } else {
+                scheduleScrollToAyah(ayahNumber, retries - 1)
+            }
+        }, 100)
+    }
+
+    private fun performScrollToView(target: View) {
         val scrollContent = scrollView.getChildAt(0) ?: return
-        val targetPos = IntArray(2)
-        val contentPos = IntArray(2)
-        target.getLocationInWindow(targetPos)
-        scrollContent.getLocationInWindow(contentPos)
-        scrollView.smoothScrollTo(0, targetPos[1] - contentPos[1])
+        fun accumulateParentOffsets(v: View): Int {
+            var offset = v.top
+            var p = v.parent
+            while (p is View && p != scrollContent) {
+                offset += (p as View).top
+                p = (p as View).parent
+            }
+            return offset
+        }
+        val targetY = accumulateParentOffsets(target)
+        scrollView.post {
+            scrollView.scrollTo(0, (targetY - dpToPx(40f)).coerceAtLeast(0))
+        }
     }
 
     private fun showJumpToAyahDialog() {
@@ -651,6 +715,10 @@ class SurahDetailActivity : AppCompatActivity() {
         val slider = view.findViewById<SeekBar>(R.id.scrollSpeedSlider)
         val tvSpeed = view.findViewById<TextView>(R.id.tvScrollSpeedValue)
 
+        val savedSpeed = quranPrefs.getInt("auto_scroll_speed", 40)
+        slider.progress = savedSpeed
+        tvSpeed.text = "${savedSpeed}%"
+
         slider.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
             override fun onProgressChanged(sb: SeekBar, progress: Int, fromUser: Boolean) {
                 tvSpeed.text = "${progress}%"
@@ -659,14 +727,25 @@ class SurahDetailActivity : AppCompatActivity() {
             override fun onStopTrackingTouch(sb: SeekBar) {}
         })
 
+        view.findViewById<TextView>(R.id.btnSlowPreset).setOnClickListener {
+            slider.progress = 20; tvSpeed.text = "20%"
+        }
+        view.findViewById<TextView>(R.id.btnMediumPreset).setOnClickListener {
+            slider.progress = 40; tvSpeed.text = "40%"
+        }
+        view.findViewById<TextView>(R.id.btnFastPreset).setOnClickListener {
+            slider.progress = 70; tvSpeed.text = "70%"
+        }
+
         val dialog = AlertDialog.Builder(this)
             .setView(view)
             .create()
         dialog.window?.setBackgroundDrawableResource(android.R.color.transparent)
 
         view.findViewById<Button>(R.id.btnConfirmAutoScroll).setOnClickListener {
-            val speed = slider.progress.coerceIn(10, 100)
-            startAutoScroll(speed)
+            val speed = slider.progress.coerceIn(5, 100)
+            quranPrefs.edit().putInt("auto_scroll_speed", speed).apply()
+            updateAutoScrollSpeed(speed)
             dialog.dismiss()
         }
         view.findViewById<Button>(R.id.btnCancelAutoScroll).setOnClickListener {
@@ -676,21 +755,34 @@ class SurahDetailActivity : AppCompatActivity() {
         dialog.show()
     }
 
+    private fun calculatePixelsPerSecond(speedPercent: Int): Float {
+        return (speedPercent.toFloat() * 0.8f + 5f).coerceIn(5f, 85f)
+    }
+
     private fun startAutoScroll(speedPercent: Int) {
-        stopAutoScroll()
+        autoScrollPixelsPerSecond = calculatePixelsPerSecond(speedPercent)
+        if (isAutoScrolling) return
         isAutoScrolling = true
-        val pixelsPerSecond = (speedPercent * 3 + 10).coerceIn(20, 310)
+        autoScrollGeneration++
 
         autoScrollRunnable = object : Runnable {
             private var lastTime = System.nanoTime()
+            private var accumulator = 0f
+            private val generation = autoScrollGeneration
 
             override fun run() {
-                if (!isAutoScrolling) return
+                if (!isAutoScrolling || autoScrollGeneration != generation) return
                 val now = System.nanoTime()
                 val delta = ((now - lastTime) / 1_000_000f).coerceIn(1f, 50f)
                 lastTime = now
 
-                val step = (pixelsPerSecond * delta / 1000f).toInt().coerceAtLeast(1)
+                accumulator += autoScrollPixelsPerSecond * delta / 1000f
+                val step = accumulator.toInt()
+                if (step < 1) {
+                    scrollView.postOnAnimation(this)
+                    return
+                }
+                accumulator -= step
 
                 val scrollContent = scrollView.getChildAt(0) ?: return
                 val maxScroll = (scrollContent.height - scrollView.height).coerceAtLeast(0)
@@ -710,76 +802,19 @@ class SurahDetailActivity : AppCompatActivity() {
         autoScrollRunnable?.let { scrollView.postOnAnimation(it) }
     }
 
+    private fun updateAutoScrollSpeed(speedPercent: Int) {
+        autoScrollPixelsPerSecond = calculatePixelsPerSecond(speedPercent)
+        if (!isAutoScrolling) {
+            startAutoScroll(speedPercent)
+        }
+    }
+
     private fun stopAutoScroll() {
         isAutoScrolling = false
         autoScrollRunnable = null
     }
 
-    private fun toggleViewMode() {
-        isPageMode = !isPageMode
-        val btnViewMode = findViewById<ImageButton>(R.id.btnViewMode)
-        val btnAutoScroll = findViewById<ImageButton>(R.id.btnAutoScroll)
 
-        if (isPageMode) {
-            btnAutoScroll.visibility = View.GONE
-            btnViewMode.setImageResource(R.drawable.ic_chevron_left_24dp)
-            scrollView.visibility = View.GONE
-            pageRecyclerView.visibility = View.VISIBLE
-
-            if (pageViewAdapter == null) {
-                loadPageData()
-            }
-            Toast.makeText(this, "وضع الصفحات", Toast.LENGTH_SHORT).show()
-        } else {
-            btnAutoScroll.visibility = View.VISIBLE
-            btnViewMode.setImageResource(R.drawable.ic_book_black_24dp)
-            scrollView.visibility = View.VISIBLE
-            pageRecyclerView.visibility = View.GONE
-            Toast.makeText(this, "الوضع الطولي", Toast.LENGTH_SHORT).show()
-        }
-    }
-
-    private fun loadPageData() {
-        val qiraat = QuranDataLoader.getQiraat(this)
-        val pageMap = PageDataLoader.getPages(this, qiraat)
-        val firstPage = PageDataLoader.getFirstSurahPage(this, qiraat, surahNumber)
-
-        val pages = mutableListOf<PageViewAdapter.PageData>()
-        for (p in firstPage..604) {
-            val ayahs = pageMap[p] ?: continue
-            pages.add(PageViewAdapter.PageData(pageNumber = p, ayahs = ayahs))
-        }
-        pageModePages = pages
-
-        val typeface = ResourcesCompat.getFont(this, QuranDataLoader.getUthmanicFontRes(this))
-        pageViewAdapter = PageViewAdapter(pages, typeface, isDark)
-        pageRecyclerView.adapter = pageViewAdapter
-
-        pageRecyclerView.addOnScrollListener(object : RecyclerView.OnScrollListener() {
-            override fun onScrollStateChanged(recyclerView: RecyclerView, newState: Int) {
-                if (newState == RecyclerView.SCROLL_STATE_IDLE) {
-                    updateSurahTitleForCurrentPage()
-                }
-            }
-        })
-    }
-
-    private fun updateSurahTitleForCurrentPage() {
-        val layoutManager = pageRecyclerView.layoutManager as? LinearLayoutManager ?: return
-        val pos = layoutManager.findFirstVisibleItemPosition()
-        if (pos < 0 || pos >= pageModePages.size) return
-
-        val page = pageModePages[pos]
-        val firstAyah = page.ayahs.firstOrNull() ?: return
-        val currentSurahNum = firstAyah.surah
-
-        var surahName = ENGLISH_NAMES[currentSurahNum]?.let {
-            SurahDataProvider.allSurahs.find { s -> s.number == currentSurahNum }?.name
-        } ?: surahInfo.nameArabic
-
-        val displayName = "سُورَةُ $surahName"
-        findViewById<TextView>(R.id.tvSurahTitle).text = displayName
-    }
 
     private fun shareWholeSurah() {
         val builder = StringBuilder()

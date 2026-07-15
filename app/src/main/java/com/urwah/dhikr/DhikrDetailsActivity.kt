@@ -36,9 +36,13 @@ class DhikrDetailsActivity : AppCompatActivity() {
         txtTitle.text = categoryName
 
         val btnBack = findViewById<ImageButton>(R.id.btnBack)
-        btnBack.setOnClickListener { onBackPressed() }
+        btnBack.setOnClickListener {
+            HapticUtil.perform(this, btnBack)
+            onBackPressed()
+        }
 
-        findViewById<ImageButton>(R.id.btnResetDhikr).setOnClickListener {
+        findViewById<ImageButton>(R.id.btnResetDhikr).setOnClickListener { v ->
+            HapticUtil.perform(this, v)
             val dialogView = LayoutInflater.from(this).inflate(R.layout.dialog_delete_bookmark, null)
             dialogView.findViewById<TextView>(R.id.tvDeleteMessage).text =
                 "هل أنت متأكد من إعادة تعيين التقدم في $categoryName؟\nسيتم مسح جميع الإنجازات."
@@ -62,7 +66,8 @@ class DhikrDetailsActivity : AppCompatActivity() {
             dialog.show()
         }
 
-        findViewById<ImageButton>(R.id.btnAddDhikr).setOnClickListener {
+        findViewById<ImageButton>(R.id.btnAddDhikr).setOnClickListener { v ->
+            HapticUtil.perform(this, v)
             showAddDhikrDialog()
         }
 

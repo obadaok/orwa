@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="utf-8"?>
+<com.google.android.material.card.MaterialCardView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="320dp"
+    android:layout_height="wrap_content"
+    app:cardCornerRadius="14dp"
+    app:cardElevation="0dp"
+    app:strokeWidth="2dp"
+    app:strokeColor="@color/urwah_thread_dark"
+    app:cardBackgroundColor="@color/urwah_card_bg"
+    app:contentPadding="20dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:gravity="center">
+
+        <ImageView
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:src="@drawable/ic_mushaf_24dp"
+            android:tint="@color/urwah_thread_brown"
+            android:contentDescription="@null" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:fontFamily="@font/alyamama"
+            android:text="@string/consent_title"
+            android:textColor="@color/urwah_thread_dark"
+            android:textSize="20sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:fontFamily="@font/alyamama"
+            android:gravity="center"
+            android:lineSpacingExtra="4dp"
+            android:text="@string/consent_message"
+            android:textColor="@color/urwah_thread_brown"
+            android:textSize="14sp" />
+
+        <Button
+            android:id="@+id/btnConsentPrivacy"
+            style="@style/Widget.Material3.Button.TextButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:fontFamily="@font/alyamama"
+            android:text="@string/about_privacy"
+            android:textColor="@color/urwah_thread_brown"
+            android:textSize="14sp" />
+
+        <Button
+            android:id="@+id/btnConsentTerms"
+            style="@style/Widget.Material3.Button.TextButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:fontFamily="@font/alyamama"
+            android:text="@string/about_terms"
+            android:textColor="@color/urwah_thread_brown"
+            android:textSize="14sp" />
+
+        <Button
+            android:id="@+id/btnConsentAgree"
+            android:layout_width="match_parent"
+            android:layout_height="48dp"
+            android:layout_marginTop="12dp"
+            android:backgroundTint="@color/urwah_thread_brown"
+            android:fontFamily="@font/alyamama"
+            android:text="@string/consent_agree"
+            android:textColor="@color/white"
+            android:textSize="16sp"
+            android:textStyle="bold"
+            app:cornerRadius="24dp" />
+
+        <Button
+            android:id="@+id/btnConsentExit"
+            style="@style/Widget.Material3.Button.TextButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:fontFamily="@font/alyamama"
+            android:text="لا أوافق، خروج"
+            android:textColor="@color/urwah_thread_light"
+            android:textSize="13sp" />
+
+    </LinearLayout>
+</com.google.android.material.card.MaterialCardView>

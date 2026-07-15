@@ -19,13 +19,15 @@ object NotificationHelper {
     const val TYPE_MORNING = "الصباح"
     const val TYPE_EVENING = "المساء"
     const val TYPE_BEDTIME = "النوم"
+    const val TYPE_KAHF = "الكهف"
+    const val TYPE_MULK = "الملك"
 
     fun createChannel(context: Context) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val channel = NotificationChannel(
                 CHANNEL_ID, CHANNEL_NAME, NotificationManager.IMPORTANCE_HIGH
             ).apply {
-                description = "تذكير بقراءة أذكار الصباح والمساء والنوم"
+                description = "تذكير بقراءة الأذكار وسور القرآن"
                 enableVibration(true)
                 setBypassDnd(true)
             }
@@ -35,16 +37,41 @@ object NotificationHelper {
     }
 
     fun showReminder(context: Context, type: String) {
-        val title = "حان وقت أذكار $type"
-        val text = when (type) {
-            TYPE_MORNING -> "أصبحنا وأصبح الملك لله، والحمد لله..."
-            TYPE_EVENING -> "أمسينا وأمسى الملك لله، والحمد لله..."
-            TYPE_BEDTIME -> "اللهم بك أمسينا وبك أصبحنا..."
-            else -> "اذكر الله يذكرك"
+        val (title, text, categoryName) = when (type) {
+            TYPE_MORNING -> Triple(
+                "حان وقت أذكار $type",
+                "أصبحنا وأصبح الملك لله، والحمد لله...",
+                "أذكار $type"
+            )
+            TYPE_EVENING -> Triple(
+                "حان وقت أذكار $type",
+                "أمسينا وأمسى الملك لله، والحمد لله...",
+                "أذكار $type"
+            )
+            TYPE_BEDTIME -> Triple(
+                "حان وقت أذكار $type",
+                "اللهم بك أمسينا وبك أصبحنا...",
+                "أذكار $type"
+            )
+            TYPE_KAHF -> Triple(
+                "يوم الجمعة - سورة الكهف",
+                "اقرأ سورة الكهف فإنها نور ما بين الجمعتين",
+                "سورة الكهف"
+            )
+            TYPE_MULK -> Triple(
+                "قبل النوم - سورة الملك",
+                "اقرأ سورة الملك تنجيك من عذاب القبر",
+                "سورة الملك"
+            )
+            else -> Triple(
+                "حان وقت الأذكار",
+                "اذكر الله يذكرك",
+                ""
+            )
         }
 
         val intent = Intent(context, DhikrDetailsActivity::class.java).apply {
-            putExtra("CATEGORY_NAME", "أذكار $type")
+            putExtra("CATEGORY_NAME", categoryName)
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
         }
         val pendingIntent = PendingIntent.getActivity(
@@ -82,15 +109,22 @@ object NotificationHelper {
             set(Calendar.MINUTE, minute)
             set(Calendar.SECOND, 0)
             set(Calendar.MILLISECOND, 0)
-            if (before(Calendar.getInstance())) {
+            if (type == TYPE_KAHF) {
+                // Schedule for next Friday
+                set(Calendar.DAY_OF_WEEK, Calendar.FRIDAY)
+                if (before(Calendar.getInstance())) {
+                    add(Calendar.WEEK_OF_YEAR, 1)
+                }
+            } else if (before(Calendar.getInstance())) {
                 add(Calendar.DAY_OF_YEAR, 1)
             }
         }
 
+        val interval = if (type == TYPE_KAHF) AlarmManager.INTERVAL_DAY * 7 else AlarmManager.INTERVAL_DAY
         alarmManager.setRepeating(
             AlarmManager.RTC_WAKEUP,
             cal.timeInMillis,
-            AlarmManager.INTERVAL_DAY,
+            interval,
             pendingIntent
         )
     }

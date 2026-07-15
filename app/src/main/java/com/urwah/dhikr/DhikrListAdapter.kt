@@ -11,7 +11,6 @@ import android.text.SpannableStringBuilder
 import android.text.Spanned
 import android.text.style.RelativeSizeSpan
 import android.text.style.StyleSpan
-import android.view.HapticFeedbackConstants
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -110,13 +109,12 @@ class DhikrListAdapter(
             counts[position] = newCount
             holder.circularCounter.setProgress(newCount, item.repeats)
 
-            holder.card.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
+            HapticUtil.perform(context, holder.card)
 
             if (newCount >= item.repeats) {
                 completed[position] = true
                 saveItemCompleted(item.id)
                 celebrate(holder)
-                animateCompletionThenReorder(holder, position)
                 if (completed.all { it }) {
                     holder.itemView.postDelayed({
                         onAllCompleted?.invoke()
@@ -126,6 +124,7 @@ class DhikrListAdapter(
         }
 
         holder.btnCopy.setOnClickListener {
+            HapticUtil.perform(context, holder.btnCopy)
             val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
             val clip = ClipData.newPlainText("dhikr", item.arabic)
             clipboard.setPrimaryClip(clip)
@@ -133,6 +132,7 @@ class DhikrListAdapter(
         }
 
         holder.btnShare.setOnClickListener {
+            HapticUtil.perform(context, holder.btnShare)
             val shareText = buildString {
                 append(item.arabic)
                 if (item.reference.isNotBlank()) {
@@ -147,6 +147,7 @@ class DhikrListAdapter(
         }
 
         holder.btnFavorite.setOnClickListener {
+            HapticUtil.perform(context, holder.btnFavorite)
             val isFav = FavoritesManager.toggle(item.id)
             updateFavoriteIcon(holder.btnFavorite, item.id)
             val msg = if (isFav) "تمت الإضافة إلى المفضلة" else "تمت الإزالة من المفضلة"
@@ -191,15 +192,13 @@ class DhikrListAdapter(
         val sb = SpannableStringBuilder()
         val regex = Regex("﴿[^﴾]*﴾")
         var lastEnd = 0
-        var matched = false
 
         for (match in regex.findAll(text)) {
-            matched = true
             if (match.range.first > lastEnd) {
                 sb.append(SpannableString(text.substring(lastEnd, match.range.first)))
             }
 
-            if (sb.isNotEmpty() && !sb.endsWith("\n")) sb.append("\n")
+            if (sb.isNotEmpty() && !sb.endsWith("\n")) sb.append(" ")
 
             val inner = match.value.removePrefix("﴿").removeSuffix("﴾")
             val verse = SpannableString(inner)
@@ -212,14 +211,14 @@ class DhikrListAdapter(
             sb.append(verse)
 
             lastEnd = match.range.last + 1
-            if (lastEnd < text.length && text[lastEnd] != '\n') sb.append("\n")
+            if (lastEnd < text.length && text[lastEnd] != '\n') sb.append(" ")
         }
 
         if (lastEnd < text.length) {
             sb.append(SpannableString(text.substring(lastEnd)))
         }
 
-        return if (matched) sb else text
+        return sb
     }
 
     private fun resolveDhikrText(context: Context, item: DhikrItem): CharSequence {
@@ -236,35 +235,46 @@ class DhikrListAdapter(
         val surahData = com.urwah.dhikr.QuranDataLoader.getSurah(context, surahNum) ?: return applyDhikrFormatting(item.arabic)
         val uthmanicFont = ResourcesCompat.getFont(context, QuranDataLoader.getUthmanicFontRes(context)) ?: return applyDhikrFormatting(item.arabic)
         val hindi = arrayOf("٠", "١", "٢", "٣", "٤", "٥", "٦", "٧", "٨", "٩")
+        val prefs = context.getSharedPreferences("urwah_quran", Context.MODE_PRIVATE)
+        val singleLine = prefs.getBoolean("ayah_single_line", true)
 
         val sb = SpannableStringBuilder()
         if (surahNum != 9) {
             val bStart = sb.length
             sb.append("بِسۡمِ ٱللَّهِ ٱلرَّحۡمَٰنِ ٱلرَّحِيمِ")
             sb.setSpan(CustomTypefaceSpan(uthmanicFont), bStart, sb.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
-            sb.setSpan(RelativeSizeSpan(0.94f), bStart, sb.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
-            sb.append("\n\n")
+            sb.setSpan(RelativeSizeSpan(1.22f), bStart, sb.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+            sb.append("\n")
         }
-        for (i in surahData.ayahs.indices) {
-            val ayah = surahData.ayahs[i]
-            val ayahStart = sb.length
-            sb.append(ayah.text)
-            sb.setSpan(CustomTypefaceSpan(uthmanicFont), ayahStart, sb.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
-            sb.setSpan(RelativeSizeSpan(0.94f), ayahStart, sb.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
-
-            val numStr = ayah.number.toString().map { hindi[it - '0'] }.joinToString("")
-            sb.append(" $numStr")
-
-            if (i != surahData.ayahs.lastIndex) {
-                sb.append("\n\n─\n\n")
+        if (singleLine) {
+            for (i in surahData.ayahs.indices) {
+                val ayah = surahData.ayahs[i]
+                val ayahStart = sb.length
+                sb.append(ayah.text)
+                sb.setSpan(CustomTypefaceSpan(uthmanicFont), ayahStart, sb.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+                sb.setSpan(RelativeSizeSpan(1.22f), ayahStart, sb.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+                val numStr = ayah.number.toString().map { hindi[it - '0'] }.joinToString("")
+                sb.append("  $numStr")
+                if (i != surahData.ayahs.lastIndex) {
+                    sb.append("\n\n")
+                }
+            }
+        } else {
+            for (i in surahData.ayahs.indices) {
+                val ayah = surahData.ayahs[i]
+                val ayahStart = sb.length
+                sb.append(ayah.text)
+                sb.setSpan(CustomTypefaceSpan(uthmanicFont), ayahStart, sb.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+                sb.setSpan(RelativeSizeSpan(1.22f), ayahStart, sb.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+                val numStr = ayah.number.toString().map { hindi[it - '0'] }.joinToString("")
+                sb.append("  $numStr  ")
             }
         }
         return sb
     }
 
     companion object {
-        // اضبط هذه القيمة إذا بدا حجم الآيات أكبر أو أصغر من باقي النص بعد التجربة على الجهاز
-        private const val VERSE_RELATIVE_SIZE = 0.94f
+        private const val VERSE_RELATIVE_SIZE = 1.22f
 
         private const val PREFS_NAME = "urwah_dhikr_progress"
         private const val KEY_LAST_DATE = "last_date"
@@ -330,43 +340,5 @@ class DhikrListAdapter(
         )
     }
 
-    private fun animateCompletionThenReorder(holder: ViewHolder, position: Int) {
-        holder.card.postDelayed({
-            holder.card.animate()
-                .alpha(0f)
-                .scaleX(0.85f)
-                .scaleY(0.85f)
-                .setDuration(350)
-                .withEndAction {
-                    holder.card.alpha = 1f
-                    holder.card.scaleX = 1f
-                    holder.card.scaleY = 1f
-                    holder.deleteBackground?.alpha = 0f
-                    moveCompletedItemToEnd(holder, position)
-                }
-                .start()
-            holder.deleteBackground?.animate()?.alpha(0f)?.setDuration(150)?.start()
-        }, 600)
-    }
 
-    private fun moveCompletedItemToEnd(holder: ViewHolder, position: Int) {
-        if (position < 0 || position >= currentList.size) return
-
-        val layoutManager = (holder.itemView.parent as? RecyclerView)?.layoutManager as? LinearLayoutManager
-        val firstVisible = layoutManager?.findFirstVisibleItemPosition() ?: 0
-        val offset = layoutManager?.findViewByPosition(firstVisible)?.top ?: 0
-
-        val item = currentList.removeAt(position)
-        val count = counts.removeAt(position)
-        val done = completed.removeAt(position)
-
-        currentList.add(item)
-        counts.add(count)
-        completed.add(done)
-
-        notifyItemMoved(position, currentList.size - 1)
-        notifyItemRangeChanged(position, currentList.size - position)
-
-        layoutManager?.scrollToPositionWithOffset(firstVisible, offset)
-    }
 }

@@ -7,4 +7,18 @@
     <string name="dhikr_sleep">أذكار النوم</string>
     <string name="dhikr_food">أذكار الطعام</string>
     <string name="dhikr_mosque">دخول المسجد</string>
+
+    <string name="consent_title">مرحباً بك في عروة</string>
+    <string name="consent_message">قبل استخدام التطبيق، يرجى قراءة سياسة الخصوصية وشروط الاستخدام والموافقة عليها.</string>
+    <string name="consent_agree">أوافق على السياسة والشروط</string>
+
+    <string name="about_title">حول التطبيق</string>
+    <string name="about_version">الإصدار الحالي</string>
+    <string name="about_privacy">سياسة الخصوصية</string>
+    <string name="about_terms">شروط الاستخدام</string>
+    <string name="about_developer">المطور: محمد عبادة</string>
+    <string name="about_description">تطبيق إسلامي متكامل للأذكار والأدعية وقراءة القرآن الكريم</string>
+
+    <string name="privacy_policy_title">سياسة الخصوصية</string>
+    <string name="terms_title">شروط الاستخدام</string>
 </resources>

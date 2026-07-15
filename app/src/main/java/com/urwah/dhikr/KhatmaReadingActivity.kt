@@ -1,16 +1,21 @@
 package com.urwah.dhikr
 
 import android.app.AlertDialog
+import android.content.Context
 import android.content.res.Configuration
 import android.graphics.Color
 import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.text.SpannableStringBuilder
+import android.text.Spanned
+import android.text.style.RelativeSizeSpan
 import android.view.Gravity
 import android.view.LayoutInflater
 import android.view.MotionEvent
 import android.view.View
+import android.view.ViewGroup
 import android.widget.Button
 import android.widget.ImageButton
 import android.widget.ImageView
@@ -43,6 +48,13 @@ class KhatmaReadingActivity : AppCompatActivity() {
     private var autoScrollHandler: Handler? = null
     private var autoScrollRunnable: Runnable? = null
     private var isAutoScrolling = false
+    private var autoScrollPixelsPerSecond = 5f
+    private var autoScrollGeneration = 0L
+    private var continuousKhatmaViewRef: TextView? = null
+    private var khatmaAyahOffsets: List<Pair<Int, Int>>? = null
+    private val quranPrefs by lazy {
+        getSharedPreferences("urwah_quran", Context.MODE_PRIVATE)
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -123,7 +135,7 @@ class KhatmaReadingActivity : AppCompatActivity() {
     private fun findVisibleAyahIndex(): Int {
         val scrollY = scrollView.scrollY
         val viewCenter = scrollY + scrollView.height / 3
-        var bestMatch = -1
+        var bestIdx = -1
         var bestDist = Int.MAX_VALUE
         for (i in 0 until containerAyahs.childCount) {
             val child = containerAyahs.getChildAt(i)
@@ -132,10 +144,16 @@ class KhatmaReadingActivity : AppCompatActivity() {
             val dist = abs(childCenter - viewCenter)
             if (dist < bestDist) {
                 bestDist = dist
-                bestMatch = tag
+                bestIdx = tag
             }
         }
-        return bestMatch
+        if (bestIdx >= 0) return bestIdx
+        val tv = continuousKhatmaViewRef ?: return -1
+        val offsets = khatmaAyahOffsets ?: return -1
+        val layout = tv.layout ?: return -1
+        val visibleLine = layout.getLineForVertical((scrollY - tv.top).coerceAtLeast(0))
+        val offset = layout.getLineStart(visibleLine)
+        return offsets.indexOfFirst { (s, e) -> offset >= s && offset < e }
     }
 
     private fun renderKhatma() {
@@ -143,62 +161,104 @@ class KhatmaReadingActivity : AppCompatActivity() {
         val uthmanicTypeface = ResourcesCompat.getFont(this, QuranDataLoader.getUthmanicFontRes(this))
         val ayahColor = if (isDark) Color.parseColor("#e8e0d6") else Color.parseColor("#5E4B40")
         val dividerColor = Color.parseColor("#1A8B6F5E")
-
-        var lastSurahNumber = -1
+        val singleLineMode = quranPrefs.getBoolean("ayah_single_line", true)
 
         val ayahs = currentDayAyahs
-        for (idx in ayahs.indices) {
-            val ayah = ayahs[idx]
 
-            if (ayah.surahNumber != lastSurahNumber) {
-                addSurahSeparator(ayah.surahNumber)
-                lastSurahNumber = ayah.surahNumber
+        if (singleLineMode) {
+            var lastSurahNumber = -1
+            for (idx in ayahs.indices) {
+                val ayah = ayahs[idx]
+
+                if (ayah.surahNumber != lastSurahNumber) {
+                    addSurahSeparator(ayah.surahNumber)
+                    lastSurahNumber = ayah.surahNumber
+                }
+
+                val row = LinearLayout(this).apply {
+                    layoutParams = LinearLayout.LayoutParams(
+                        LinearLayout.LayoutParams.MATCH_PARENT,
+                        LinearLayout.LayoutParams.WRAP_CONTENT
+                    )
+                    orientation = LinearLayout.HORIZONTAL
+                    gravity = Gravity.CENTER_VERTICAL
+                    tag = idx
+                }
+
+                val tvAyah = TextView(this).apply {
+                    typeface = uthmanicTypeface
+                    textSize = 29f
+                    setTextColor(ayahColor)
+                    textDirection = View.TEXT_DIRECTION_RTL
+                    gravity = Gravity.START
+                    setLineSpacing(4f, 1f)
+                    includeFontPadding = true
+                    if (Build.VERSION.SDK_INT >= 26) {
+                        justificationMode = 1
+                    }
+                    text = "${ayah.text} ${toHindiDigits(ayah.number)}"
+                    setTextIsSelectable(false)
+                    layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+                }
+                row.addView(tvAyah)
+                containerAyahs.addView(row)
+
+                if (idx < ayahs.size - 1) {
+                    val nextAyah = ayahs[idx + 1]
+                    val isSurahBreak = nextAyah.surahNumber != ayah.surahNumber
+                    if (!isSurahBreak) {
+                        val divider = View(this).apply {
+                            layoutParams = LinearLayout.LayoutParams(
+                                LinearLayout.LayoutParams.MATCH_PARENT, dpToPx(0.8f)
+                            ).apply {
+                                topMargin = dpToPx(14f)
+                                bottomMargin = dpToPx(14f)
+                            }
+                            setBackgroundColor(dividerColor)
+                        }
+                        containerAyahs.addView(divider)
+                    }
+                }
             }
-
-            val row = LinearLayout(this).apply {
-                layoutParams = LinearLayout.LayoutParams(
-                    LinearLayout.LayoutParams.MATCH_PARENT,
-                    LinearLayout.LayoutParams.WRAP_CONTENT
-                )
-                orientation = LinearLayout.HORIZONTAL
-                gravity = Gravity.CENTER_VERTICAL
-                tag = idx
+        } else {
+            val sb = SpannableStringBuilder()
+            val offsets = mutableListOf<Pair<Int, Int>>()
+            var lastSurahNumber = -1
+            for (idx in ayahs.indices) {
+                val ayah = ayahs[idx]
+                if (ayah.surahNumber != lastSurahNumber) {
+                    if (sb.isNotEmpty()) sb.append("\n\n")
+                    val surahName = JuzData.findSurahNameForAyah(ayah.surahNumber)
+                    sb.append("سُورَةُ $surahName\n")
+                    lastSurahNumber = ayah.surahNumber
+                }
+                val start = sb.length
+                sb.append("${ayah.text} ${toHindiDigits(ayah.number)}  ")
+                uthmanicTypeface?.let {
+                    sb.setSpan(CustomTypefaceSpan(it), start, sb.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+                }
+                offsets.add(start to sb.length)
             }
-
-            val tvAyah = TextView(this).apply {
+            val continuousView = TextView(this).apply {
+                text = sb
                 typeface = uthmanicTypeface
-                textSize = 22f
+                textSize = 29f
                 setTextColor(ayahColor)
                 textDirection = View.TEXT_DIRECTION_RTL
                 gravity = Gravity.START
-                setLineSpacing(8f, 1f)
+                setLineSpacing(4f, 1f)
                 includeFontPadding = true
                 if (Build.VERSION.SDK_INT >= 26) {
                     justificationMode = 1
                 }
-                text = "${ayah.text} ${toHindiDigits(ayah.number)}"
-                setTextIsSelectable(false)
-                layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+                layoutParams = LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT
+                )
             }
-            row.addView(tvAyah)
-            containerAyahs.addView(row)
-
-            if (idx < ayahs.size - 1) {
-                val nextAyah = ayahs[idx + 1]
-                val isSurahBreak = nextAyah.surahNumber != ayah.surahNumber
-                if (!isSurahBreak) {
-                    val divider = View(this).apply {
-                        layoutParams = LinearLayout.LayoutParams(
-                            LinearLayout.LayoutParams.MATCH_PARENT, dpToPx(0.8f)
-                        ).apply {
-                            topMargin = dpToPx(14f)
-                            bottomMargin = dpToPx(14f)
-                        }
-                        setBackgroundColor(dividerColor)
-                    }
-                    containerAyahs.addView(divider)
-                }
-            }
+            containerAyahs.addView(continuousView)
+            continuousKhatmaViewRef = continuousView
+            khatmaAyahOffsets = offsets
         }
 
         if (currentDay < totalDays - 1) {
@@ -305,27 +365,67 @@ class KhatmaReadingActivity : AppCompatActivity() {
         if (savedSurah < 0 || savedAyah < 0 || currentDayAyahs.isEmpty()) return
         val targetIdx = JuzData.findAyahIndexInRange(currentDayAyahs, savedSurah, savedAyah)
         if (targetIdx < 0) return
+        scheduleScrollToIndex(targetIdx, 5)
+    }
 
-        for (i in 0 until containerAyahs.childCount) {
-            val child = containerAyahs.getChildAt(i)
-            if (child.tag == targetIdx) {
-                scrollView.post { scrollView.scrollTo(0, child.top) }
-                break
+    private fun scheduleScrollToIndex(targetIdx: Int, retries: Int) {
+        if (retries <= 0) return
+        scrollView.postDelayed({
+            if (continuousKhatmaViewRef != null && khatmaAyahOffsets != null) {
+                val tv = continuousKhatmaViewRef ?: return@postDelayed
+                val offsets = khatmaAyahOffsets ?: return@postDelayed
+                if (targetIdx < 0 || targetIdx >= offsets.size) return@postDelayed
+                val (start, _) = offsets[targetIdx]
+                tv.post {
+                    val layout = tv.layout ?: return@post
+                    if (start >= layout.text.length) return@post
+                    val line = layout.getLineForOffset(start)
+                    var targetY = tv.top + layout.getLineTop(line)
+                    val scrollContent = scrollView.getChildAt(0) ?: return@post
+                    var p = tv.parent
+                    while (p is View && p != scrollContent) {
+                        targetY += (p as View).top
+                        p = (p as View).parent
+                    }
+                    scrollView.scrollTo(0, (targetY - dpToPx(80f)).coerceAtLeast(0))
+                }
+                return@postDelayed
             }
-        }
+            for (i in 0 until containerAyahs.childCount) {
+                val child = containerAyahs.getChildAt(i)
+                if (child.tag == targetIdx) {
+                    val scrollContent = scrollView.getChildAt(0) ?: return@postDelayed
+                    var offset = child.top
+                    var p = child.parent
+                    while (p is View && p != scrollContent) {
+                        offset += (p as View).top
+                        p = (p as View).parent
+                    }
+                    scrollView.scrollTo(0, (offset - dpToPx(80f)).coerceAtLeast(0))
+                    return@postDelayed
+                }
+            }
+            scheduleScrollToIndex(targetIdx, retries - 1)
+        }, 100)
     }
 
     private fun addSurahSeparator(surahNumber: Int) {
         val surahName = JuzData.findSurahNameForAyah(surahNumber)
         val displayName = "سُورَةُ $surahName"
+        val textColor = if (isDark) Color.parseColor("#e8e0d6") else Color.parseColor("#5E4B40")
+        val uthmanicTypeface = ResourcesCompat.getFont(this, QuranDataLoader.getUthmanicFontRes(this))
 
         val separator = LayoutInflater.from(this).inflate(R.layout.item_surah_separator, containerAyahs, false)
-        separator.findViewById<TextView>(R.id.tvSeparatorName).text = displayName
+        separator.findViewById<TextView>(R.id.tvSeparatorName).apply {
+            text = displayName
+            setTextColor(textColor)
+        }
 
         val tvBasmala = separator.findViewById<TextView>(R.id.tvSeparatorBasmala)
         if (surahNumber == 9) {
             tvBasmala.visibility = View.GONE
         } else {
+            tvBasmala.visibility = View.VISIBLE
             tvBasmala.text = "بِسۡمِ ٱللَّهِ ٱلرَّحۡمَٰنِ ٱلرَّحِيمِ"
         }
         containerAyahs.addView(separator)
@@ -343,6 +443,10 @@ class KhatmaReadingActivity : AppCompatActivity() {
         val slider = view.findViewById<android.widget.SeekBar>(R.id.scrollSpeedSlider)
         val tvSpeed = view.findViewById<TextView>(R.id.tvScrollSpeedValue)
 
+        val savedSpeed = quranPrefs.getInt("auto_scroll_speed", 40)
+        slider.progress = savedSpeed
+        tvSpeed.text = "${savedSpeed}%"
+
         slider.setOnSeekBarChangeListener(object : android.widget.SeekBar.OnSeekBarChangeListener {
             override fun onProgressChanged(sb: android.widget.SeekBar, progress: Int, fromUser: Boolean) {
                 tvSpeed.text = "${progress}%"
@@ -351,14 +455,25 @@ class KhatmaReadingActivity : AppCompatActivity() {
             override fun onStopTrackingTouch(sb: android.widget.SeekBar) {}
         })
 
+        view.findViewById<TextView>(R.id.btnSlowPreset).setOnClickListener {
+            slider.progress = 20; tvSpeed.text = "20%"
+        }
+        view.findViewById<TextView>(R.id.btnMediumPreset).setOnClickListener {
+            slider.progress = 40; tvSpeed.text = "40%"
+        }
+        view.findViewById<TextView>(R.id.btnFastPreset).setOnClickListener {
+            slider.progress = 70; tvSpeed.text = "70%"
+        }
+
         val dialog = AlertDialog.Builder(this)
             .setView(view)
             .create()
         dialog.window?.setBackgroundDrawableResource(android.R.color.transparent)
 
         view.findViewById<Button>(R.id.btnConfirmAutoScroll).setOnClickListener {
-            val speed = slider.progress.coerceIn(10, 100)
-            startAutoScroll(speed)
+            val speed = slider.progress.coerceIn(5, 100)
+            quranPrefs.edit().putInt("auto_scroll_speed", speed).apply()
+            updateAutoScrollSpeed(speed)
             dialog.dismiss()
         }
         view.findViewById<Button>(R.id.btnCancelAutoScroll).setOnClickListener {
@@ -368,21 +483,34 @@ class KhatmaReadingActivity : AppCompatActivity() {
         dialog.show()
     }
 
+    private fun calculatePixelsPerSecond(speedPercent: Int): Float {
+        return (speedPercent.toFloat() * 0.8f + 5f).coerceIn(5f, 85f)
+    }
+
     private fun startAutoScroll(speedPercent: Int) {
-        stopAutoScroll()
+        autoScrollPixelsPerSecond = calculatePixelsPerSecond(speedPercent)
+        if (isAutoScrolling) return
         isAutoScrolling = true
-        val pixelsPerSecond = (speedPercent * 3 + 10).coerceIn(20, 310)
+        autoScrollGeneration++
 
         autoScrollRunnable = object : Runnable {
             private var lastTime = System.nanoTime()
+            private var accumulator = 0f
+            private val generation = autoScrollGeneration
 
             override fun run() {
-                if (!isAutoScrolling) return
+                if (!isAutoScrolling || autoScrollGeneration != generation) return
                 val now = System.nanoTime()
                 val delta = ((now - lastTime) / 1_000_000f).coerceIn(1f, 50f)
                 lastTime = now
 
-                val step = (pixelsPerSecond * delta / 1000f).toInt().coerceAtLeast(1)
+                accumulator += autoScrollPixelsPerSecond * delta / 1000f
+                val step = accumulator.toInt()
+                if (step < 1) {
+                    scrollView.postOnAnimation(this)
+                    return
+                }
+                accumulator -= step
 
                 val scrollContent = scrollView.getChildAt(0) ?: return
                 val maxScroll = (scrollContent.height - scrollView.height).coerceAtLeast(0)
@@ -400,6 +528,13 @@ class KhatmaReadingActivity : AppCompatActivity() {
             }
         }
         autoScrollRunnable?.let { scrollView.postOnAnimation(it) }
+    }
+
+    private fun updateAutoScrollSpeed(speedPercent: Int) {
+        autoScrollPixelsPerSecond = calculatePixelsPerSecond(speedPercent)
+        if (!isAutoScrolling) {
+            startAutoScroll(speedPercent)
+        }
     }
 
     private fun stopAutoScroll() {

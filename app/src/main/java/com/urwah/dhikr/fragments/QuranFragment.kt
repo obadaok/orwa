@@ -116,7 +116,16 @@ class QuranFragment : Fragment() {
 
         binding.etSearch.setOnEditorActionListener { _, actionId, _ ->
             if (actionId == EditorInfo.IME_ACTION_SEARCH || actionId == EditorInfo.IME_ACTION_DONE) {
-                hideSearch()
+                val filtered = SurahDataProvider.search(binding.etSearch.text.toString())
+                if (filtered.isNotEmpty()) {
+                    val surah = filtered.first()
+                    val intent = Intent(requireContext(), SurahDetailActivity::class.java)
+                    intent.putExtra("SURAH_NUMBER", surah.number)
+                    intent.putExtra("SURAH_NAME", surah.name)
+                    intent.putExtra("VERSE_COUNT", surah.verseCount)
+                    startActivity(intent)
+                    hideSearch()
+                }
                 true
             } else false
         }
