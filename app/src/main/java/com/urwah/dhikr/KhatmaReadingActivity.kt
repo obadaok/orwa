@@ -53,6 +53,8 @@ class KhatmaReadingActivity : AppCompatActivity() {
     private var autoScrollGeneration = 0L
     private var continuousKhatmaViewRef: TextView? = null
     private var khatmaAyahOffsets: List<Pair<Int, Int>>? = null
+    private var toastHelper: JuzHizbToastHelper? = null
+    private var allAyahsFlat: List<AyahData> = emptyList()
     private val quranPrefs by lazy {
         getSharedPreferences("urwah_quran", Context.MODE_PRIVATE)
     }
@@ -79,6 +81,26 @@ class KhatmaReadingActivity : AppCompatActivity() {
             val viewportHeight = scrollView.height
             val maxScroll = (contentHeight - viewportHeight).coerceAtLeast(1)
             readingProgress.progress = (scrollY * 1000 / maxScroll).coerceIn(0, 1000)
+            if (currentDayAyahs.isNotEmpty()) {
+                var visibleGlobalIdx = -1
+                val singleLine = true
+                if (singleLine) {
+                    for (i in 0 until containerAyahs.childCount) {
+                        val child = containerAyahs.getChildAt(i)
+                        if (child.visibility != View.VISIBLE) continue
+                        if (child.tag is Int && child.top >= scrollY) {
+                            val ayah = currentDayAyahs.getOrNull(child.tag as Int)
+                            if (ayah != null) {
+                                visibleGlobalIdx = allAyahsFlat.indexOfFirst { it.surahNumber == ayah.surahNumber && it.number == ayah.number }
+                            }
+                            break
+                        }
+                    }
+                }
+                if (visibleGlobalIdx >= 0) {
+                    toastHelper?.onPositionReached(visibleGlobalIdx)
+                }
+            }
         }
 
         val khatmas = KhatmaManager.getAll(this)
@@ -94,6 +116,10 @@ class KhatmaReadingActivity : AppCompatActivity() {
         }
 
         allQuran = QuranDataLoader.load(this)
+        allAyahsFlat = allQuran.entries
+            .sortedBy { it.key }
+            .flatMap { (_, s) -> s.ayahs.sortedBy { it.number } }
+        toastHelper = JuzHizbToastHelper(this, allAyahsFlat)
         loadDayAyahs()
         renderKhatma()
 
@@ -569,4 +595,10 @@ class KhatmaReadingActivity : AppCompatActivity() {
 
     private fun dpToPx(dp: Float): Int =
         (dp * resources.displayMetrics.density).toInt()
+
+    override fun onDestroy() {
+        super.onDestroy()
+        toastHelper?.detach()
+        toastHelper = null
+    }
 }

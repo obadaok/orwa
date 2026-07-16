@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <item
+        android:left="0dp"
+        android:right="6dp"
+        android:top="6dp"
+        android:bottom="0dp">
+        <shape android:shape="rectangle">
+            <solid android:color="@color/urwah_thread_dark" />
+        </shape>
+    </item>
+
+    <item
+        android:left="6dp"
+        android:right="0dp"
+        android:top="0dp"
+        android:bottom="6dp">
+        <shape android:shape="rectangle">
+            <solid android:color="@color/urwah_bg_card" />
+            <stroke
+                android:width="2.5dp"
+                android:color="@color/urwah_thread_dark" />
+        </shape>
+    </item>
+
+</layer-list>

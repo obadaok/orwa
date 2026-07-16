@@ -67,8 +67,9 @@ class SurahDetailActivity : AppCompatActivity() {
     private var isAutoScrolling = false
     private var autoScrollPixelsPerSecond = 5f
     private var autoScrollGeneration = 0L
-
-
+    private var toastHelper: JuzHizbToastHelper? = null
+    private var scrollHandler: android.os.Handler? = null
+    private var scrollDebounce: Runnable? = null
 
     companion object {
         private val ENGLISH_NAMES = mapOf(
@@ -185,6 +186,8 @@ class SurahDetailActivity : AppCompatActivity() {
                 }
             }
         }
+
+        setupJuzHizbToast()
 
         findViewById<ImageButton>(R.id.btnJumpToAyah).setOnClickListener {
             showJumpToAyahDialog()
@@ -994,5 +997,60 @@ class SurahDetailActivity : AppCompatActivity() {
         startActivity(intent)
         finish()
         overridePendingTransition(android.R.anim.fade_in, android.R.anim.fade_out)
+    }
+
+    private fun setupJuzHizbToast() {
+        val qiraatData = QuranDataLoader.load(this)
+        val allAyahs = qiraatData.entries
+            .sortedBy { it.key }
+            .flatMap { (_, s) -> s.ayahs.sortedBy { it.number } }
+
+        toastHelper = JuzHizbToastHelper(this, allAyahs)
+
+        scrollHandler = android.os.Handler(Looper.getMainLooper())
+
+        scrollView.setOnScrollChangeListener { _, _, scrollY, _, _ ->
+            scrollDebounce?.let { scrollHandler?.removeCallbacks(it) }
+            scrollDebounce = Runnable {
+                var visibleGlobalIdx = -1
+                val singleLine = quranPrefs.getBoolean("ayah_single_line", true)
+                if (singleLine) {
+                    for (i in 0 until containerAyahs.childCount) {
+                        val child = containerAyahs.getChildAt(i)
+                        if (child.visibility != View.VISIBLE) continue
+                        if (child.tag is Int && child.top >= scrollY) {
+                            visibleGlobalIdx = allAyahs.indexOfFirst { it.surahNumber == surahNumber && it.number == child.tag as Int }
+                            break
+                        }
+                    }
+                } else {
+                    val tv = continuousViewRef
+                    if (tv != null) {
+                        val layout = tv.layout ?: return@Runnable
+                        val line = layout.getLineForVertical(scrollY - tv.top)
+                        if (line >= 0) {
+                            val offset = layout.getLineStart(line)
+                            val offsets = continuousAyahOffsets ?: return@Runnable
+                            val idx = offsets.indexOfLast { it.first <= offset }
+                            if (idx >= 0) {
+                                val ayah = ayahs.getOrNull(idx) ?: return@Runnable
+                                visibleGlobalIdx = allAyahs.indexOfFirst { it.surahNumber == surahNumber && it.number == ayah.number }
+                            }
+                        }
+                    }
+                }
+                if (visibleGlobalIdx >= 0) {
+                    toastHelper?.onPositionReached(visibleGlobalIdx)
+                }
+            }
+            scrollHandler?.postDelayed(scrollDebounce!!, 200L)
+        }
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        toastHelper?.detach()
+        toastHelper = null
+        scrollHandler?.removeCallbacksAndMessages(null)
     }
 }

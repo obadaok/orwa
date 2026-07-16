@@ -46,6 +46,7 @@
 
     <!-- New Brutalist design colors -->
     <color name="urwah_card_bg">#FFFDFA</color>
+    <color name="urwah_bg_card">#FFFDFA</color>
     <color name="urwah_card_shadow">#5E4B40</color>
 
     <!-- Splash screen colors -->

@@ -8,7 +8,6 @@ import android.view.LayoutInflater
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.navigation.fragment.NavHostFragment
-import androidx.navigation.ui.setupWithNavController
 import com.google.android.material.bottomnavigation.BottomNavigationView
 import com.urwah.dhikr.databinding.ActivityMainBinding
 
@@ -28,8 +27,17 @@ class MainActivity : AppCompatActivity() {
         val navHostFragment = supportFragmentManager
             .findFragmentById(R.id.nav_host_fragment) as NavHostFragment
         val navController = navHostFragment.navController
+        val navAnimOptions = androidx.navigation.NavOptions.Builder()
+            .setEnterAnim(R.anim.nav_fade_in)
+            .setExitAnim(R.anim.nav_fade_out)
+            .setPopEnterAnim(R.anim.nav_fade_in)
+            .setPopExitAnim(R.anim.nav_fade_out)
+            .build()
 
-        navView.setupWithNavController(navController)
+        navView.setOnItemSelectedListener { item ->
+            navController.navigate(item.itemId, null, navAnimOptions)
+            true
+        }
 
         checkConsent()
     }
