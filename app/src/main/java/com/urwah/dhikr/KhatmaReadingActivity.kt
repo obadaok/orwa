@@ -4,6 +4,7 @@ import android.app.AlertDialog
 import android.content.Context
 import android.content.res.Configuration
 import android.graphics.Color
+import android.graphics.Typeface
 import android.os.Build
 import android.os.Bundle
 import android.os.Handler
@@ -221,42 +222,26 @@ class KhatmaReadingActivity : AppCompatActivity() {
                 }
             }
         } else {
-            val sb = SpannableStringBuilder()
             val offsets = mutableListOf<Pair<Int, Int>>()
             var lastSurahNumber = -1
+            var surahStartIdx = 0
             for (idx in ayahs.indices) {
                 val ayah = ayahs[idx]
+
                 if (ayah.surahNumber != lastSurahNumber) {
-                    if (sb.isNotEmpty()) sb.append("\n\n")
-                    val surahName = JuzData.findSurahNameForAyah(ayah.surahNumber)
-                    sb.append("سُورَةُ $surahName\n")
+                    if (lastSurahNumber != -1) {
+                        addContinuousSurahBlock(ayahs.subList(surahStartIdx, idx), offsets, uthmanicTypeface, ayahColor)
+                    }
+                    addSurahSeparator(ayah.surahNumber)
                     lastSurahNumber = ayah.surahNumber
+                    surahStartIdx = idx
+                    offsets.clear()
                 }
-                val start = sb.length
-                sb.append("${ayah.text} ${toHindiDigits(ayah.number)}  ")
-                uthmanicTypeface?.let {
-                    sb.setSpan(CustomTypefaceSpan(it), start, sb.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
-                }
-                offsets.add(start to sb.length)
             }
-            val continuousView = TextView(this).apply {
-                text = sb
-                typeface = uthmanicTypeface
-                textSize = 29f
-                setTextColor(ayahColor)
-                textDirection = View.TEXT_DIRECTION_RTL
-                gravity = Gravity.START
-                setLineSpacing(4f, 1f)
-                includeFontPadding = true
-                if (Build.VERSION.SDK_INT >= 26) {
-                    justificationMode = 1
-                }
-                layoutParams = LinearLayout.LayoutParams(
-                    LinearLayout.LayoutParams.MATCH_PARENT,
-                    LinearLayout.LayoutParams.WRAP_CONTENT
-                )
+            if (surahStartIdx < ayahs.size) {
+                addContinuousSurahBlock(ayahs.subList(surahStartIdx, ayahs.size), offsets, uthmanicTypeface, ayahColor)
             }
-            containerAyahs.addView(continuousView)
+            val continuousView = containerAyahs.getChildAt(containerAyahs.childCount - 1) as? TextView
             continuousKhatmaViewRef = continuousView
             khatmaAyahOffsets = offsets
         }
@@ -436,6 +421,41 @@ class KhatmaReadingActivity : AppCompatActivity() {
             )
         }
         containerAyahs.addView(margin)
+    }
+
+    private fun addContinuousSurahBlock(
+        ayahs: List<AyahData>,
+        offsets: MutableList<Pair<Int, Int>>,
+        uthmanicTypeface: Typeface?,
+        ayahColor: Int
+    ) {
+        val sb = SpannableStringBuilder()
+        for (ayah in ayahs) {
+            val start = sb.length
+            sb.append("${ayah.text} ${toHindiDigits(ayah.number)}  ")
+            uthmanicTypeface?.let {
+                sb.setSpan(CustomTypefaceSpan(it), start, sb.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+            }
+            offsets.add(start to sb.length)
+        }
+        val textView = TextView(this).apply {
+            text = sb
+            typeface = uthmanicTypeface
+            textSize = 29f
+            setTextColor(ayahColor)
+            textDirection = View.TEXT_DIRECTION_RTL
+            gravity = Gravity.START
+            setLineSpacing(4f, 1f)
+            includeFontPadding = true
+            if (Build.VERSION.SDK_INT >= 26) {
+                justificationMode = 1
+            }
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            )
+        }
+        containerAyahs.addView(textView)
     }
 
     private fun showAutoScrollDialog() {

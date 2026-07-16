@@ -2,39 +2,123 @@
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:layout_marginTop="8dp">
+    android:layout_marginTop="8dp"
+    android:layout_marginHorizontal="2dp">
 
+    <!-- طبقة الظل الخلفية (Neo-Brutalism hard offset shadow) -->
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_marginStart="7dp"
+        android:layout_marginTop="7dp"
+        android:background="@color/urwah_thread_dark" />
+
+    <!-- الصندوق الرئيسي -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginEnd="6dp"
-        android:layout_marginBottom="6dp"
+        android:layout_marginEnd="7dp"
+        android:layout_marginBottom="7dp"
         android:background="@drawable/bg_surah_header_box"
         android:gravity="center"
         android:orientation="vertical"
-        android:paddingHorizontal="20dp"
-        android:paddingVertical="14dp">
+        android:paddingHorizontal="24dp"
+        android:paddingVertical="18dp">
 
-        <TextView
-            android:id="@+id/tvSeparatorName"
+        <!-- صف علوي: زخرفة - اسم السورة - زخرفة -->
+        <LinearLayout
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:fontFamily="@font/uthmanic_hafs"
-            android:gravity="center"
-            android:textColor="@color/urwah_thread_dark"
-            android:textSize="24sp"
-            android:textStyle="bold" />
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
 
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="8dp"
+                android:fontFamily="@font/uthmanic_hafs"
+                android:text="﴾"
+                android:textColor="@color/urwah_thread_dark"
+                android:textSize="26sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/tvSeparatorName"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:fontFamily="@font/uthmanic_hafs"
+                android:gravity="center"
+                android:textColor="@color/urwah_thread_dark"
+                android:textSize="24sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="8dp"
+                android:fontFamily="@font/uthmanic_hafs"
+                android:text="﴿"
+                android:textColor="@color/urwah_thread_dark"
+                android:textSize="26sp"
+                android:textStyle="bold" />
+
+        </LinearLayout>
+
+        <!-- خط فاصل مزخرف: شرطة - معين - شرطة -->
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:layout_marginBottom="10dp"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <View
+                android:layout_width="28dp"
+                android:layout_height="2dp"
+                android:background="@color/urwah_thread_light" />
+
+            <View
+                android:layout_width="8dp"
+                android:layout_height="8dp"
+                android:layout_marginHorizontal="6dp"
+                android:background="@color/urwah_thread_dark"
+                android:rotation="45" />
+
+            <View
+                android:layout_width="28dp"
+                android:layout_height="2dp"
+                android:background="@color/urwah_thread_light" />
+
+        </LinearLayout>
+
+        <!-- البسملة -->
         <TextView
             android:id="@+id/tvSeparatorBasmala"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginTop="6dp"
             android:fontFamily="@font/uthmanic_hafs"
             android:gravity="center"
             android:textColor="@color/urwah_thread_light"
             android:textSize="18sp" />
 
     </LinearLayout>
+
+    <!-- زخرفة الزاوية العلوية اليمنى -->
+    <View
+        android:layout_width="16dp"
+        android:layout_height="16dp"
+        android:layout_gravity="top|end"
+        android:layout_marginTop="0dp"
+        android:layout_marginEnd="13dp"
+        android:background="@color/urwah_thread_dark" />
+
+    <!-- زخرفة الزاوية العلوية اليسرى -->
+    <View
+        android:layout_width="16dp"
+        android:layout_height="16dp"
+        android:layout_gravity="top|start"
+        android:layout_marginTop="0dp"
+        android:background="@color/urwah_thread_dark" />
 
 </FrameLayout>

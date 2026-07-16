@@ -34,18 +34,6 @@
                     android:layout_gravity="center"
                     android:tint="@color/icon_on_category_circle"
                     android:contentDescription="@null" />
-
-                <ImageView
-                    android:id="@+id/ivCategoryComplete"
-                    android:layout_width="16dp"
-                    android:layout_height="16dp"
-                    android:layout_gravity="bottom|start"
-                    android:layout_marginBottom="2dp"
-                    android:layout_marginStart="-4dp"
-                    android:src="@drawable/ic_confirm"
-                    android:tint="@color/counter_check"
-                    android:visibility="gone"
-                    android:contentDescription="مكتمل" />
             </FrameLayout>
 
             <LinearLayout
@@ -73,6 +61,17 @@
                     android:textColor="@color/urwah_thread_light"
                     android:textSize="13sp" />
             </LinearLayout>
+
+            <ImageView
+                android:id="@+id/ivCategoryComplete"
+                android:layout_width="20dp"
+                android:layout_height="20dp"
+                android:layout_gravity="center_vertical"
+                android:layout_marginStart="8dp"
+                android:src="@drawable/ic_confirm"
+                android:tint="@color/counter_check"
+                android:visibility="gone"
+                android:contentDescription="مكتمل" />
         </LinearLayout>
 
     </FrameLayout>
