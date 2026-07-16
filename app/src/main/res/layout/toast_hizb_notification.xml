@@ -28,7 +28,7 @@
                 android:layout_gravity="center"
                 android:fontFamily="@font/uthmanic_hafs"
                 android:text="\u00BC"
-                android:textColor="@color/urwah_bg_card"
+                android:textColor="@color/urwah_card_bg"
                 android:textSize="18sp"
                 android:textStyle="bold" />
 

@@ -17,7 +17,7 @@
         android:top="0dp"
         android:bottom="6dp">
         <shape android:shape="rectangle">
-            <solid android:color="@color/urwah_bg_card" />
+            <solid android:color="@color/urwah_card_bg" />
             <stroke
                 android:width="2.5dp"
                 android:color="@color/urwah_thread_dark" />
