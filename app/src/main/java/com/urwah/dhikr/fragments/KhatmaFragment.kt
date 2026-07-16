@@ -123,12 +123,7 @@ class KhatmaFragment : Fragment() {
         fun updateWird() {
             val juz = juzPicker.value
             val days = dayPicker.value
-            if (days <= 30) {
-                tvWird.text = JuzData.formatDayRange(juz, days, 0)
-            } else {
-                val totalAyahs = JuzData.getAyahCountFromJuzToEnd(juz)
-                tvWird.text = JuzData.describeDailyPortion(totalAyahs, days)
-            }
+            tvWird.text = JuzData.formatDayRange(juz, days, 0)
         }
         updateWird()
         juzPicker.setOnValueChangedListener { _, _, _ -> updateWird() }
@@ -142,7 +137,13 @@ class KhatmaFragment : Fragment() {
         view.findViewById<Button>(R.id.btnCreateKhatma).setOnClickListener {
             val juz = juzPicker.value
             val days = dayPicker.value
-            val khatma = Khatma(name = "ختمة من الجزء $juz", startJuz = juz, totalDays = days, color = Khatma.pickColor(juz))
+            val remainingJuz = 31 - juz
+            val desc = when {
+                days <= remainingJuz -> "أجزاء"
+                days <= remainingJuz * 2 -> "أنصاف أجزاء"
+                else -> "آيات"
+            }
+            val khatma = Khatma(name = "ختمة $desc من ج$juz", startJuz = juz, totalDays = days, color = Khatma.pickColor(juz))
             KhatmaManager.add(requireContext(), khatma)
             dialog.dismiss()
             refreshList()

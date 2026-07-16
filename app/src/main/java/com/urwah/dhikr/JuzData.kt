@@ -49,128 +49,170 @@ object JuzData {
         178, 169, 357, 175, 246, 195, 399, 137, 431, 564
     )
 
-    fun buildJuzBoundaries(allData: Map<Int, QuranSurah>): List<JuzBoundary> {
-        if (JUZ_BOUNDARIES.size == 30) return JUZ_BOUNDARIES
-        val allAyahs = allData.entries
-            .sortedBy { it.key }
-            .flatMap { (_, surah) -> surah.ayahs }
-            .sortedBy { it.number }
-        if (allAyahs.isEmpty()) return JUZ_BOUNDARIES
-        val total = allAyahs.size
-        val juzSize = total / 30
-        return (0 until 30).map { j ->
-            val startIdx = j * juzSize
-            val endIdx = if (j < 29) ((j + 1) * juzSize - 1).coerceAtMost(total - 1) else total - 1
-            val start = allAyahs[startIdx]
-            val end = allAyahs[endIdx]
-            JuzBoundary(j + 1, start.surahNumber, start.number, end.surahNumber, end.number)
+    private val JUZ_CUMULATIVE = run {
+        val cum = mutableListOf<Int>()
+        var sum = 0
+        for (vc in JUZ_VERSE_COUNTS) {
+            sum += vc
+            cum.add(sum)
         }
+        cum
+    }
+
+    private val HAFS_TOTAL = JUZ_VERSE_COUNTS.sum()
+
+    private fun buildSortedAyahList(allData: Map<Int, QuranSurah>): List<AyahData> {
+        return allData.entries
+            .sortedBy { it.key }
+            .flatMap { (_, surah) -> surah.ayahs.sortedBy { it.number } }
+    }
+
+    private fun getJuzStartIndex(allAyahs: List<AyahData>, juzNumber: Int): Int {
+        if (juzNumber <= 1) return 0
+        val idx = juzNumber - 2
+        if (idx >= JUZ_CUMULATIVE.size) return allAyahs.size
+        val cumulativeBefore = JUZ_CUMULATIVE[idx]
+        val fraction = cumulativeBefore.toDouble() / HAFS_TOTAL
+        return (fraction * allAyahs.size).toInt().coerceIn(0, allAyahs.size - 1)
+    }
+
+    private fun findExactAyahIndex(allAyahs: List<AyahData>, surah: Int, ayah: Int): Int {
+        return allAyahs.indexOfFirst { it.surahNumber == surah && it.number == ayah }
+    }
+
+    private fun isHafsData(allAyahs: List<AyahData>): Boolean {
+        return allAyahs.size == HAFS_TOTAL
     }
 
     fun getDayAyahs(allData: Map<Int, QuranSurah>, startJuz: Int, totalDays: Int, currentDay: Int): List<AyahData> {
-        if (totalDays <= 0 || currentDay < 0) return emptyList()
-        val boundaries = buildJuzBoundaries(allData)
-        val startRegion = (startJuz - 1).coerceIn(0, boundaries.lastIndex)
-        val regions = boundaries.drop(startRegion)  // each region = a juz
-        if (regions.isEmpty()) return emptyList()
-        if (regions.size == 1) return getAyahsInRegion(allData, regions.first())
-        val totalRegions = regions.size
-        if (totalDays <= totalRegions * 60) {
-            val hizbs = regions.flatMap { splitJuzIntoHizbs(allData, it) }
-            return getDayPortionFromHizbs(allData, hizbs, totalDays, currentDay)
+        if (totalDays <= 0 || currentDay < 0 || currentDay >= totalDays) return emptyList()
+
+        val allAyahs = buildSortedAyahList(allData)
+        val rangeStart = getJuzStartIndex(allAyahs, startJuz)
+        if (rangeStart >= allAyahs.size) return emptyList()
+
+        val remainingJuz = (31 - startJuz).coerceAtLeast(1)
+        val totalHizbs = remainingJuz * 2
+
+        if (totalDays <= remainingJuz) {
+            return getPortionByJuz(allAyahs, startJuz, remainingJuz, totalDays, currentDay)
+        } else if (totalDays <= totalHizbs) {
+            return getPortionByHizb(allAyahs, startJuz, remainingJuz, totalDays, currentDay)
+        } else {
+            return getPortionByAyah(allAyahs, rangeStart, totalDays, currentDay)
         }
-        return getDayPortionFromAyahs(allData, regions, totalDays, currentDay)
     }
 
-    private fun splitJuzIntoHizbs(allData: Map<Int, QuranSurah>, juz: JuzBoundary): List<Pair<Int, Int>> {
-        val ayahsInJuz = getAyahsInRegion(allData, juz)
-        if (ayahsInJuz.isEmpty()) return listOf(juz.startSurah to juz.startAyah)
-        val half = ayahsInJuz.size / 2
-        if (half <= 0) return listOf(juz.startSurah to juz.startAyah)
-        val mid = ayahsInJuz[half]
-        return listOf(
-            juz.startSurah to juz.startAyah,
-            mid.surahNumber to mid.number
-        )
-    }
-
-    private fun getDayPortionFromHizbs(
-        allData: Map<Int, QuranSurah>,
-        hizbs: List<Pair<Int, Int>>,
-        totalDays: Int,
-        currentDay: Int
-    ): List<AyahData> {
-        val allAyahs = allData.entries.sortedBy { it.key }.flatMap { (_, s) ->
-            s.ayahs.sortedBy { it.number }
-        }
-        val hizbAyahIndices = mutableListOf(0)
-        for ((surah, ayah) in hizbs) {
-            val idx = allAyahs.indexOfFirst { it.surahNumber == surah && it.number == ayah }
-            if (idx >= 0) hizbAyahIndices.add(idx)
-        }
-        hizbAyahIndices.add(allAyahs.size)
-        hizbAyahIndices.sort()
-        hizbAyahIndices.distinct()
-        val totalAyat = allAyahs.size
-        val base = totalAyat / totalDays
-        val extra = totalAyat % totalDays
-        val start = currentDay * base + minOf(currentDay, extra)
-        val cnt = base + if (currentDay < extra) 1 else 0
-        val end = (start + cnt).coerceAtMost(totalAyat)
-        return allAyahs.subList(start, end)
-    }
-
-    private fun getDayPortionFromAyahs(
-        allData: Map<Int, QuranSurah>,
-        regions: List<JuzBoundary>,
-        totalDays: Int,
-        currentDay: Int
-    ): List<AyahData> {
-        val totalAyat = getTotalAyat(allData, regions)
-        if (totalAyat == 0) return emptyList()
-        val base = totalAyat / totalDays
-        val extra = totalAyat % totalDays
-        val start = currentDay * base + minOf(currentDay, extra)
-        val cnt = base + if (currentDay < extra) 1 else 0
-        val allAyahs = allData.entries.sortedBy { it.key }.flatMap { (_, s) ->
-            s.ayahs.sortedBy { it.number }
-        }
-        val fromRegion = regions.first()
-        val toRegion = regions.last()
-        val regionStart = allAyahs.indexOfFirst { it.surahNumber == fromRegion.startSurah && it.number == fromRegion.startAyah }.coerceAtLeast(0)
-        val regionEnd = allAyahs.indexOfFirst { it.surahNumber == toRegion.endSurah && it.number >= toRegion.endAyah }.let { idx ->
-            if (idx < 0) allAyahs.size else idx + 1
-        }
-        val inRange = allAyahs.subList(regionStart, regionEnd.coerceAtMost(allAyahs.size))
-        return inRange.subList(
-            start.coerceAtMost(inRange.size - 1),
-            (start + cnt).coerceAtMost(inRange.size)
-        )
-    }
-
-    private fun getTotalAyat(allData: Map<Int, QuranSurah>, regions: List<JuzBoundary>): Int {
-        var count = 0
-        for (r in regions) {
-            for (surahNum in r.startSurah..r.endSurah) {
-                val surah = allData[surahNum] ?: continue
-                val startA = if (surahNum == r.startSurah) r.startAyah else 1
-                val endA = if (surahNum == r.endSurah) r.endAyah else surah.ayahs.lastOrNull()?.number ?: 0
-                count += surah.ayahs.count { it.number in startA..endA }
+    private fun getJuzIndices(allAyahs: List<AyahData>, startJuz: Int, remainingJuz: Int): List<Int> {
+        val indices = mutableListOf<Int>()
+        if (isHafsData(allAyahs)) {
+            for (j in startJuz..(startJuz + remainingJuz - 1)) {
+                val juz = JUZ_BOUNDARIES.find { it.juzNumber == j } ?: continue
+                var idx = findExactAyahIndex(allAyahs, juz.startSurah, juz.startAyah)
+                if (idx < 0) idx = getJuzStartIndex(allAyahs, j)
+                indices.add(idx)
+            }
+        } else {
+            for (j in startJuz..(startJuz + remainingJuz - 1)) {
+                indices.add(getJuzStartIndex(allAyahs, j))
             }
         }
-        return count
+        return indices.distinct().sorted().take(remainingJuz)
+    }
+
+    private fun getPortionByJuz(
+        allAyahs: List<AyahData>,
+        startJuz: Int,
+        remainingJuz: Int,
+        totalDays: Int,
+        currentDay: Int
+    ): List<AyahData> {
+        val juzIndices = getJuzIndices(allAyahs, startJuz, remainingJuz)
+        if (juzIndices.isEmpty()) return emptyList()
+
+        val portions = juzIndices.size
+        val base = portions / totalDays
+        val extra = portions % totalDays
+        val startPortion = currentDay * base + minOf(currentDay, extra)
+        val count = base + if (currentDay < extra) 1 else 0
+
+        val fromIdx = juzIndices[startPortion]
+        val toIdx = if (startPortion + count < juzIndices.size) juzIndices[startPortion + count] else allAyahs.size
+        return allAyahs.subList(fromIdx, toIdx)
+    }
+
+    private fun getHizbIndices(allAyahs: List<AyahData>, startJuz: Int, remainingJuz: Int): List<Int> {
+        val juzIndices = getJuzIndices(allAyahs, startJuz, remainingJuz)
+        val hizbIndices = mutableListOf<Int>()
+        for (i in juzIndices.indices) {
+            val juzStart = juzIndices[i]
+            val juzEnd = if (i + 1 < juzIndices.size) juzIndices[i + 1] else allAyahs.size
+            val juzSize = juzEnd - juzStart
+            val mid = juzStart + juzSize / 2
+            hizbIndices.add(juzStart)
+            hizbIndices.add(mid)
+        }
+        return hizbIndices.distinct().sorted()
+    }
+
+    private fun getPortionByHizb(
+        allAyahs: List<AyahData>,
+        startJuz: Int,
+        remainingJuz: Int,
+        totalDays: Int,
+        currentDay: Int
+    ): List<AyahData> {
+        val hizbIndices = getHizbIndices(allAyahs, startJuz, remainingJuz)
+        if (hizbIndices.isEmpty()) return emptyList()
+
+        val portions = hizbIndices.size
+        val base = portions / totalDays
+        val extra = portions % totalDays
+        val startPortion = currentDay * base + minOf(currentDay, extra)
+        val count = base + if (currentDay < extra) 1 else 0
+
+        val fromIdx = hizbIndices[startPortion]
+        val toIdx = if (startPortion + count < hizbIndices.size) hizbIndices[startPortion + count] else allAyahs.size
+        return allAyahs.subList(fromIdx, toIdx)
+    }
+
+    private fun getPortionByAyah(
+        allAyahs: List<AyahData>,
+        rangeStart: Int,
+        totalDays: Int,
+        currentDay: Int
+    ): List<AyahData> {
+        val rangeSize = allAyahs.size - rangeStart
+        val base = rangeSize / totalDays
+        val extra = rangeSize % totalDays
+        val start = currentDay * base + minOf(currentDay, extra)
+        val count = base + if (currentDay < extra) 1 else 0
+        val fromIdx = rangeStart + start
+        val toIdx = (fromIdx + count).coerceAtMost(allAyahs.size)
+        return allAyahs.subList(fromIdx, toIdx)
     }
 
     fun formatDayRange(startJuz: Int, totalDays: Int, currentDay: Int): String {
         if (totalDays <= 0 || currentDay < 0) return ""
-        val totalJuz = 31 - startJuz
+        val remainingJuz = 31 - startJuz
         val hindiDigits = arrayOf("٠", "١", "٢", "٣", "٤", "٥", "٦", "٧", "٨", "٩")
         val toHindi = { n: Int -> n.toString().map { hindiDigits[it - '0'] }.joinToString("") }
 
-        if (totalDays <= totalJuz * 60) {
-            return "جزء $startJuz فما بعد — ${toHindi(totalDays)} يومًا"
+        if (totalDays <= remainingJuz) {
+            val perDay = remainingJuz / totalDays
+            val remainder = remainingJuz % totalDays
+            val desc = if (perDay > 0) {
+                val parts = mutableListOf<String>()
+                if (perDay >= 1) parts.add("$perDay ${if (perDay == 1) "جزء" else "أجزاء"}")
+                if (remainder > 0) parts.add("و$remainder ${if (remainder == 1) "جزء" else "أجزاء"} الباقي يوزع")
+                parts.joinToString(" ")
+            } else ""
+            return "من الجزء $startJuz إلى ٣٠ — $desc يوميًا لـ${toHindi(totalDays)} يومًا"
+        } else if (totalDays <= remainingJuz * 2) {
+            return "من الجزء $startJuz إلى ٣٠ — أنصاف أجزاء يوميًا لـ${toHindi(totalDays)} يومًا"
+        } else {
+            return "من الجزء $startJuz إلى ٣٠ — ${toHindi(totalDays)} يومًا (آيات)"
         }
-        return ""
     }
 
     fun getAyahsInJuzRange(allData: Map<Int, QuranSurah>, fromJuz: Int, toJuz: Int): List<AyahData> {
@@ -181,21 +223,6 @@ object JuzData {
             val surah = allData[surahNum] ?: continue
             val startA = if (surahNum == from.startSurah) from.startAyah else 1
             val endA = if (surahNum == to.endSurah) to.endAyah else surah.ayahs.lastOrNull()?.number ?: 0
-            surah.ayahs.forEach { ayah ->
-                if (ayah.number in startA..endA) {
-                    result.add(ayah)
-                }
-            }
-        }
-        return result
-    }
-
-    private fun getAyahsInRegion(allData: Map<Int, QuranSurah>, region: JuzBoundary): List<AyahData> {
-        val result = mutableListOf<AyahData>()
-        for (surahNum in region.startSurah..region.endSurah) {
-            val surah = allData[surahNum] ?: continue
-            val startA = if (surahNum == region.startSurah) region.startAyah else 1
-            val endA = if (surahNum == region.endSurah) region.endAyah else surah.ayahs.lastOrNull()?.number ?: 0
             surah.ayahs.forEach { ayah ->
                 if (ayah.number in startA..endA) {
                     result.add(ayah)
@@ -268,5 +295,37 @@ object JuzData {
         } else {
             "من سورة $startSurahName (${toHindi(start.number)}) إلى سورة $endSurahName (${toHindi(end.number)})"
         }
+    }
+
+    private fun getAyahsInRegion(allData: Map<Int, QuranSurah>, region: JuzBoundary): List<AyahData> {
+        val result = mutableListOf<AyahData>()
+        for (surahNum in region.startSurah..region.endSurah) {
+            val surah = allData[surahNum] ?: continue
+            val startA = if (surahNum == region.startSurah) region.startAyah else 1
+            val endA = if (surahNum == region.endSurah) region.endAyah else surah.ayahs.lastOrNull()?.number ?: 0
+            surah.ayahs.forEach { ayah ->
+                if (ayah.number in startA..endA) {
+                    result.add(ayah)
+                }
+            }
+        }
+        return result
+    }
+
+    fun buildJuzBoundaries(allData: Map<Int, QuranSurah>): List<JuzBoundary> {
+        return JUZ_BOUNDARIES
+    }
+
+    private fun getTotalAyat(allData: Map<Int, QuranSurah>, regions: List<JuzBoundary>): Int {
+        var count = 0
+        for (r in regions) {
+            for (surahNum in r.startSurah..r.endSurah) {
+                val surah = allData[surahNum] ?: continue
+                val startA = if (surahNum == r.startSurah) r.startAyah else 1
+                val endA = if (surahNum == r.endSurah) r.endAyah else surah.ayahs.lastOrNull()?.number ?: 0
+                count += surah.ayahs.count { it.number in startA..endA }
+            }
+        }
+        return count
     }
 }
