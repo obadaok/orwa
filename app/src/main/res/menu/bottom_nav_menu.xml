@@ -10,14 +10,10 @@
         android:title="المصحف" />
     <item
         android:id="@+id/nav_khatma"
-        android:icon="@drawable/ic_bookmark"
+        android:icon="@drawable/ic_khatmah"
         android:title="الختمات" />
     <item
-        android:id="@+id/nav_favorites"
-        android:icon="@drawable/ic_favorites"
-        android:title="المفضلة" />
-    <item
-        android:id="@+id/nav_stats"
-        android:icon="@drawable/ic_statistics"
-        android:title="الإحصائيات" />
+        android:id="@+id/nav_menu"
+        android:icon="@drawable/ic_menu"
+        android:title="القائمة" />
 </menu>

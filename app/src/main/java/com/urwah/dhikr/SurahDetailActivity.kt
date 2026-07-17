@@ -4,12 +4,7 @@ import android.app.AlertDialog
 import android.content.Context
 import android.content.Intent
 import android.content.res.Configuration
-import android.graphics.Bitmap
-import android.graphics.Canvas
 import android.graphics.Color
-import android.graphics.Paint
-import android.graphics.Typeface
-import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.os.Handler
@@ -142,7 +137,12 @@ class SurahDetailActivity : AppCompatActivity() {
         }
 
         findViewById<ImageButton>(R.id.btnAutoScroll).setOnClickListener {
-            showAutoScrollDialog()
+            if (isAutoScrolling) {
+                stopAutoScroll()
+                updateAutoScrollButton(false)
+            } else {
+                showAutoScrollDialog()
+            }
         }
 
         // findViewById<ImageButton>(R.id.btnViewMode).setOnClickListener {
@@ -202,9 +202,7 @@ class SurahDetailActivity : AppCompatActivity() {
             }
         }
 
-        findViewById<ImageButton>(R.id.btnShareSurah).setOnClickListener {
-            shareSurahAsImage()
-        }
+        // Share feature removed
     }
 
     override fun onPause() {
@@ -776,6 +774,7 @@ class SurahDetailActivity : AppCompatActivity() {
         if (isAutoScrolling) return
         isAutoScrolling = true
         autoScrollGeneration++
+        updateAutoScrollButton(true)
 
         autoScrollRunnable = object : Runnable {
             private var lastTime = System.nanoTime()
@@ -824,154 +823,31 @@ class SurahDetailActivity : AppCompatActivity() {
     private fun stopAutoScroll() {
         isAutoScrolling = false
         autoScrollRunnable = null
+        updateAutoScrollButton(false)
+    }
+
+    private fun updateAutoScrollButton(isPlaying: Boolean) {
+        val btn = findViewById<ImageButton>(R.id.btnAutoScroll)
+        val targetRes = if (isPlaying) R.drawable.ic_scroll_pause else R.drawable.ic_scroll_play
+        btn.animate().alpha(0f).setDuration(150).withEndAction {
+            btn.setImageResource(targetRes)
+            btn.animate().alpha(1f).setDuration(150).start()
+        }.start()
     }
 
 
 
-    private fun shareSurahAsImage() {
-        val ayahColor = if (isDark) Color.parseColor("#e8e0d6") else Color.parseColor("#5E4B40")
-        val bgColor = if (isDark) Color.parseColor("#1e1e1e") else Color.parseColor("#FFF8F0")
-        val accentColor = Color.parseColor("#8B6F5E")
-        val uthmanicTypeface = ResourcesCompat.getFont(this, QuranDataLoader.getUthmanicFontRes(this))
-        val alyamamaTypeface = ResourcesCompat.getFont(this, R.font.alyamama)
 
-        val lineHeight = 52f
-        val textSize = 28f
-        val width = 1080
-        val padding = 60
-        val contentWidth = width - padding * 2
-
-        val lines = mutableListOf<Pair<String, Int>>()
-        lines.add(surahInfo.nameArabic to 0)
-        lines.add("" to 0)
-        if (surahNumber != 9) {
-            lines.add(basmalaText to 1)
-            lines.add("" to 0)
-        }
-        for (ayah in ayahs) {
-            val parts = splitTextForWidth(ayah.text, uthmanicTypeface, textSize, contentWidth)
-            parts.forEach { p -> lines.add(p to 1) }
-            lines.add("${toArabicAyahNum(ayah.number)}" to 2)
-        }
-        lines.add("" to 0)
-        lines.add("عبر تطبيق عروة" to 3)
-
-        val cardPad = 50
-        val headerHeight = 60
-        val totalContentHeight = lines.size * lineHeight + headerHeight + 80
-        val cardHeight = totalContentHeight.coerceAtLeast(400f)
-
-        val borderSize = 4
-        val cornerRadius = 24f
-        val shadowRadius = 40
-
-        val fullWidth = (width + borderSize * 2 + shadowRadius * 2).toFloat()
-        val fullHeight = (cardHeight + borderSize * 2 + shadowRadius * 2).toFloat()
-
-        val bitmap = Bitmap.createBitmap(fullWidth.toInt(), fullHeight.toInt(), Bitmap.Config.ARGB_8888)
-        val canvas = Canvas(bitmap)
-        canvas.drawColor(Color.TRANSPARENT)
-
-        val shadowPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            color = Color.argb(40, 0, 0, 0)
-            setShadowLayer(24f, 6f, 6f, Color.argb(60, 0, 0, 0))
-        }
-        canvas.drawRoundRect(
-            (shadowRadius).toFloat(),
-            (shadowRadius).toFloat(),
-            (fullWidth - shadowRadius).toFloat(),
-            (fullHeight - shadowRadius).toFloat(),
-            cornerRadius, cornerRadius, shadowPaint
-        )
-        canvas.drawRoundRect(
-            (shadowRadius).toFloat(),
-            (shadowRadius).toFloat(),
-            (fullWidth - shadowRadius).toFloat(),
-            (fullHeight - shadowRadius).toFloat(),
-            cornerRadius, cornerRadius, Paint(Paint.ANTI_ALIAS_FLAG).apply {
-                color = accentColor
-            }
-        )
-
-        val cardLeft = (shadowRadius + borderSize).toFloat()
-        val cardTop = (shadowRadius + borderSize).toFloat()
-        val cardRight = (fullWidth - shadowRadius - borderSize).toFloat()
-        val cardBottom = (fullHeight - shadowRadius - borderSize).toFloat()
-        val cardPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = bgColor }
-        canvas.drawRoundRect(cardLeft, cardTop, cardRight, cardBottom, cornerRadius - 2, cornerRadius - 2, cardPaint)
-
-        val paint = Paint(Paint.ANTI_ALIAS_FLAG)
-        paint.color = ayahColor
-        paint.textSize = textSize
-
-        var y = cardTop + headerHeight + 20
-        for ((text, type) in lines) {
-            if (text.isEmpty()) { y += lineHeight * 0.5f; continue }
-            paint.typeface = when (type) {
-                0 -> alyamamaTypeface
-                1 -> uthmanicTypeface
-                2 -> alyamamaTypeface
-                else -> alyamamaTypeface
-            }
-            paint.textSize = when (type) {
-                0 -> textSize + 6
-                2 -> textSize - 6
-                else -> textSize
-            }
-            paint.color = when (type) {
-                3 -> Color.parseColor("#999999")
-                else -> ayahColor
-            }
-            paint.textAlign = Paint.Align.CENTER
-            val x = fullWidth / 2f
-            canvas.drawText(text, x, y, paint)
-            y += lineHeight
-        }
-
-        val cacheDir = cacheDir
-        val file = java.io.File(cacheDir, "urwah_share_${surahNumber}.png")
-        file.outputStream().use { bitmap.compress(Bitmap.CompressFormat.PNG, 100, it) }
-        val uri = Uri.fromFile(file)
-
-        val shareIntent = Intent(Intent.ACTION_SEND).apply {
-            type = "image/png"
-            putExtra(Intent.EXTRA_STREAM, uri)
-            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-        }
-        startActivity(Intent.createChooser(shareIntent, "مشاركة السورة"))
-    }
-
-    private fun splitTextForWidth(text: String, typeface: Typeface?, textSize: Float, maxWidth: Int): List<String> {
-        if (typeface == null) return listOf(text)
-        val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            this.typeface = typeface
-            this.textSize = textSize
-        }
-        if (paint.measureText(text) <= maxWidth) return listOf(text)
-        val lines = mutableListOf<String>()
-        var remaining = text
-        while (remaining.isNotEmpty()) {
-            var end = remaining.length
-            while (end > 0 && paint.measureText(remaining.substring(0, end)) > maxWidth) end--
-            if (end <= 0) break
-            lines.add(remaining.substring(0, end))
-            remaining = remaining.substring(end)
-        }
-        return lines
-    }
-
-    private fun toArabicAyahNum(num: Int): String {
-        val digits = arrayOf("٠", "١", "٢", "٣", "٤", "٥", "٦", "٧", "٨", "٩")
-        return "﴿${num.toString().map { digits[it - '0'] }.joinToString("")}﴾"
-    }
 
     private fun addNextSurahButton() {
         val btn = Button(this).apply {
             text = "السورة التالية"
+            compoundDrawablePadding = dpToPx(8f)
+            setCompoundDrawablesWithIntrinsicBounds(0, 0, R.drawable.ic_next_surah, 0)
             typeface = ResourcesCompat.getFont(this@SurahDetailActivity, R.font.alyamama)
             textSize = 15f
             setTextColor(Color.WHITE)
-            setBackgroundResource(R.drawable.bg_primary_button)
+            setBackgroundResource(R.drawable.bg_button_next_surah)
             layoutParams = LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT, dpToPx(48f)
             ).apply {

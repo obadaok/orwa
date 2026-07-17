@@ -15,6 +15,9 @@ data class Khatma(
     val createdAt: Long = System.currentTimeMillis(),
     val lastSurah: Int = -1,
     val lastAyah: Int = -1,
+    val lastScrollOffset: Int = -1,
+    val endOfWirdSurah: Int = -1,
+    val endOfWirdAyah: Int = -1,
     val color: Int = -1
 ) {
     companion object {
@@ -49,6 +52,9 @@ object KhatmaManager {
                 createdAt = obj.optLong("createdAt", 0L),
                 lastSurah = obj.optInt("lastSurah", -1),
                 lastAyah = obj.optInt("lastAyah", -1),
+                lastScrollOffset = obj.optInt("lastScrollOffset", -1),
+                endOfWirdSurah = obj.optInt("endOfWirdSurah", -1),
+                endOfWirdAyah = obj.optInt("endOfWirdAyah", -1),
                 color = obj.optInt("color", -1)
             )
         }
@@ -72,11 +78,20 @@ object KhatmaManager {
         }
     }
 
-    fun updatePosition(context: Context, id: String, surah: Int, ayah: Int) {
+    fun updatePosition(context: Context, id: String, surah: Int, ayah: Int, scrollOffset: Int = -1) {
         val list = getAll(context).toMutableList()
         val idx = list.indexOfFirst { it.id == id }
         if (idx >= 0) {
-            list[idx] = list[idx].copy(lastSurah = surah, lastAyah = ayah)
+            list[idx] = list[idx].copy(lastSurah = surah, lastAyah = ayah, lastScrollOffset = scrollOffset)
+            save(context, list)
+        }
+    }
+
+    fun updateEndOfWird(context: Context, id: String, surah: Int, ayah: Int) {
+        val list = getAll(context).toMutableList()
+        val idx = list.indexOfFirst { it.id == id }
+        if (idx >= 0) {
+            list[idx] = list[idx].copy(endOfWirdSurah = surah, endOfWirdAyah = ayah)
             save(context, list)
         }
     }
@@ -100,6 +115,9 @@ object KhatmaManager {
             obj.put("createdAt", k.createdAt)
             obj.put("lastSurah", k.lastSurah)
             obj.put("lastAyah", k.lastAyah)
+            obj.put("lastScrollOffset", k.lastScrollOffset)
+            obj.put("endOfWirdSurah", k.endOfWirdSurah)
+            obj.put("endOfWirdAyah", k.endOfWirdAyah)
             obj.put("color", k.color)
             arr.put(obj)
         }

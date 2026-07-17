@@ -40,4 +40,10 @@
         android:name="com.urwah.dhikr.fragments.SettingsFragment"
         android:label="الإعدادات"
         tools:layout="@layout/fragment_settings" />
+
+    <fragment
+        android:id="@+id/nav_dua"
+        android:name="com.urwah.dhikr.fragments.DuaFragment"
+        android:label="الأدعية"
+        tools:layout="@layout/fragment_dua" />
 </navigation>

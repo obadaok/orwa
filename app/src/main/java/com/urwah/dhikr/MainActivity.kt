@@ -5,11 +5,13 @@ import android.os.Bundle
 import android.widget.Button
 import android.widget.TextView
 import android.view.LayoutInflater
+import android.view.View
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.navigation.fragment.NavHostFragment
 import com.google.android.material.bottomnavigation.BottomNavigationView
 import com.urwah.dhikr.databinding.ActivityMainBinding
+
 
 class MainActivity : AppCompatActivity() {
 
@@ -24,6 +26,7 @@ class MainActivity : AppCompatActivity() {
         NotificationHelper.createChannel(this)
 
         val navView: BottomNavigationView = binding.bottomNav
+        val circularMenu = binding.circularMenu
         val navHostFragment = supportFragmentManager
             .findFragmentById(R.id.nav_host_fragment) as NavHostFragment
         val navController = navHostFragment.navController
@@ -35,8 +38,43 @@ class MainActivity : AppCompatActivity() {
             .build()
 
         navView.setOnItemSelectedListener { item ->
+            if (item.itemId == R.id.nav_menu) {
+                if (circularMenu.visibility == View.VISIBLE) {
+                    circularMenu.hide()
+                } else {
+                    circularMenu.show()
+                }
+                return@setOnItemSelectedListener false
+            }
+            val currentDest = navController.currentDestination?.id
+            if (currentDest == item.itemId) return@setOnItemSelectedListener false
+            if (circularMenu.visibility == View.VISIBLE) {
+                circularMenu.hide()
+            }
             navController.navigate(item.itemId, null, navAnimOptions)
             true
+        }
+
+        circularMenu.addMenuItem(R.drawable.ic_search, "بحث") {
+            val navFragment = supportFragmentManager.findFragmentById(R.id.nav_host_fragment)
+            val childFragment = navFragment?.childFragmentManager?.fragments?.firstOrNull()
+            if (childFragment is SearchableFragment) {
+                childFragment.showSearch()
+            } else {
+                navController.navigate(R.id.nav_home, null, navAnimOptions)
+            }
+        }
+        circularMenu.addMenuItem(R.drawable.ic_favorites, "المفضلة") {
+            navController.navigate(R.id.nav_favorites, null, navAnimOptions)
+        }
+        circularMenu.addMenuItem(R.drawable.ic_statistics, "الإحصائيات") {
+            navController.navigate(R.id.nav_stats, null, navAnimOptions)
+        }
+        circularMenu.addMenuItem(R.drawable.ic_dua, "الأدعية") {
+            navController.navigate(R.id.nav_dua, null, navAnimOptions)
+        }
+        circularMenu.addMenuItem(R.drawable.ic_settings, "الإعدادات") {
+            navController.navigate(R.id.nav_settings, null, navAnimOptions)
         }
 
         checkConsent()

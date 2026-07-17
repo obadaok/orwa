@@ -43,9 +43,6 @@ class KhatmaFragment : Fragment() {
         view.findViewById<ImageButton>(R.id.btnAddKhatma).setOnClickListener {
             showAddKhatmaDialog()
         }
-        view.findViewById<ImageView>(R.id.iv_settings_khatma).setOnClickListener {
-            findNavController().navigate(R.id.nav_settings)
-        }
 
         refreshList()
     }

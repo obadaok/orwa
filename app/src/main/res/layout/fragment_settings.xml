@@ -453,7 +453,7 @@
                         android:layout_marginVertical="14dp"
                         android:background="@color/urwah_shadow_faint" />
 
-                    <!-- سورة الكهف (الجمعة) -->
+                    <!-- سورة الكهف -->
                     <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
@@ -478,7 +478,7 @@
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
                                 android:fontFamily="@font/alyamama"
-                                android:text="سورة الكهف (الجمعة)"
+                                android:text="سورة الكهف"
                                 android:textColor="@color/urwah_thread_dark"
                                 android:textSize="15sp" />
 
@@ -504,6 +504,79 @@
                             app:thumbTint="@color/selector_switch_thumb"
                             app:trackTint="@color/selector_switch_track" />
                     </LinearLayout>
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+        </FrameLayout>
+
+        <!-- بطاقة إبقاء الشاشة قيد التشغيل -->
+        <FrameLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="14dp">
+
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:background="@drawable/bg_dhikr_shadow_rect" />
+
+            <com.google.android.material.card.MaterialCardView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="5dp"
+                android:layout_marginBottom="5dp"
+                app:cardCornerRadius="14dp"
+                app:cardElevation="0dp"
+                app:strokeWidth="2dp"
+                app:strokeColor="@color/urwah_thread_dark"
+                app:cardBackgroundColor="@color/card_background"
+                app:contentPadding="16dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal">
+
+                    <ImageView
+                        android:layout_width="26dp"
+                        android:layout_height="26dp"
+                        android:layout_marginStart="14dp"
+                        android:src="@drawable/ic_wb_sunny_black_24dp"
+                        android:tint="@color/urwah_thread_brown"
+                        android:contentDescription="إبقاء الشاشة قيد التشغيل" />
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:layout_marginStart="12dp"
+                        android:orientation="vertical">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:fontFamily="@font/alyamama"
+                            android:text="إبقاء الشاشة قيد التشغيل"
+                            android:textColor="@color/urwah_thread_dark"
+                            android:textSize="16sp"
+                            android:textStyle="bold" />
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="2dp"
+                            android:fontFamily="@font/alyamama"
+                            android:text="لا تنطفئ الشاشة أثناء القراءة"
+                            android:textColor="@color/urwah_thread_brown"
+                            android:textSize="13sp" />
+                    </LinearLayout>
+
+                    <androidx.appcompat.widget.SwitchCompat
+                        android:id="@+id/switch_keep_screen_on"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        app:thumbTint="@color/selector_switch_thumb"
+                        app:trackTint="@color/selector_switch_track" />
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
         </FrameLayout>

@@ -35,9 +35,6 @@ class StatsFragment : Fragment() {
         val completedToday = prefs.getInt("completed_today", 0)
         val favoriteCount = FavoritesManager.getAllFavorites().size
 
-        root.findViewById<ImageView>(R.id.iv_settings_stats).setOnClickListener {
-            findNavController().navigate(R.id.nav_settings)
-        }
         root.findViewById<TextView>(R.id.tv_total_completed).text =
             "إجمالي الإكمالات: $totalCompleted"
         root.findViewById<TextView>(R.id.tv_completed_today).text =

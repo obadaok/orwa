@@ -24,7 +24,7 @@ import com.urwah.dhikr.SurahDataProvider
 import com.urwah.dhikr.SurahDetailActivity
 import com.urwah.dhikr.databinding.FragmentQuranBinding
 
-class QuranFragment : Fragment() {
+class QuranFragment : Fragment(), com.urwah.dhikr.SearchableFragment {
 
     private var _binding: FragmentQuranBinding? = null
     private val binding get() = _binding!!
@@ -68,7 +68,6 @@ class QuranFragment : Fragment() {
         binding.rvSurahs.adapter = adapter
 
         setupSearch()
-        setupTopbarIcons()
     }
 
     override fun onResume() {
@@ -110,7 +109,6 @@ class QuranFragment : Fragment() {
     }
 
     private fun setupSearch() {
-        binding.ivSearchIcon.setOnClickListener { showSearch() }
         binding.ivSearchClose.setOnClickListener { hideSearch() }
         binding.layoutSearchOverlay.setOnClickListener { hideSearch() }
 
@@ -139,7 +137,7 @@ class QuranFragment : Fragment() {
         })
     }
 
-    private fun showSearch() {
+    override fun showSearch() {
         binding.layoutSearchOverlay.visibility = View.VISIBLE
         binding.etSearch.requestFocus()
         val imm = requireContext().getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
@@ -152,12 +150,6 @@ class QuranFragment : Fragment() {
         val imm = requireContext().getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
         imm.hideSoftInputFromWindow(binding.etSearch.windowToken, 0)
         adapter?.updateList(allSurahs)
-    }
-
-    private fun setupTopbarIcons() {
-        binding.ivSettingsQuran.setOnClickListener {
-            findNavController().navigate(R.id.nav_settings)
-        }
     }
 
     private fun filterSurahs(query: String) {

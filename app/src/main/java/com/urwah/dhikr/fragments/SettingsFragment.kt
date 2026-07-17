@@ -70,6 +70,7 @@ class SettingsFragment : Fragment() {
 
         setupDarkMode(prefs)
         setupVibration(prefs)
+        setupKeepScreenOn(prefs)
 
         setupReminder(
             switchView = binding.switchMorning,
@@ -338,6 +339,26 @@ class SettingsFragment : Fragment() {
         return String.format("%02d:%02d %s", h, minute, ampm)
     }
 
+    private fun setupKeepScreenOn(prefs: SharedPreferences) {
+        val enabled = prefs.getBoolean(KEY_KEEP_SCREEN_ON, false)
+        binding.switchKeepScreenOn.isChecked = enabled
+        applyKeepScreenOn(enabled)
+        binding.switchKeepScreenOn.setOnCheckedChangeListener { _, isChecked ->
+            prefs.edit().putBoolean(KEY_KEEP_SCREEN_ON, isChecked).apply()
+            applyKeepScreenOn(isChecked)
+        }
+    }
+
+    private fun applyKeepScreenOn(enabled: Boolean) {
+        requireActivity().window?.let { window ->
+            if (enabled) {
+                window.addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+            } else {
+                window.clearFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+            }
+        }
+    }
+
     override fun onDestroyView() {
         super.onDestroyView()
         _binding = null
@@ -346,5 +367,6 @@ class SettingsFragment : Fragment() {
     companion object {
         private const val KEY_DARK_MODE = "dark_mode_enabled"
         private const val KEY_VIBRATION = "vibration_enabled"
+        private const val KEY_KEEP_SCREEN_ON = "keep_screen_on"
     }
 }

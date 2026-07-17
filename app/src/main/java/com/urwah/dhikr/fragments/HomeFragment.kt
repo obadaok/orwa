@@ -26,7 +26,7 @@ import com.urwah.dhikr.DhikrListAdapter
 import com.urwah.dhikr.R
 import com.urwah.dhikr.databinding.FragmentHomeBinding
 
-class HomeFragment : Fragment() {
+class HomeFragment : Fragment(), com.urwah.dhikr.SearchableFragment {
 
     private var _binding: FragmentHomeBinding? = null
     private val binding get() = _binding!!
@@ -71,7 +71,6 @@ class HomeFragment : Fragment() {
 
         setupCenterFocusEffect()
         setupSearch()
-        setupTopbarIcons()
     }
 
     private fun setupCenterFocusEffect() {
@@ -98,14 +97,7 @@ class HomeFragment : Fragment() {
         }
     }
 
-    private fun setupTopbarIcons() {
-        binding.ivSettings.setOnClickListener {
-            findNavController().navigate(R.id.nav_settings)
-        }
-    }
-
     private fun setupSearch() {
-        binding.ivSearchIcon.setOnClickListener { showSearch() }
         binding.ivSearchClose.setOnClickListener { hideSearch() }
         binding.layoutSearchOverlay.setOnClickListener { hideSearch() }
 
@@ -125,7 +117,7 @@ class HomeFragment : Fragment() {
         })
     }
 
-    private fun showSearch() {
+    override fun showSearch() {
         isSearchVisible = true
         binding.layoutSearchOverlay.visibility = View.VISIBLE
         binding.etSearch.requestFocus()

@@ -1,23 +1,71 @@
 <?xml version="1.0" encoding="utf-8"?>
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/urwah_carousel_bg">
+    android:background="@color/urwah_background">
 
-    <!-- قائمة التصنيفات - سكرول عمودي بتأثير تركيز مركزي -->
     <androidx.recyclerview.widget.RecyclerView
-        android:id="@+id/rv_categories"
+        android:id="@+id/rv_duas"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:clipToPadding="false"
-        android:clipChildren="false"
-        android:paddingTop="100dp"
-        android:paddingBottom="90dp" />
+        android:paddingTop="64dp"
+        android:paddingBottom="24dp"
+        android:paddingHorizontal="16dp" />
 
-    <!-- تم إزالة أيقونات الإعدادات والبحث - تستخدم من القائمة الدائرية -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="56dp"
+        android:layout_gravity="top"
+        android:background="@color/urwah_nav_bg"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:paddingHorizontal="8dp">
 
-    <!-- لوحة البحث المنبثقة المركزية -->
+        <ImageView
+            android:id="@+id/ivBack"
+            android:layout_width="44dp"
+            android:layout_height="44dp"
+            android:src="@drawable/ic_arrow_back"
+            android:tint="@color/urwah_thread_dark"
+            android:contentDescription="رجوع"
+            android:clickable="true"
+            android:focusable="true"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:padding="10dp" />
+
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:gravity="center"
+            android:fontFamily="@font/alyamama"
+            android:text="الأدعية"
+            android:textColor="@color/urwah_thread_dark"
+            android:textSize="20sp"
+            android:textStyle="bold" />
+
+        <ImageView
+            android:id="@+id/iv_search_icon"
+            android:layout_width="44dp"
+            android:layout_height="44dp"
+            android:src="@drawable/ic_search"
+            android:tint="@color/urwah_thread_dark"
+            android:contentDescription="بحث"
+            android:clickable="true"
+            android:focusable="true"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:padding="10dp"
+            android:visibility="visible" />
+    </LinearLayout>
+
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:layout_gravity="top"
+        android:layout_marginTop="56dp"
+        android:background="@color/urwah_shadow_faint" />
+
     <FrameLayout
         android:id="@+id/layout_search_overlay"
         android:layout_width="match_parent"
@@ -31,7 +79,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_gravity="top"
-            android:layout_marginTop="90dp"
+            android:layout_marginTop="64dp"
             android:layout_marginHorizontal="28dp"
             android:orientation="vertical"
             android:background="@drawable/bg_search_panel"
@@ -52,7 +100,7 @@
                     android:layout_weight="1"
                     android:background="@android:color/transparent"
                     android:fontFamily="@font/alyamama"
-                    android:hint="ابحث عن ذكر..."
+                    android:hint="ابحث في الأدعية..."
                     android:gravity="end|center_vertical"
                     android:inputType="text"
                     android:maxLines="1"

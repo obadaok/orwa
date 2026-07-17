@@ -131,7 +131,12 @@ class KhatmaReadingActivity : AppCompatActivity() {
         }
 
         findViewById<ImageButton>(R.id.btnAutoScroll).setOnClickListener {
-            showAutoScrollDialog()
+            if (isAutoScrolling) {
+                stopAutoScroll()
+                updateAutoScrollButton(false)
+            } else {
+                showAutoScrollDialog()
+            }
         }
     }
 
@@ -153,9 +158,10 @@ class KhatmaReadingActivity : AppCompatActivity() {
     private fun saveScrollPosition() {
         if (khatmaId.isEmpty() || currentDayAyahs.isEmpty() || containerAyahs.childCount == 0) return
         val idx = findVisibleAyahIndex()
+        val scrollOffset = scrollView.scrollY
         if (idx >= 0 && idx < currentDayAyahs.size) {
             val ayah = currentDayAyahs[idx]
-            KhatmaManager.updatePosition(this, khatmaId, ayah.surahNumber, ayah.number)
+            KhatmaManager.updatePosition(this, khatmaId, ayah.surahNumber, ayah.number, scrollOffset)
         }
     }
 
@@ -363,6 +369,11 @@ class KhatmaReadingActivity : AppCompatActivity() {
                 isFocusable = true
                 setOnClickListener {
                     isDayCompleted = true
+                    val lastIdx = findVisibleAyahIndex()
+                    if (lastIdx >= 0 && lastIdx < currentDayAyahs.size) {
+                        val last = currentDayAyahs[lastIdx]
+                        KhatmaManager.updateEndOfWird(this@KhatmaReadingActivity, khatmaId, last.surahNumber, last.number)
+                    }
                     rebuildCompletionUI(section)
                 }
             }
@@ -373,6 +384,17 @@ class KhatmaReadingActivity : AppCompatActivity() {
     }
 
     private fun scrollToSavedPosition() {
+        val khatmas = KhatmaManager.getAll(this)
+        val khatma = khatmas.find { it.id == khatmaId }
+        val savedOffset = khatma?.lastScrollOffset ?: -1
+
+        if (savedOffset > 0) {
+            scrollView.post {
+                scrollView.scrollTo(0, savedOffset.coerceAtLeast(0))
+            }
+            return
+        }
+
         if (savedSurah < 0 || savedAyah < 0 || currentDayAyahs.isEmpty()) return
         val targetIdx = JuzData.findAyahIndexInRange(currentDayAyahs, savedSurah, savedAyah)
         if (targetIdx < 0) return
@@ -538,6 +560,7 @@ class KhatmaReadingActivity : AppCompatActivity() {
         if (isAutoScrolling) return
         isAutoScrolling = true
         autoScrollGeneration++
+        updateAutoScrollButton(true)
 
         autoScrollRunnable = object : Runnable {
             private var lastTime = System.nanoTime()
@@ -586,6 +609,16 @@ class KhatmaReadingActivity : AppCompatActivity() {
     private fun stopAutoScroll() {
         isAutoScrolling = false
         autoScrollRunnable = null
+        updateAutoScrollButton(false)
+    }
+
+    private fun updateAutoScrollButton(isPlaying: Boolean) {
+        val btn = findViewById<ImageButton>(R.id.btnAutoScroll)
+        val targetRes = if (isPlaying) R.drawable.ic_scroll_pause else R.drawable.ic_scroll_play
+        btn.animate().alpha(0f).setDuration(150).withEndAction {
+            btn.setImageResource(targetRes)
+            btn.animate().alpha(1f).setDuration(150).start()
+        }.start()
     }
 
     private fun toHindiDigits(number: Int): String {
