@@ -21,7 +21,7 @@ import android.widget.Button
 import android.widget.ImageButton
 import android.widget.ImageView
 import android.widget.LinearLayout
-import android.widget.ProgressBar
+import android.widget.SeekBar
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
@@ -35,7 +35,7 @@ class KhatmaReadingActivity : AppCompatActivity() {
     private lateinit var containerAyahs: LinearLayout
     private lateinit var tvKhatmaTitle: TextView
     private lateinit var tvProgress: TextView
-    private lateinit var readingProgress: ProgressBar
+    private lateinit var readingProgress: SeekBar
     private var allQuran = mapOf<Int, QuranSurah>()
     private var khatmaId = ""
     private var currentDay = 0
@@ -55,6 +55,7 @@ class KhatmaReadingActivity : AppCompatActivity() {
     private var khatmaAyahOffsets: List<Pair<Int, Int>>? = null
     private var toastHelper: JuzHizbToastHelper? = null
     private var allAyahsFlat: List<AyahData> = emptyList()
+    private var khatmaRiwaya: String = "hafs"
     private val quranPrefs by lazy {
         getSharedPreferences("urwah_quran", Context.MODE_PRIVATE)
     }
@@ -103,6 +104,18 @@ class KhatmaReadingActivity : AppCompatActivity() {
             }
         }
 
+        readingProgress.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+            override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
+                if (!fromUser) return
+                val content = scrollView.getChildAt(0) ?: return
+                val maxScroll = (content.height - scrollView.height).coerceAtLeast(0)
+                val targetY = (progress * maxScroll / 1000).coerceIn(0, maxScroll)
+                scrollView.scrollTo(0, targetY)
+            }
+            override fun onStartTrackingTouch(seekBar: SeekBar?) {}
+            override fun onStopTrackingTouch(seekBar: SeekBar?) {}
+        })
+
         val khatmas = KhatmaManager.getAll(this)
         val khatma = khatmas.find { it.id == khatmaId }
         tvKhatmaTitle.text = khatma?.name ?: "ختمة من الجزء $startJuz"
@@ -115,7 +128,8 @@ class KhatmaReadingActivity : AppCompatActivity() {
             onBackPressedDispatcher.onBackPressed()
         }
 
-        allQuran = QuranDataLoader.load(this)
+        khatmaRiwaya = khatma?.riwaya ?: QuranDataLoader.getQiraat(this)
+        allQuran = if (khatmaRiwaya == "warsh") QuranDataLoader.loadWarsh(this) else QuranDataLoader.loadHafs(this)
         allAyahsFlat = allQuran.entries
             .sortedBy { it.key }
             .flatMap { (_, s) -> s.ayahs.sortedBy { it.number } }
@@ -143,7 +157,9 @@ class KhatmaReadingActivity : AppCompatActivity() {
     override fun onPause() {
         super.onPause()
         stopAutoScroll()
-        saveScrollPosition()
+        if (!isFinishing) {
+            saveScrollPosition()
+        }
     }
 
     override fun onBackPressed() {
@@ -191,7 +207,7 @@ class KhatmaReadingActivity : AppCompatActivity() {
 
     private fun renderKhatma() {
         containerAyahs.removeAllViews()
-        val uthmanicTypeface = ResourcesCompat.getFont(this, QuranDataLoader.getUthmanicFontRes(this))
+        val uthmanicTypeface = ResourcesCompat.getFont(this, if (khatmaRiwaya == "warsh") R.font.uthmanic_warsh else R.font.uthmanic_hafs)
         val ayahColor = if (isDark) Color.parseColor("#e8e0d6") else Color.parseColor("#5E4B40")
         val dividerColor = Color.parseColor("#1A8B6F5E")
         val singleLineMode = quranPrefs.getBoolean("ayah_single_line", true)
@@ -388,14 +404,20 @@ class KhatmaReadingActivity : AppCompatActivity() {
         val khatma = khatmas.find { it.id == khatmaId }
         val savedOffset = khatma?.lastScrollOffset ?: -1
 
+        // أول مرة في هذا الورد → ابقَ في البداية
+        if (savedSurah < 0 || savedAyah < 0) return
+
+        // استخدم Scroll Offset المحفوظ مع ضبط الحدود
         if (savedOffset > 0) {
             scrollView.post {
-                scrollView.scrollTo(0, savedOffset.coerceAtLeast(0))
+                val content = scrollView.getChildAt(0)
+                val maxScroll = ((content?.height ?: 0) - scrollView.height).coerceAtLeast(0)
+                scrollView.scrollTo(0, savedOffset.coerceIn(0, maxScroll))
             }
             return
         }
 
-        if (savedSurah < 0 || savedAyah < 0 || currentDayAyahs.isEmpty()) return
+        if (currentDayAyahs.isEmpty()) return
         val targetIdx = JuzData.findAyahIndexInRange(currentDayAyahs, savedSurah, savedAyah)
         if (targetIdx < 0) return
         scheduleScrollToIndex(targetIdx, 5)
@@ -444,9 +466,9 @@ class KhatmaReadingActivity : AppCompatActivity() {
 
     private fun addSurahSeparator(surahNumber: Int) {
         val surahName = JuzData.findSurahNameForAyah(surahNumber)
-        val displayName = "سُورَةُ $surahName"
+        val displayName = "سورة $surahName"
         val textColor = if (isDark) Color.parseColor("#e8e0d6") else Color.parseColor("#5E4B40")
-        val uthmanicTypeface = ResourcesCompat.getFont(this, QuranDataLoader.getUthmanicFontRes(this))
+        val uthmanicTypeface = ResourcesCompat.getFont(this, if (khatmaRiwaya == "warsh") R.font.uthmanic_warsh else R.font.uthmanic_hafs)
 
         val separator = LayoutInflater.from(this).inflate(R.layout.item_surah_separator, containerAyahs, false)
         separator.findViewById<TextView>(R.id.tvSeparatorName).apply {
@@ -460,6 +482,7 @@ class KhatmaReadingActivity : AppCompatActivity() {
         } else {
             tvBasmala.visibility = View.VISIBLE
             tvBasmala.text = "بِسۡمِ ٱللَّهِ ٱلرَّحۡمَٰنِ ٱلرَّحِيمِ"
+            tvBasmala.typeface = uthmanicTypeface
         }
         containerAyahs.addView(separator)
 

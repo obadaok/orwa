@@ -25,44 +25,16 @@
         android:paddingHorizontal="24dp"
         android:paddingVertical="18dp">
 
-        <!-- صف علوي: زخرفة - اسم السورة - زخرفة -->
-        <LinearLayout
+        <!-- اسم السورة -->
+        <TextView
+            android:id="@+id/tvSeparatorName"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:gravity="center_vertical"
-            android:orientation="horizontal">
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginEnd="8dp"
-                android:fontFamily="@font/uthmanic_hafs"
-                android:text="﴾"
-                android:textColor="@color/urwah_thread_dark"
-                android:textSize="26sp"
-                android:textStyle="bold" />
-
-            <TextView
-                android:id="@+id/tvSeparatorName"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:fontFamily="@font/uthmanic_hafs"
-                android:gravity="center"
-                android:textColor="@color/urwah_thread_dark"
-                android:textSize="24sp"
-                android:textStyle="bold" />
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginStart="8dp"
-                android:fontFamily="@font/uthmanic_hafs"
-                android:text="﴿"
-                android:textColor="@color/urwah_thread_dark"
-                android:textSize="26sp"
-                android:textStyle="bold" />
-
-        </LinearLayout>
+            android:fontFamily="@font/alyamama"
+            android:gravity="center"
+            android:textColor="@color/urwah_thread_dark"
+            android:textSize="22sp"
+            android:textStyle="bold" />
 
         <!-- خط فاصل مزخرف: شرطة - معين - شرطة -->
         <LinearLayout

@@ -42,7 +42,9 @@
                     android:fontFamily="@font/alyamama"
                     android:textColor="@color/urwah_thread_dark"
                     android:textSize="15sp"
-                    android:textStyle="bold" />
+                    android:textStyle="bold"
+                    android:maxLines="2"
+                    android:ellipsize="end" />
 
                 <TextView
                     android:id="@+id/tvDuaItemSource"
@@ -59,7 +61,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="8dp"
-                android:fontFamily="@font/uthmanic_hafs"
+                android:fontFamily="@font/alyamama"
                 android:textColor="@color/urwah_thread_dark"
                 android:textSize="20sp"
                 android:gravity="center"

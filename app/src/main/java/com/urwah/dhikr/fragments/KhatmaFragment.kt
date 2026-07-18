@@ -8,6 +8,8 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.Button
+import android.widget.EditText
+import android.widget.FrameLayout
 import android.widget.ImageButton
 import android.widget.ImageView
 import android.widget.NumberPicker
@@ -101,11 +103,45 @@ class KhatmaFragment : Fragment() {
         dialog.show()
     }
 
+    private var selectedRiwaya: String = "hafs"
+
+    private fun selectRiwaya(card: FrameLayout, tv: TextView, isSelected: Boolean) {
+        if (isSelected) {
+            card.setBackgroundResource(R.drawable.bg_primary_button)
+            tv.setTextColor(android.graphics.Color.WHITE)
+            tv.text = "${if (card.id == R.id.cardRiwayaWarsh) "ورش" else "حفص"} ✓"
+        } else {
+            card.setBackgroundResource(R.drawable.bg_segment_unselected)
+            tv.setTextColor(android.graphics.Color.parseColor("#5E4B40"))
+            tv.text = if (card.id == R.id.cardRiwayaWarsh) "ورش" else "حفص"
+        }
+    }
+
     private fun showAddKhatmaDialog() {
         val view = LayoutInflater.from(requireContext()).inflate(R.layout.dialog_khatma_setup, null)
+        val etName = view.findViewById<EditText>(R.id.etKhatmaName)
         val juzPicker = view.findViewById<NumberPicker>(R.id.pickerStartJuz)
         val dayPicker = view.findViewById<NumberPicker>(R.id.pickerDays)
         val tvWird = view.findViewById<TextView>(R.id.tvWirdPreview)
+        val cardHafs = view.findViewById<FrameLayout>(R.id.cardRiwayaHafs)
+        val cardWarsh = view.findViewById<FrameLayout>(R.id.cardRiwayaWarsh)
+        val tvHafs = view.findViewById<TextView>(R.id.tvRiwayaHafs)
+        val tvWarsh = view.findViewById<TextView>(R.id.tvRiwayaWarsh)
+
+        selectedRiwaya = "hafs"
+        selectRiwaya(cardHafs, tvHafs, true)
+        selectRiwaya(cardWarsh, tvWarsh, false)
+
+        cardHafs.setOnClickListener {
+            selectedRiwaya = "hafs"
+            selectRiwaya(cardHafs, tvHafs, true)
+            selectRiwaya(cardWarsh, tvWarsh, false)
+        }
+        cardWarsh.setOnClickListener {
+            selectedRiwaya = "warsh"
+            selectRiwaya(cardWarsh, tvWarsh, true)
+            selectRiwaya(cardHafs, tvHafs, false)
+        }
 
         juzPicker.minValue = 1
         juzPicker.maxValue = 30
@@ -134,13 +170,16 @@ class KhatmaFragment : Fragment() {
         view.findViewById<Button>(R.id.btnCreateKhatma).setOnClickListener {
             val juz = juzPicker.value
             val days = dayPicker.value
-            val remainingJuz = 31 - juz
-            val desc = when {
-                days <= remainingJuz -> "أجزاء"
-                days <= remainingJuz * 2 -> "أنصاف أجزاء"
-                else -> "آيات"
+            val name = etName.text.toString().trim()
+            val finalName = if (name.isNotEmpty()) name else {
+                val remainingJuz = 31 - juz
+                when {
+                    days <= remainingJuz -> "ختمة أجزاء من ج$juz"
+                    days <= remainingJuz * 2 -> "ختمة أنصاف من ج$juz"
+                    else -> "ختمة $days يومًا من ج$juz"
+                }
             }
-            val khatma = Khatma(name = "ختمة $desc من ج$juz", startJuz = juz, totalDays = days, color = Khatma.pickColor(juz))
+            val khatma = Khatma(name = finalName, startJuz = juz, totalDays = days, color = Khatma.pickColor(juz), riwaya = selectedRiwaya)
             KhatmaManager.add(requireContext(), khatma)
             dialog.dismiss()
             refreshList()

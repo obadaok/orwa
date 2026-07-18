@@ -1,0 +1,5 @@
+<shape xmlns:android="http://schemas.android.com/apk/res/android">
+    <solid android:color="@color/urwah_background" />
+    <stroke android:width="1.5dp" android:color="@color/urwah_thread_dark" />
+    <corners android:radius="8dp" />
+</shape>

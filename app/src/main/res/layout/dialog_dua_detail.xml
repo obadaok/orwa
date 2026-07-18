@@ -62,7 +62,7 @@
                     android:id="@+id/tvDuaDetailArabic"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:fontFamily="@font/uthmanic_hafs"
+                    android:fontFamily="@font/alyamama"
                     android:textColor="@color/urwah_thread_dark"
                     android:textSize="26sp"
                     android:gravity="center"

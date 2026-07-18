@@ -77,7 +77,7 @@ class DuaFragment : Fragment(), com.urwah.dhikr.SearchableFragment {
     }
 
     private fun filterDuas(query: String) {
-        val results = DuaDataProvider.search(query)
+        val results = DuaDataProvider.searchDuas(query)
         adapter?.updateList(if (query.isBlank()) allGroupedDuas else results)
     }
 

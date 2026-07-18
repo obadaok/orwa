@@ -92,13 +92,19 @@
 
     </LinearLayout>
 
-    <ProgressBar
+    <SeekBar
         android:id="@+id/readingProgress"
-        style="?android:attr/progressBarStyleHorizontal"
         android:layout_width="match_parent"
-        android:layout_height="3dp"
+        android:layout_height="wrap_content"
         android:layout_gravity="bottom"
         android:max="1000"
-        android:progressDrawable="@drawable/progress_bar_reading" />
+        android:progressDrawable="@drawable/seekbar_progress"
+        android:thumb="@drawable/seekbar_thumb"
+        android:thumbOffset="8dp"
+        android:paddingHorizontal="2dp"
+        android:paddingTop="2dp"
+        android:paddingBottom="4dp"
+        android:splitTrack="false"
+        android:thumbTint="@null" />
 
 </FrameLayout>

@@ -18,7 +18,8 @@ data class Khatma(
     val lastScrollOffset: Int = -1,
     val endOfWirdSurah: Int = -1,
     val endOfWirdAyah: Int = -1,
-    val color: Int = -1
+    val color: Int = -1,
+    val riwaya: String = "hafs"
 ) {
     companion object {
         val PALETTE = listOf(
@@ -55,7 +56,8 @@ object KhatmaManager {
                 lastScrollOffset = obj.optInt("lastScrollOffset", -1),
                 endOfWirdSurah = obj.optInt("endOfWirdSurah", -1),
                 endOfWirdAyah = obj.optInt("endOfWirdAyah", -1),
-                color = obj.optInt("color", -1)
+                color = obj.optInt("color", -1),
+                riwaya = obj.optString("riwaya", "hafs")
             )
         }
     }
@@ -72,7 +74,10 @@ object KhatmaManager {
         if (idx >= 0) {
             list[idx] = list[idx].copy(
                 currentDay = day,
-                isActive = day < list[idx].totalDays
+                isActive = day < list[idx].totalDays,
+                lastSurah = -1,
+                lastAyah = -1,
+                lastScrollOffset = -1
             )
             save(context, list)
         }
@@ -119,6 +124,7 @@ object KhatmaManager {
             obj.put("endOfWirdSurah", k.endOfWirdSurah)
             obj.put("endOfWirdAyah", k.endOfWirdAyah)
             obj.put("color", k.color)
+            obj.put("riwaya", k.riwaya)
             arr.put(obj)
         }
         prefs(context).edit().putString(KEY_KHATMAS, arr.toString()).apply()

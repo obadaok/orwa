@@ -1,134 +1,325 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:background="@drawable/bg_surah_header_box"
-    android:orientation="vertical"
-    android:padding="20dp">
-
-    <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_gravity="center"
-        android:fontFamily="@font/alyamama"
-        android:text="إعداد ختمة جديدة"
-        android:textColor="@color/urwah_thread_dark"
-        android:textSize="18sp"
-        android:textStyle="bold" />
-
-    <View
-        android:layout_width="48dp"
-        android:layout_height="2dp"
-        android:layout_gravity="center"
-        android:layout_marginVertical="10dp"
-        android:background="@color/urwah_thread_brown" />
-
-    <TextView
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:fontFamily="@font/alyamama"
-        android:text="البدء من الجزء:"
-        android:textColor="@color/urwah_thread_dark"
-        android:textSize="14sp"
-        android:textStyle="bold" />
-
-    <NumberPicker
-        android:id="@+id/pickerStartJuz"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:descendantFocusability="blocksDescendants"
-        android:theme="@style/NumberPickerTheme" />
-
-    <View
-        android:layout_width="match_parent"
-        android:layout_height="1dp"
-        android:layout_marginVertical="6dp"
-        android:background="@color/urwah_shadow_faint" />
-
-    <TextView
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:fontFamily="@font/alyamama"
-        android:text="مدة الختمة (بالأيام):"
-        android:textColor="@color/urwah_thread_dark"
-        android:textSize="14sp"
-        android:textStyle="bold" />
-
-    <NumberPicker
-        android:id="@+id/pickerDays"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:descendantFocusability="blocksDescendants"
-        android:theme="@style/NumberPickerTheme" />
-
-    <View
-        android:layout_width="match_parent"
-        android:layout_height="1dp"
-        android:layout_marginVertical="6dp"
-        android:background="@color/urwah_shadow_faint" />
+    android:fillViewport="true">
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:background="@color/urwah_background"
-        android:gravity="center"
+        android:background="@drawable/bg_surah_header_box"
         android:orientation="vertical"
-        android:padding="12dp">
-
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:fontFamily="@font/alyamama"
-            android:text="الورد اليومي"
-            android:textColor="@color/urwah_thread_light"
-            android:textSize="12sp" />
-
-        <TextView
-            android:id="@+id/tvWirdPreview"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="2dp"
-            android:fontFamily="@font/alyamama"
-            android:textColor="@color/urwah_thread_brown"
-            android:textSize="18sp"
-            android:textStyle="bold" />
-
-    </LinearLayout>
-
-        <View
-            android:layout_width="match_parent"
-            android:layout_height="1dp"
-            android:layout_marginVertical="6dp"
-            android:background="@color/urwah_shadow_faint" />
+        android:padding="16dp">
 
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:gravity="center">
+            android:gravity="center"
+            android:orientation="vertical"
+            android:paddingBottom="14dp">
 
-            <Button
-                android:id="@+id/btnCreateKhatma"
-                android:layout_width="0dp"
-                android:layout_height="44dp"
-                android:layout_weight="1"
-                android:layout_marginEnd="6dp"
-                android:background="@drawable/bg_primary_button"
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
                 android:fontFamily="@font/alyamama"
-                android:text="ابدأ الختمة"
-                android:textColor="@android:color/white"
-                android:textSize="14sp" />
+                android:text="إعداد ختمة جديدة"
+                android:textColor="@color/urwah_thread_dark"
+                android:textSize="20sp"
+                android:textStyle="bold" />
+
+            <View
+                android:layout_width="56dp"
+                android:layout_height="4dp"
+                android:layout_marginTop="8dp"
+                android:background="@color/urwah_thread_brown" />
+        </LinearLayout>
+
+        <FrameLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content">
+
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:layout_marginStart="4dp"
+                android:layout_marginTop="4dp"
+                android:background="@color/urwah_thread_dark" />
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:background="@color/urwah_background"
+                android:orientation="vertical"
+                android:padding="10dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:fontFamily="@font/alyamama"
+                    android:text="اسم الختمة (اختياري)"
+                    android:textColor="@color/urwah_thread_dark"
+                    android:textSize="13sp"
+                    android:textStyle="bold" />
+
+                <EditText
+                    android:id="@+id/etKhatmaName"
+                    android:layout_width="match_parent"
+                    android:layout_height="44dp"
+                    android:layout_marginTop="6dp"
+                    android:background="@drawable/bg_edit_text"
+                    android:fontFamily="@font/alyamama"
+                    android:gravity="center"
+                    android:hint="ختمتي الأولى"
+                    android:inputType="text"
+                    android:paddingHorizontal="12dp"
+                    android:textColor="@color/urwah_thread_dark"
+                    android:textColorHint="@color/urwah_thread_light"
+                    android:textSize="15sp" />
+            </LinearLayout>
+        </FrameLayout>
+
+        <FrameLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp">
+
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:layout_marginStart="4dp"
+                android:layout_marginTop="4dp"
+                android:background="@color/urwah_thread_dark" />
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:background="@color/urwah_background"
+                android:orientation="vertical"
+                android:padding="10dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:fontFamily="@font/alyamama"
+                    android:text="الرواية"
+                    android:textColor="@color/urwah_thread_dark"
+                    android:textSize="13sp"
+                    android:textStyle="bold" />
+
+                <LinearLayout
+                    android:id="@+id/llRiwayaContainer"
+                    android:layout_width="match_parent"
+                    android:layout_height="48dp"
+                    android:layout_marginTop="8dp"
+                    android:orientation="horizontal"
+                    android:gravity="center">
+
+                    <FrameLayout
+                        android:id="@+id/cardRiwayaHafs"
+                        android:layout_width="0dp"
+                        android:layout_height="match_parent"
+                        android:layout_weight="1"
+                        android:layout_marginEnd="4dp"
+                        android:background="@drawable/bg_segment_unselected"
+                        android:clickable="true"
+                        android:focusable="true">
+
+                        <TextView
+                            android:id="@+id/tvRiwayaHafs"
+                            android:layout_width="match_parent"
+                            android:layout_height="match_parent"
+                            android:fontFamily="@font/alyamama"
+                            android:gravity="center"
+                            android:text="حفص"
+                            android:textColor="@color/urwah_thread_dark"
+                            android:textSize="14sp"
+                            android:textStyle="bold" />
+                    </FrameLayout>
+
+                    <FrameLayout
+                        android:id="@+id/cardRiwayaWarsh"
+                        android:layout_width="0dp"
+                        android:layout_height="match_parent"
+                        android:layout_weight="1"
+                        android:layout_marginStart="4dp"
+                        android:background="@drawable/bg_segment_unselected"
+                        android:clickable="true"
+                        android:focusable="true">
+
+                        <TextView
+                            android:id="@+id/tvRiwayaWarsh"
+                            android:layout_width="match_parent"
+                            android:layout_height="match_parent"
+                            android:fontFamily="@font/alyamama"
+                            android:gravity="center"
+                            android:text="ورش"
+                            android:textColor="@color/urwah_thread_dark"
+                            android:textSize="14sp"
+                            android:textStyle="bold" />
+                    </FrameLayout>
+
+                </LinearLayout>
+            </LinearLayout>
+        </FrameLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:orientation="horizontal">
+
+            <FrameLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="5dp"
+                android:layout_weight="1">
+
+                <View
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:layout_marginStart="4dp"
+                    android:layout_marginTop="4dp"
+                    android:background="@color/urwah_thread_dark" />
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:background="@color/urwah_background"
+                    android:orientation="vertical"
+                    android:padding="10dp">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:fontFamily="@font/alyamama"
+                        android:text="البدء من الجزء"
+                        android:textColor="@color/urwah_thread_dark"
+                        android:textSize="13sp"
+                        android:textStyle="bold" />
+
+                    <NumberPicker
+                        android:id="@+id/pickerStartJuz"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="4dp"
+                        android:descendantFocusability="blocksDescendants"
+                        android:theme="@style/NumberPickerTheme" />
+                </LinearLayout>
+            </FrameLayout>
+
+            <FrameLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="5dp"
+                android:layout_weight="1">
+
+                <View
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:layout_marginStart="4dp"
+                    android:layout_marginTop="4dp"
+                    android:background="@color/urwah_thread_dark" />
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:background="@color/urwah_background"
+                    android:orientation="vertical"
+                    android:padding="10dp">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:fontFamily="@font/alyamama"
+                        android:text="المدة (أيام)"
+                        android:textColor="@color/urwah_thread_dark"
+                        android:textSize="13sp"
+                        android:textStyle="bold" />
+
+                    <NumberPicker
+                        android:id="@+id/pickerDays"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="4dp"
+                        android:descendantFocusability="blocksDescendants"
+                        android:theme="@style/NumberPickerTheme" />
+                </LinearLayout>
+            </FrameLayout>
+        </LinearLayout>
+
+        <FrameLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="14dp">
+
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:layout_marginStart="5dp"
+                android:layout_marginTop="5dp"
+                android:background="@color/urwah_thread_brown" />
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:background="@color/urwah_thread_dark"
+                android:gravity="center"
+                android:orientation="vertical"
+                android:padding="14dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:fontFamily="@font/alyamama"
+                    android:text="الورد اليومي"
+                    android:textColor="@color/urwah_thread_light"
+                    android:textSize="12sp" />
+
+                <TextView
+                    android:id="@+id/tvWirdPreview"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:fontFamily="@font/alyamama"
+                    android:textColor="@android:color/white"
+                    android:textSize="22sp"
+                    android:textStyle="bold" />
+            </LinearLayout>
+        </FrameLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:gravity="center"
+            android:orientation="horizontal">
 
             <Button
                 android:id="@+id/btnCancelKhatma"
                 android:layout_width="0dp"
-                android:layout_height="44dp"
+                android:layout_height="48dp"
+                android:layout_marginEnd="6dp"
                 android:layout_weight="1"
-                android:layout_marginStart="6dp"
                 android:background="@drawable/bg_secondary_button"
                 android:fontFamily="@font/alyamama"
                 android:text="إلغاء"
                 android:textColor="@color/urwah_thread_dark"
-                android:textSize="14sp" />
+                android:textSize="14sp"
+                android:textStyle="bold" />
+
+            <Button
+                android:id="@+id/btnCreateKhatma"
+                android:layout_width="0dp"
+                android:layout_height="48dp"
+                android:layout_marginStart="6dp"
+                android:layout_weight="1"
+                android:background="@drawable/bg_primary_button"
+                android:fontFamily="@font/alyamama"
+                android:text="ابدأ الختمة"
+                android:textColor="@android:color/white"
+                android:textSize="14sp"
+                android:textStyle="bold" />
         </LinearLayout>
-</LinearLayout>
+
+    </LinearLayout>
+</ScrollView>
