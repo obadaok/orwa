@@ -257,7 +257,7 @@ object JuzData {
         return result
     }
 
-    fun buildJuzBoundaries(allData: Map<Int, QuranSurah>): List<JuzBoundary> {
+    fun buildJuzBoundaries(): List<JuzBoundary> {
         return JUZ_BOUNDARIES
     }
 

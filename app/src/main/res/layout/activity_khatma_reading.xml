@@ -10,12 +10,14 @@
         android:orientation="vertical">
 
         <LinearLayout
+            android:id="@+id/topToolbar"
             android:layout_width="match_parent"
             android:layout_height="56dp"
             android:background="@color/urwah_nav_bg"
             android:gravity="center_vertical"
             android:orientation="horizontal"
-            android:paddingHorizontal="8dp">
+            android:paddingHorizontal="8dp"
+            android:animateLayoutChanges="true">
 
             <ImageButton
                 android:id="@+id/btnBack"
@@ -38,14 +40,31 @@
                 android:textSize="16sp"
                 android:textStyle="bold" />
 
-            <TextView
-                android:id="@+id/tvProgress"
+            <LinearLayout
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginEnd="4dp"
-                android:fontFamily="@font/alyamama"
-                android:textColor="@color/urwah_thread_brown"
-                android:textSize="14sp" />
+                android:gravity="center"
+                android:orientation="vertical">
+
+                <TextView
+                    android:id="@+id/tvProgress"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginEnd="4dp"
+                    android:fontFamily="@font/alyamama"
+                    android:textColor="@color/urwah_thread_brown"
+                    android:textSize="14sp" />
+
+                <TextView
+                    android:id="@+id/tvTimeRemaining"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginEnd="4dp"
+                    android:fontFamily="@font/alyamama"
+                    android:textColor="@color/urwah_thread_light"
+                    android:textSize="11sp"
+                    android:visibility="gone" />
+            </LinearLayout>
 
             <ImageButton
                 android:id="@+id/btnAutoScroll"
@@ -90,21 +109,45 @@
             </LinearLayout>
         </androidx.core.widget.NestedScrollView>
 
+        <View
+            android:id="@+id/bottomDivider"
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:background="@color/urwah_shadow_faint" />
+
     </LinearLayout>
 
-    <SeekBar
-        android:id="@+id/readingProgress"
+    <FrameLayout
+        android:id="@+id/progressContainer"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_gravity="bottom"
-        android:max="1000"
-        android:progressDrawable="@drawable/seekbar_progress"
-        android:thumb="@drawable/seekbar_thumb"
-        android:thumbOffset="8dp"
         android:paddingHorizontal="2dp"
         android:paddingTop="2dp"
         android:paddingBottom="4dp"
-        android:splitTrack="false"
-        android:thumbTint="@null" />
+        android:animateLayoutChanges="true">
+
+        <SeekBar
+            android:id="@+id/readingProgress"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:max="1000"
+            android:progressDrawable="@drawable/seekbar_progress"
+            android:thumb="@drawable/seekbar_thumb"
+            android:thumbOffset="10dp"
+            android:paddingHorizontal="2dp"
+            android:paddingTop="4dp"
+            android:paddingBottom="4dp"
+            android:splitTrack="false"
+            android:thumbTint="@null" />
+
+        <FrameLayout
+            android:id="@+id/progressMarkers"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:clickable="false"
+            android:focusable="false"
+            android:paddingHorizontal="4dp" />
+    </FrameLayout>
 
 </FrameLayout>

@@ -18,6 +18,7 @@ object HapticUtil {
 
     fun perform(context: Context, view: View? = null) {
         if (!isEnabled(context)) return
+        @Suppress("DEPRECATION")
         val vibrator = context.getSystemService(Context.VIBRATOR_SERVICE) as? Vibrator
 
         if (vibrator != null && vibrator.hasVibrator()) {

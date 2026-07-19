@@ -18,6 +18,7 @@ class JuzHizbToastHelper(private val context: Context, allAyahs: List<AyahData>)
     private val handler = Handler(Looper.getMainLooper())
     private var lastIdx = -1
     private var activeToast: Toast? = null
+    private var lastToastTime = 0L
 
     init {
         val hindi = arrayOf("٠", "١", "٢", "٣", "٤", "٥", "٦", "٧", "٨", "٩")
@@ -33,7 +34,8 @@ class JuzHizbToastHelper(private val context: Context, allAyahs: List<AyahData>)
 
             pts.add(Point(si, "الجزء ${h(juz.juzNumber)}", "الحزب ${h(juz.juzNumber * 2 - 1)}", h(juz.juzNumber)))
 
-            listOf(n / 4 to "ربع", n / 2 to "نصف", 3 * n / 4 to "ثلاثة أرباع").forEachIndexed { i, (off, who) ->
+            val quarters = listOf(n / 4 to "ربع", n / 2 to "نصف", 3 * n / 4 to "ثلاثة أرباع")
+            quarters.forEachIndexed { i, (off, who) ->
                 val ai = si + off
                 if (ai > si && ai < ei) {
                     val hib = if (i == 0) juz.juzNumber * 2 - 1 else juz.juzNumber * 2
@@ -54,6 +56,10 @@ class JuzHizbToastHelper(private val context: Context, allAyahs: List<AyahData>)
     }
 
     private fun showToast(title: String, label: String, icon: String) {
+        val now = System.currentTimeMillis()
+        if (now - lastToastTime < 1500) return
+        lastToastTime = now
+
         activeToast?.cancel()
         val v = LayoutInflater.from(context).inflate(R.layout.toast_hizb_notification, null)
         v.findViewById<TextView>(R.id.tvToastTitle).text = title
@@ -62,6 +68,7 @@ class JuzHizbToastHelper(private val context: Context, allAyahs: List<AyahData>)
 
         val t = Toast(context).apply {
             duration = Toast.LENGTH_LONG
+            @Suppress("DEPRECATION")
             view = v
             setGravity(Gravity.TOP or Gravity.CENTER_HORIZONTAL, 0, 120)
         }

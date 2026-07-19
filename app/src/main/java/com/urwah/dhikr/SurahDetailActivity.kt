@@ -16,6 +16,7 @@ import android.view.Gravity
 import android.view.LayoutInflater
 import android.view.MotionEvent
 import android.view.View
+import android.view.WindowManager
 import android.view.ViewGroup
 import android.widget.Button
 import android.widget.EditText
@@ -104,6 +105,10 @@ class SurahDetailActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_surah_detail)
 
+        if (quranPrefs.getBoolean("keep_screen_on", false)) {
+            window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        }
+
         val surahName = intent.getStringExtra("SURAH_NAME") ?: "العاديات"
         val lastAyah = intent.getIntExtra("LAST_AYAH", -1)
         isKhatmaMode = intent.getBooleanExtra("KHATMA_MODE", false)
@@ -113,7 +118,7 @@ class SurahDetailActivity : AppCompatActivity() {
         val data = QuranDataLoader.getSurah(this, surahNumber)
         ayahs = data?.ayahs ?: emptyList()
 
-        val displayName = buildSurahDisplayName(surahNumber, surahName)
+        val displayName = buildSurahDisplayName(surahName)
         surahInfo = SurahInfo(
             number = surahNumber,
             nameArabic = displayName,
@@ -159,7 +164,7 @@ class SurahDetailActivity : AppCompatActivity() {
         containerAyahs = findViewById(R.id.containerAyahs)
         isDark = isDarkMode()
         ayahRowMap = mutableMapOf()
-        renderAyahsInSingleCard(containerAyahs, ayahs, surahInfo.number, isDark)
+        renderAyahsInSingleCard(containerAyahs, ayahs, isDark)
 
         if (!isKhatmaMode && surahNumber < 114) {
             addNextSurahButton()
@@ -247,11 +252,11 @@ class SurahDetailActivity : AppCompatActivity() {
                 Configuration.UI_MODE_NIGHT_YES
     }
 
-    private fun buildSurahDisplayName(surahNumber: Int, surahName: String): String {
+    private fun buildSurahDisplayName(surahName: String): String {
         return "سُورَةُ $surahName"
     }
 
-    private fun renderAyahsInSingleCard(container: LinearLayout, ayahs: List<AyahData>, surahNumber: Int, isDark: Boolean) {
+    private fun renderAyahsInSingleCard(container: LinearLayout, ayahs: List<AyahData>, isDark: Boolean) {
         container.removeAllViews()
         val uthmanicTypeface = ResourcesCompat.getFont(this, QuranDataLoader.getUthmanicFontRes(this))
         val ayahColor = if (isDark) Color.parseColor("#e8e0d6") else Color.parseColor("#5E4B40")
@@ -321,7 +326,7 @@ class SurahDetailActivity : AppCompatActivity() {
         } else {
             val sb = SpannableStringBuilder()
             val ayahOffsets = mutableListOf<Pair<Int, Int>>()
-            ayahs.forEachIndexed { index, ayah ->
+            ayahs.forEachIndexed { _, ayah ->
                 val start = sb.length
                 sb.append("${ayah.text} ${toHindiDigits(ayah.number)}")
                 uthmanicTypeface?.let {
@@ -442,7 +447,6 @@ class SurahDetailActivity : AppCompatActivity() {
 
     private fun showAddBookmarkDialog(ayahNumber: Int) {
         val ayah = ayahs.find { it.number == ayahNumber } ?: return
-        val existingBookmarks = BookmarkManager.getBySurah(this, surahInfo.number)
         val allBookmarks = BookmarkManager.getAll(this)
 
         val builder = AlertDialog.Builder(this)
@@ -549,7 +553,6 @@ class SurahDetailActivity : AppCompatActivity() {
     private fun updateColorSelection(container: LinearLayout, selectedIndex: Int) {
         for (i in 0 until container.childCount) {
             val childContainer = container.getChildAt(i) as? LinearLayout ?: continue
-            val inner = childContainer.getChildAt(0)
             val isSelected = i == selectedIndex
             val pad = if (isSelected) dpToPx(4f) else 0
             childContainer.setPadding(pad, pad, pad, pad)
@@ -633,13 +636,13 @@ class SurahDetailActivity : AppCompatActivity() {
         val idx = ayahs.indexOfFirst { it.number == ayahNumber }
         if (idx < 0 || idx >= offsets.size) return
         val (start, _) = offsets[idx]
-        scrollView.post {
-            tv.post {
-                val layout = tv.layout ?: return@post
-                if (start >= layout.text.length) return@post
+        scrollView.post outer@{
+            tv.post inner@{
+                val layout = tv.layout ?: return@inner
+                if (start >= layout.text.length) return@inner
                 val line = layout.getLineForOffset(start)
                 val targetY = tv.top + layout.getLineTop(line)
-                val scrollContent = scrollView.getChildAt(0) ?: return@post
+                val scrollContent = scrollView.getChildAt(0) ?: return@inner
                 var p = tv.parent
                 var offset = targetY
                 while (p is View && p != scrollContent) {
@@ -872,6 +875,7 @@ class SurahDetailActivity : AppCompatActivity() {
         }
         startActivity(intent)
         finish()
+        @Suppress("DEPRECATION")
         overridePendingTransition(android.R.anim.fade_in, android.R.anim.fade_out)
     }
 

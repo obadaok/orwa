@@ -11,13 +11,14 @@ import android.os.Handler
 import android.os.Looper
 import android.text.SpannableStringBuilder
 import android.text.Spanned
-import android.text.style.RelativeSizeSpan
 import android.view.Gravity
 import android.view.LayoutInflater
 import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
+import android.view.WindowManager
 import android.widget.Button
+import android.widget.FrameLayout
 import android.widget.ImageButton
 import android.widget.ImageView
 import android.widget.LinearLayout
@@ -35,7 +36,11 @@ class KhatmaReadingActivity : AppCompatActivity() {
     private lateinit var containerAyahs: LinearLayout
     private lateinit var tvKhatmaTitle: TextView
     private lateinit var tvProgress: TextView
+    private lateinit var tvTimeRemaining: TextView
     private lateinit var readingProgress: SeekBar
+    private lateinit var progressMarkers: FrameLayout
+    private lateinit var topToolbar: View
+    private lateinit var progressContainer: View
     private var allQuran = mapOf<Int, QuranSurah>()
     private var khatmaId = ""
     private var currentDay = 0
@@ -56,6 +61,10 @@ class KhatmaReadingActivity : AppCompatActivity() {
     private var toastHelper: JuzHizbToastHelper? = null
     private var allAyahsFlat: List<AyahData> = emptyList()
     private var khatmaRiwaya: String = "hafs"
+    private var singleLineMode = true
+    private var isUiHidden = false
+    private var savedScrollY = -1
+
     private val quranPrefs by lazy {
         getSharedPreferences("urwah_quran", Context.MODE_PRIVATE)
     }
@@ -73,35 +82,25 @@ class KhatmaReadingActivity : AppCompatActivity() {
 
         tvKhatmaTitle = findViewById(R.id.tvKhatmaTitle)
         tvProgress = findViewById(R.id.tvProgress)
+        tvTimeRemaining = findViewById(R.id.tvTimeRemaining)
         scrollView = findViewById(R.id.scrollView)
         containerAyahs = findViewById(R.id.containerAyahs)
         readingProgress = findViewById(R.id.readingProgress)
+        progressMarkers = findViewById(R.id.progressMarkers)
+        topToolbar = findViewById(R.id.topToolbar)
+        progressContainer = findViewById(R.id.progressContainer)
+        singleLineMode = quranPrefs.getBoolean("ayah_single_line", true)
+
+        // Keep screen on
+        applyKeepScreenOnIfEnabled()
 
         scrollView.setOnScrollChangeListener { _, _, scrollY, _, _ ->
             val contentHeight = scrollView.getChildAt(0)?.height ?: return@setOnScrollChangeListener
             val viewportHeight = scrollView.height
             val maxScroll = (contentHeight - viewportHeight).coerceAtLeast(1)
             readingProgress.progress = (scrollY * 1000 / maxScroll).coerceIn(0, 1000)
-            if (currentDayAyahs.isNotEmpty()) {
-                var visibleGlobalIdx = -1
-                val singleLine = true
-                if (singleLine) {
-                    for (i in 0 until containerAyahs.childCount) {
-                        val child = containerAyahs.getChildAt(i)
-                        if (child.visibility != View.VISIBLE) continue
-                        if (child.tag is Int && child.top >= scrollY) {
-                            val ayah = currentDayAyahs.getOrNull(child.tag as Int)
-                            if (ayah != null) {
-                                visibleGlobalIdx = allAyahsFlat.indexOfFirst { it.surahNumber == ayah.surahNumber && it.number == ayah.number }
-                            }
-                            break
-                        }
-                    }
-                }
-                if (visibleGlobalIdx >= 0) {
-                    toastHelper?.onPositionReached(visibleGlobalIdx)
-                }
-            }
+            updateTimeRemaining(scrollY, maxScroll)
+            findAndNotifyPosition(scrollY)
         }
 
         readingProgress.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
@@ -137,21 +136,47 @@ class KhatmaReadingActivity : AppCompatActivity() {
         loadDayAyahs()
         renderKhatma()
 
+        // Touch listener: stop auto-scroll + detect tap for UI toggle
+        var touchDownX = 0f
+        var touchDownY = 0f
+        var touchDownTime = 0L
         scrollView.setOnTouchListener { _, event ->
-            if (isAutoScrolling && event.action == MotionEvent.ACTION_MOVE) {
-                stopAutoScroll()
+            when (event.action) {
+                MotionEvent.ACTION_DOWN -> {
+                    touchDownX = event.x
+                    touchDownY = event.y
+                    touchDownTime = System.currentTimeMillis()
+                    if (isAutoScrolling) {
+                        savedScrollY = scrollView.scrollY
+                        stopAutoScroll()
+                    }
+                }
+                MotionEvent.ACTION_UP -> {
+                    val dx = abs(event.x - touchDownX)
+                    val dy = abs(event.y - touchDownY)
+                    val dt = System.currentTimeMillis() - touchDownTime
+                    if (dx < 20f && dy < 20f && dt < 300L) {
+                        toggleUiVisibility()
+                    }
+                }
             }
             false
         }
 
         findViewById<ImageButton>(R.id.btnAutoScroll).setOnClickListener {
             if (isAutoScrolling) {
+                savedScrollY = scrollView.scrollY
                 stopAutoScroll()
                 updateAutoScrollButton(false)
             } else {
                 showAutoScrollDialog()
             }
         }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        applyKeepScreenOnIfEnabled()
     }
 
     override fun onPause() {
@@ -165,6 +190,65 @@ class KhatmaReadingActivity : AppCompatActivity() {
     override fun onBackPressed() {
         saveScrollPosition()
         super.onBackPressed()
+    }
+
+    private fun applyKeepScreenOnIfEnabled() {
+        val enabled = quranPrefs.getBoolean("keep_screen_on", false)
+        if (enabled) {
+            window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        } else {
+            window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        }
+    }
+
+    private fun toggleUiVisibility() {
+        isUiHidden = !isUiHidden
+        val targetAlpha = if (isUiHidden) 0f else 1f
+        val duration = 250L
+
+        topToolbar.animate().alpha(targetAlpha).setDuration(duration).start()
+        progressContainer.animate().alpha(targetAlpha).setDuration(duration).start()
+        findViewById<View>(R.id.bottomDivider).animate().alpha(targetAlpha).setDuration(duration).start()
+    }
+
+    private fun findAndNotifyPosition(scrollY: Int) {
+        if (currentDayAyahs.isEmpty()) return
+        var visibleGlobalIdx = -1
+
+        if (singleLineMode) {
+            for (i in 0 until containerAyahs.childCount) {
+                val child = containerAyahs.getChildAt(i)
+                if (child.visibility != View.VISIBLE) continue
+                if (child.tag is Int && child.top >= scrollY) {
+                    val ayah = currentDayAyahs.getOrNull(child.tag as Int)
+                    if (ayah != null) {
+                        visibleGlobalIdx = allAyahsFlat.indexOfFirst {
+                            it.surahNumber == ayah.surahNumber && it.number == ayah.number
+                        }
+                    }
+                    break
+                }
+            }
+        } else {
+            val tv = continuousKhatmaViewRef ?: return
+            val offsets = khatmaAyahOffsets ?: return
+            val layout = tv.layout ?: return
+            val visibleLine = layout.getLineForVertical((scrollY - tv.top).coerceAtLeast(0))
+            val offset = layout.getLineStart(visibleLine)
+            val matchIdx = offsets.indexOfFirst { (s, e) -> offset >= s && offset < e }
+            if (matchIdx >= 0) {
+                val ayah = currentDayAyahs.getOrNull(matchIdx)
+                if (ayah != null) {
+                    visibleGlobalIdx = allAyahsFlat.indexOfFirst {
+                        it.surahNumber == ayah.surahNumber && it.number == ayah.number
+                    }
+                }
+            }
+        }
+
+        if (visibleGlobalIdx >= 0) {
+            toastHelper?.onPositionReached(visibleGlobalIdx)
+        }
     }
 
     private fun loadDayAyahs() {
@@ -186,23 +270,27 @@ class KhatmaReadingActivity : AppCompatActivity() {
         val viewCenter = scrollY + scrollView.height / 3
         var bestIdx = -1
         var bestDist = Int.MAX_VALUE
-        for (i in 0 until containerAyahs.childCount) {
-            val child = containerAyahs.getChildAt(i)
-            val tag = child.tag as? Int ?: continue
-            val childCenter = child.top + child.height / 2
-            val dist = abs(childCenter - viewCenter)
-            if (dist < bestDist) {
-                bestDist = dist
-                bestIdx = tag
+
+        if (singleLineMode) {
+            for (i in 0 until containerAyahs.childCount) {
+                val child = containerAyahs.getChildAt(i)
+                val tag = child.tag as? Int ?: continue
+                val childCenter = child.top + child.height / 2
+                val dist = abs(childCenter - viewCenter)
+                if (dist < bestDist) {
+                    bestDist = dist
+                    bestIdx = tag
+                }
             }
+        } else {
+            val tv = continuousKhatmaViewRef ?: return -1
+            val offsets = khatmaAyahOffsets ?: return -1
+            val layout = tv.layout ?: return -1
+            val visibleLine = layout.getLineForVertical((scrollY - tv.top).coerceAtLeast(0))
+            val offset = layout.getLineStart(visibleLine)
+            bestIdx = offsets.indexOfFirst { (s, e) -> offset >= s && offset < e }
         }
-        if (bestIdx >= 0) return bestIdx
-        val tv = continuousKhatmaViewRef ?: return -1
-        val offsets = khatmaAyahOffsets ?: return -1
-        val layout = tv.layout ?: return -1
-        val visibleLine = layout.getLineForVertical((scrollY - tv.top).coerceAtLeast(0))
-        val offset = layout.getLineStart(visibleLine)
-        return offsets.indexOfFirst { (s, e) -> offset >= s && offset < e }
+        return bestIdx
     }
 
     private fun renderKhatma() {
@@ -210,7 +298,6 @@ class KhatmaReadingActivity : AppCompatActivity() {
         val uthmanicTypeface = ResourcesCompat.getFont(this, if (khatmaRiwaya == "warsh") R.font.uthmanic_warsh else R.font.uthmanic_hafs)
         val ayahColor = if (isDark) Color.parseColor("#e8e0d6") else Color.parseColor("#5E4B40")
         val dividerColor = Color.parseColor("#1A8B6F5E")
-        val singleLineMode = quranPrefs.getBoolean("ayah_single_line", true)
 
         val ayahs = currentDayAyahs
 
@@ -299,6 +386,7 @@ class KhatmaReadingActivity : AppCompatActivity() {
         }
 
         scrollToSavedPosition()
+        updateProgressMarkers()
     }
 
     private fun addWirdCompletionSection() {
@@ -404,10 +492,8 @@ class KhatmaReadingActivity : AppCompatActivity() {
         val khatma = khatmas.find { it.id == khatmaId }
         val savedOffset = khatma?.lastScrollOffset ?: -1
 
-        // أول مرة في هذا الورد → ابقَ في البداية
         if (savedSurah < 0 || savedAyah < 0) return
 
-        // استخدم Scroll Offset المحفوظ مع ضبط الحدود
         if (savedOffset > 0) {
             scrollView.post {
                 val content = scrollView.getChildAt(0)
@@ -584,6 +670,7 @@ class KhatmaReadingActivity : AppCompatActivity() {
         isAutoScrolling = true
         autoScrollGeneration++
         updateAutoScrollButton(true)
+        updateTimeRemainingVisibility()
 
         autoScrollRunnable = object : Runnable {
             private var lastTime = System.nanoTime()
@@ -633,6 +720,8 @@ class KhatmaReadingActivity : AppCompatActivity() {
         isAutoScrolling = false
         autoScrollRunnable = null
         updateAutoScrollButton(false)
+        updateTimeRemainingVisibility()
+        tvTimeRemaining.text = ""
     }
 
     private fun updateAutoScrollButton(isPlaying: Boolean) {
@@ -642,6 +731,107 @@ class KhatmaReadingActivity : AppCompatActivity() {
             btn.setImageResource(targetRes)
             btn.animate().alpha(1f).setDuration(150).start()
         }.start()
+    }
+
+    // ─── Remaining time ────────────────────────────────────────────
+
+    private fun updateTimeRemainingVisibility() {
+        tvTimeRemaining.visibility = if (isAutoScrolling) View.VISIBLE else View.GONE
+    }
+
+    private fun updateTimeRemaining(scrollY: Int, maxScroll: Int) {
+        if (!isAutoScrolling || maxScroll <= 0) {
+            tvTimeRemaining.text = ""
+            return
+        }
+        val remainingPixels = (maxScroll - scrollY).coerceAtLeast(0)
+        if (remainingPixels <= 0 || autoScrollPixelsPerSecond <= 0f) {
+            tvTimeRemaining.text = ""
+            return
+        }
+        val remainingSeconds = (remainingPixels / autoScrollPixelsPerSecond).toInt()
+        if (remainingSeconds <= 0) {
+            tvTimeRemaining.text = ""
+            return
+        }
+        val minutes = remainingSeconds / 60
+        val seconds = remainingSeconds % 60
+        tvTimeRemaining.text = if (minutes > 0) {
+            "متبقي: $minutes د و ${seconds}ث"
+        } else {
+            "متبقي: ${seconds}ث"
+        }
+    }
+
+    // ─── Progress markers ──────────────────────────────────────────
+
+    private fun updateProgressMarkers() {
+        if (currentDayAyahs.isEmpty()) return
+        progressMarkers.removeAllViews()
+
+        val scrollContent = scrollView.getChildAt(0) ?: return
+        val maxScroll = (scrollContent.height - scrollView.height).coerceAtLeast(1)
+
+        // Find the global start and end indices for today's wird
+        val firstAyah = currentDayAyahs.first()
+        val lastAyah = currentDayAyahs.last()
+        val globalStart = allAyahsFlat.indexOfFirst {
+            it.surahNumber == firstAyah.surahNumber && it.number == firstAyah.number
+        }
+        val globalEnd = allAyahsFlat.indexOfFirst {
+            it.surahNumber == lastAyah.surahNumber && it.number == lastAyah.number
+        }
+        if (globalStart < 0 || globalEnd <= globalStart) return
+
+        val dayLength = globalEnd - globalStart + 1
+
+        // Find all points within today's wird
+        val dayPoints = mutableListOf<Pair<Int, String>>()
+        for (juz in JuzData.JUZ_BOUNDARIES) {
+            val si = allAyahsFlat.indexOfFirst { it.surahNumber == juz.startSurah && it.number == juz.startAyah }
+            val ei = allAyahsFlat.indexOfFirst { it.surahNumber == juz.endSurah && it.number == juz.endAyah }
+            if (si < 0 || ei <= si) continue
+            val n = ei - si + 1
+            if (n < 4) continue
+
+            if (si in globalStart..globalEnd) {
+                dayPoints.add(si to "juz")
+            }
+
+            val quarters = listOf(n / 4, n / 2, 3 * n / 4, n - 1)
+            quarters.forEach { off ->
+                val ai = si + off
+                if (ai in (globalStart + 1) until globalEnd) {
+                    dayPoints.add(ai to "mark")
+                }
+            }
+        }
+
+        val width = progressMarkers.width
+        if (width <= 0) {
+            progressMarkers.post { updateProgressMarkers() }
+            return
+        }
+
+        val dense = dayPoints.distinct().sortedBy { it.first }
+        dense.forEach { (globalIdx, _) ->
+            val fraction = (globalIdx - globalStart).toFloat() / dayLength
+            val pos = (fraction * width).toInt().coerceIn(0, width)
+
+            val isJuz = dayPoints.firstOrNull { it.first == globalIdx }?.second == "juz"
+            val size = if (isJuz) dpToPx(4f) else dpToPx(2f)
+            val markerColor = if (isJuz) "#8B6F5E" else "#C4AFA3"
+
+            val marker = View(this).apply {
+                layoutParams = FrameLayout.LayoutParams(size, dpToPx(12f))
+                setBackgroundColor(Color.parseColor(markerColor))
+                translationX = (pos - size / 2f).coerceIn(0f, (width - size).toFloat())
+                translationY = dpToPx(6f).toFloat()
+                isClickable = false
+                isFocusable = false
+            }
+            progressMarkers.addView(marker)
+        }
     }
 
     private fun toHindiDigits(number: Int): String {
