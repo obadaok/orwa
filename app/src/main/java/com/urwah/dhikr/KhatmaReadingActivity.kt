@@ -136,7 +136,7 @@ class KhatmaReadingActivity : AppCompatActivity() {
         loadDayAyahs()
         renderKhatma()
 
-        // Touch listener: stop auto-scroll + detect tap for UI toggle
+        // Touch listener: detect tap for UI toggle (never stops auto-scroll)
         var touchDownX = 0f
         var touchDownY = 0f
         var touchDownTime = 0L
@@ -146,10 +146,6 @@ class KhatmaReadingActivity : AppCompatActivity() {
                     touchDownX = event.x
                     touchDownY = event.y
                     touchDownTime = System.currentTimeMillis()
-                    if (isAutoScrolling) {
-                        savedScrollY = scrollView.scrollY
-                        stopAutoScroll()
-                    }
                 }
                 MotionEvent.ACTION_UP -> {
                     val dx = abs(event.x - touchDownX)
@@ -193,7 +189,8 @@ class KhatmaReadingActivity : AppCompatActivity() {
     }
 
     private fun applyKeepScreenOnIfEnabled() {
-        val enabled = quranPrefs.getBoolean("keep_screen_on", false)
+        val prefs = getSharedPreferences("urwah_settings", Context.MODE_PRIVATE)
+        val enabled = prefs.getBoolean("keep_screen_on", false)
         if (enabled) {
             window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         } else {
@@ -671,6 +668,7 @@ class KhatmaReadingActivity : AppCompatActivity() {
         autoScrollGeneration++
         updateAutoScrollButton(true)
         updateTimeRemainingVisibility()
+        refreshTimeRemaining()
 
         autoScrollRunnable = object : Runnable {
             private var lastTime = System.nanoTime()
@@ -749,17 +747,27 @@ class KhatmaReadingActivity : AppCompatActivity() {
             tvTimeRemaining.text = ""
             return
         }
-        val remainingSeconds = (remainingPixels / autoScrollPixelsPerSecond).toInt()
-        if (remainingSeconds <= 0) {
+        val remainingSeconds = (remainingPixels / autoScrollPixelsPerSecond.toDouble())
+        if (remainingSeconds <= 0.5) {
             tvTimeRemaining.text = ""
             return
         }
-        val minutes = remainingSeconds / 60
-        val seconds = remainingSeconds % 60
+        val totalSec = remainingSeconds.toInt()
+        val minutes = totalSec / 60
+        val seconds = totalSec % 60
         tvTimeRemaining.text = if (minutes > 0) {
             "متبقي: $minutes د و ${seconds}ث"
         } else {
             "متبقي: ${seconds}ث"
+        }
+    }
+
+    private fun refreshTimeRemaining() {
+        val content = scrollView.getChildAt(0) ?: return
+        val maxScroll = (content.height - scrollView.height).coerceAtLeast(1)
+        if (isAutoScrolling) {
+            tvTimeRemaining.visibility = View.VISIBLE
+            updateTimeRemaining(scrollView.scrollY, maxScroll)
         }
     }
 
@@ -770,9 +778,7 @@ class KhatmaReadingActivity : AppCompatActivity() {
         progressMarkers.removeAllViews()
 
         val scrollContent = scrollView.getChildAt(0) ?: return
-        val maxScroll = (scrollContent.height - scrollView.height).coerceAtLeast(1)
 
-        // Find the global start and end indices for today's wird
         val firstAyah = currentDayAyahs.first()
         val lastAyah = currentDayAyahs.last()
         val globalStart = allAyahsFlat.indexOfFirst {
@@ -785,48 +791,79 @@ class KhatmaReadingActivity : AppCompatActivity() {
 
         val dayLength = globalEnd - globalStart + 1
 
-        // Find all points within today's wird
-        val dayPoints = mutableListOf<Pair<Int, String>>()
-        for (juz in JuzData.JUZ_BOUNDARIES) {
-            val si = allAyahsFlat.indexOfFirst { it.surahNumber == juz.startSurah && it.number == juz.startAyah }
-            val ei = allAyahsFlat.indexOfFirst { it.surahNumber == juz.endSurah && it.number == juz.endAyah }
-            if (si < 0 || ei <= si) continue
-            val n = ei - si + 1
-            if (n < 4) continue
-
-            if (si in globalStart..globalEnd) {
-                dayPoints.add(si to "juz")
-            }
-
-            val quarters = listOf(n / 4, n / 2, 3 * n / 4, n - 1)
-            quarters.forEach { off ->
-                val ai = si + off
-                if (ai in (globalStart + 1) until globalEnd) {
-                    dayPoints.add(ai to "mark")
-                }
-            }
-        }
-
         val width = progressMarkers.width
         if (width <= 0) {
             progressMarkers.post { updateProgressMarkers() }
             return
         }
 
-        val dense = dayPoints.distinct().sortedBy { it.first }
-        dense.forEach { (globalIdx, _) ->
-            val fraction = (globalIdx - globalStart).toFloat() / dayLength
-            val pos = (fraction * width).toInt().coerceIn(0, width)
+        val seekBarPadding = dpToPx(2f)
+        val thumbOffset = dpToPx(10f)
+        val markersPadding = dpToPx(4f)
+        val trackStart = seekBarPadding + thumbOffset
+        val trackWidth = width - 2 * seekBarPadding - 2 * thumbOffset
 
-            val isJuz = dayPoints.firstOrNull { it.first == globalIdx }?.second == "juz"
-            val size = if (isJuz) dpToPx(4f) else dpToPx(2f)
-            val markerColor = if (isJuz) "#8B6F5E" else "#C4AFA3"
+        val points = mutableListOf<Pair<Float, Boolean>>()
+
+        // Add juz/hizb boundaries that fall within this day
+        for (juz in JuzData.JUZ_BOUNDARIES) {
+            val si = allAyahsFlat.indexOfFirst { it.surahNumber == juz.startSurah && it.number == juz.startAyah }
+            val ei = allAyahsFlat.indexOfFirst { it.surahNumber == juz.endSurah && it.number == juz.endAyah }
+            if (si < 0 || ei <= si) continue
+            val n = ei - si + 1
+
+            if (si in globalStart..globalEnd) {
+                val frac = (si - globalStart).toFloat() / dayLength
+                points.add(frac to true)
+            }
+
+            if (si < globalEnd && ei > globalStart) {
+                val hizbHalf = si + n / 2
+                if (hizbHalf in (globalStart + 1) until globalEnd) {
+                    val frac = (hizbHalf - globalStart).toFloat() / dayLength
+                    points.add(frac to true)
+                }
+
+                for (q in listOf(n / 4, 3 * n / 4)) {
+                    val ai = si + q
+                    if (ai in (globalStart + 1) until globalEnd) {
+                        val frac = (ai - globalStart).toFloat() / dayLength
+                        points.add(frac to false)
+                    }
+                }
+
+                val juzEnd = si + n - 1
+                if (juzEnd in (globalStart + 1) until globalEnd) {
+                    val frac = (juzEnd - globalStart).toFloat() / dayLength
+                    points.add(frac to true)
+                }
+            }
+        }
+
+        // Always add day-quarter markers so markers appear even for short days
+        val dayQuarters = listOf(0.25f, 0.5f, 0.75f)
+        for (qf in dayQuarters) {
+            val exists = points.any { abs(it.first - qf) < 0.001f }
+            if (!exists) {
+                points.add(qf to false)
+            }
+        }
+
+        val epsilon = 0.001f
+        val sorted = points.distinctBy { (it.first / epsilon).toInt() }.sortedBy { it.first }
+        sorted.forEach { (fraction, isJuz) ->
+            val size = if (isJuz) dpToPx(5f) else dpToPx(3f)
+            val markerColor = if (isJuz) "#8B6F5E" else "#C9A182"
+
+            val markerCenterX = trackStart + (trackWidth * fraction).toInt()
+            val tx = (markerCenterX - markersPadding - size / 2f)
+                .coerceIn(0f, (width - markersPadding - size).toFloat())
 
             val marker = View(this).apply {
-                layoutParams = FrameLayout.LayoutParams(size, dpToPx(12f))
+                layoutParams = FrameLayout.LayoutParams(size, dpToPx(16f))
                 setBackgroundColor(Color.parseColor(markerColor))
-                translationX = (pos - size / 2f).coerceIn(0f, (width - size).toFloat())
-                translationY = dpToPx(6f).toFloat()
+                translationX = tx
+                translationY = dpToPx(4f).toFloat()
                 isClickable = false
                 isFocusable = false
             }

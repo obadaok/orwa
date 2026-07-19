@@ -105,7 +105,8 @@ class SurahDetailActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_surah_detail)
 
-        if (quranPrefs.getBoolean("keep_screen_on", false)) {
+        val settingsPrefs = getSharedPreferences("urwah_settings", Context.MODE_PRIVATE)
+        if (settingsPrefs.getBoolean("keep_screen_on", false)) {
             window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         }
 
