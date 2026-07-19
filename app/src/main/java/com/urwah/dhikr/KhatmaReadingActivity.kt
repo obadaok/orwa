@@ -28,6 +28,9 @@ import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.res.ResourcesCompat
 import androidx.core.widget.NestedScrollView
+import androidx.fragment.app.Fragment
+import androidx.viewpager2.adapter.FragmentStateAdapter
+import androidx.viewpager2.widget.ViewPager2
 import kotlin.math.abs
 
 class KhatmaReadingActivity : AppCompatActivity() {
@@ -64,6 +67,14 @@ class KhatmaReadingActivity : AppCompatActivity() {
     private var singleLineMode = true
     private var isUiHidden = false
     private var savedScrollY = -1
+    private var isPageMode = false
+    private var viewPager: ViewPager2? = null
+    private var firstDayPage: Int = 1
+    private var lastDayPage: Int = 1
+
+    private val settingsPrefs by lazy {
+        getSharedPreferences("urwah_settings", Context.MODE_PRIVATE)
+    }
 
     private val quranPrefs by lazy {
         getSharedPreferences("urwah_quran", Context.MODE_PRIVATE)
@@ -168,6 +179,66 @@ class KhatmaReadingActivity : AppCompatActivity() {
                 showAutoScrollDialog()
             }
         }
+
+        viewPager = findViewById(R.id.pageViewPager)
+        isPageMode = settingsPrefs.getBoolean("page_view_mode", false)
+
+        val viewModeBtn = findViewById<ImageButton>(R.id.btnViewMode)
+        viewModeBtn.visibility = View.VISIBLE
+        viewModeBtn.setOnClickListener {
+            togglePageMode()
+        }
+        if (isPageMode) {
+            calculateDayPageRange()
+            showPageMode()
+        }
+    }
+
+    private fun calculateDayPageRange() {
+        if (currentDayAyahs.isEmpty()) return
+        val firstAyah = currentDayAyahs.first()
+        val lastAyah = currentDayAyahs.last()
+        firstDayPage = QuranPageData.findPageForAyah(khatmaRiwaya, firstAyah.surahNumber, firstAyah.number, this)
+        lastDayPage = QuranPageData.findPageForAyah(khatmaRiwaya, lastAyah.surahNumber, lastAyah.number, this)
+    }
+
+    private fun togglePageMode() {
+        isPageMode = !isPageMode
+        settingsPrefs.edit().putBoolean("page_view_mode", isPageMode).apply()
+        if (isPageMode) {
+            calculateDayPageRange()
+            showPageMode()
+        } else {
+            showScrollMode()
+        }
+    }
+
+    private fun showPageMode() {
+        if (isAutoScrolling) {
+            stopAutoScroll()
+            updateAutoScrollButton(false)
+        }
+        scrollView.visibility = View.GONE
+        viewPager?.visibility = View.VISIBLE
+        progressContainer.visibility = View.GONE
+
+        val adapter = viewPager?.adapter
+        if (adapter == null) {
+            viewPager?.adapter = object : FragmentStateAdapter(this) {
+                override fun getItemCount(): Int = (lastDayPage - firstDayPage + 1).coerceAtLeast(1)
+                override fun createFragment(position: Int): Fragment {
+                    val pageNum = firstDayPage + position
+                    return PageViewFragment.newInstance(pageNum, khatmaRiwaya)
+                }
+            }
+        }
+        viewPager?.setCurrentItem(0, false)
+    }
+
+    private fun showScrollMode() {
+        scrollView.visibility = View.VISIBLE
+        viewPager?.visibility = View.GONE
+        progressContainer.visibility = View.VISIBLE
     }
 
     override fun onResume() {

@@ -263,15 +263,12 @@
 
         </androidx.core.widget.NestedScrollView>
 
-        <androidx.recyclerview.widget.RecyclerView
-            android:id="@+id/pageRecyclerView"
+        <androidx.viewpager2.widget.ViewPager2
+            android:id="@+id/pageViewPager"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:visibility="gone"
-            android:clipToPadding="false"
-            android:paddingHorizontal="16dp"
-            android:paddingTop="18dp"
-            android:paddingBottom="12dp" />
+            android:layout_marginHorizontal="0dp" />
 
     </FrameLayout>
 

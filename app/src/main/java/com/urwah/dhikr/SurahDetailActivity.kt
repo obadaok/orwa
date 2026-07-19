@@ -30,8 +30,12 @@ import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.res.ResourcesCompat
 import androidx.core.widget.NestedScrollView
+import androidx.fragment.app.Fragment
+import androidx.fragment.app.FragmentActivity
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import androidx.viewpager2.adapter.FragmentStateAdapter
+import androidx.viewpager2.widget.ViewPager2
 
 class SurahDetailActivity : AppCompatActivity() {
 
@@ -66,6 +70,16 @@ class SurahDetailActivity : AppCompatActivity() {
     private var toastHelper: JuzHizbToastHelper? = null
     private var scrollHandler: android.os.Handler? = null
     private var scrollDebounce: Runnable? = null
+
+    private var isPageMode = false
+    private var viewPager: ViewPager2? = null
+    private var firstPage: Int = 1
+    private var lastPage: Int = 1
+    private var pageModeRiwaya: String = "hafs"
+
+    private val settingsPrefs by lazy {
+        getSharedPreferences("urwah_settings", Context.MODE_PRIVATE)
+    }
 
     companion object {
         private val ENGLISH_NAMES = mapOf(
@@ -151,9 +165,20 @@ class SurahDetailActivity : AppCompatActivity() {
             }
         }
 
-        // findViewById<ImageButton>(R.id.btnViewMode).setOnClickListener {
-        //     toggleViewMode()
-        // }
+        isPageMode = settingsPrefs.getBoolean("page_view_mode", false)
+        pageModeRiwaya = QuranDataLoader.getQiraat(this)
+        val (fp, lp) = QuranPageData.findSurahPageRange(pageModeRiwaya, surahNumber, this)
+        firstPage = fp
+        lastPage = lp
+        viewPager = findViewById(R.id.pageViewPager)
+
+        findViewById<ImageButton>(R.id.btnViewMode).visibility = View.VISIBLE
+        findViewById<ImageButton>(R.id.btnViewMode).setOnClickListener {
+            toggleViewMode()
+        }
+        if (isPageMode) {
+            showPageMode()
+        }
 
         scrollView = findViewById(R.id.scrollView)
         scrollView.setOnTouchListener { _, event ->
@@ -209,6 +234,37 @@ class SurahDetailActivity : AppCompatActivity() {
         }
 
         // Share feature removed
+    }
+
+    private fun toggleViewMode() {
+        isPageMode = !isPageMode
+        settingsPrefs.edit().putBoolean("page_view_mode", isPageMode).apply()
+        if (isPageMode) {
+            showPageMode()
+        } else {
+            showScrollMode()
+        }
+    }
+
+    private fun showPageMode() {
+        scrollView.visibility = View.GONE
+        viewPager?.visibility = View.VISIBLE
+        val adapter = viewPager?.adapter
+        if (adapter == null) {
+            viewPager?.adapter = object : FragmentStateAdapter(this) {
+                override fun getItemCount(): Int = lastPage - firstPage + 1
+                override fun createFragment(position: Int): Fragment {
+                    val pageNum = firstPage + position
+                    return PageViewFragment.newInstance(pageNum, pageModeRiwaya)
+                }
+            }
+        }
+        viewPager?.setCurrentItem(0, false)
+    }
+
+    private fun showScrollMode() {
+        scrollView.visibility = View.VISIBLE
+        viewPager?.visibility = View.GONE
     }
 
     override fun onPause() {
@@ -878,6 +934,16 @@ class SurahDetailActivity : AppCompatActivity() {
         finish()
         @Suppress("DEPRECATION")
         overridePendingTransition(android.R.anim.fade_in, android.R.anim.fade_out)
+    }
+
+    override fun onSaveInstanceState(outState: Bundle) {
+        super.onSaveInstanceState(outState)
+        outState.putBoolean("page_mode", isPageMode)
+    }
+
+    override fun onRestoreInstanceState(savedInstanceState: Bundle) {
+        super.onRestoreInstanceState(savedInstanceState)
+        isPageMode = savedInstanceState.getBoolean("page_mode", false)
     }
 
     private fun setupJuzHizbToast() {
