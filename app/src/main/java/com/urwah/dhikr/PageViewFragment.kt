@@ -4,7 +4,6 @@ import android.content.res.Configuration
 import android.graphics.Color
 import android.graphics.Paint
 import android.graphics.Typeface
-import android.os.Build
 import android.os.Bundle
 import android.view.Gravity
 import android.view.LayoutInflater
@@ -14,6 +13,7 @@ import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.core.content.res.ResourcesCompat
 import androidx.fragment.app.Fragment
+import kotlin.math.min
 
 class PageViewFragment : Fragment() {
 
@@ -25,6 +25,29 @@ class PageViewFragment : Fragment() {
     private var isDark = false
     private var pageNumber = 1
     private var riwaya = "hafs"
+
+    companion object {
+        private const val LINE_HEIGHT_MULT = 1.9f
+        private const val CENTERED_GAP_FRACTION = 0.22f
+        private const val MIN_INTER_WORD_GAP_FRACTION = 0.10f
+        private const val FONT_SCALE_MIN = 0.85f
+        private const val FONT_SCALE_MAX = 1.5f
+        private const val WIDTH_DP_MIN = 260f
+        private const val WIDTH_DP_MAX = 600f
+        private const val FILL_THRESHOLD = 0.82f
+        private const val ARG_PAGE_NUMBER = "page_number"
+        private const val ARG_RIWAYA = "riwaya"
+
+        fun newInstance(pageNumber: Int, riwaya: String): PageViewFragment {
+            val args = Bundle().apply {
+                putInt(ARG_PAGE_NUMBER, pageNumber)
+                putString(ARG_RIWAYA, riwaya)
+            }
+            val fragment = PageViewFragment()
+            fragment.arguments = args
+            return fragment
+        }
+    }
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -55,17 +78,194 @@ class PageViewFragment : Fragment() {
         tvPageNumber?.text = "الصفحة $pageNumStr"
         tvPageNumber?.setTextColor(if (isDark) Color.parseColor("#C4AFA3") else Color.parseColor("#8B6F5E"))
 
-        try {
-            if (riwaya == "warsh") {
-                renderAsPlainText()
-            } else {
-                renderLineByLine()
+        val container = linesContainer
+        if (container != null) {
+            container.post { buildPage(container) }
+        }
+    }
+
+    private fun buildPage(container: LinearLayout) {
+        val lines = try {
+            QuranLineData.getPageLines(pageNumber, requireContext())
+        } catch (_: Exception) { emptyList() }
+        if (lines.isEmpty()) {
+            renderAsPlainText()
+            return
+        }
+
+        val density = resources.displayMetrics.density
+        val availWidthPx = container.width.toFloat() - (16 * density)
+        val availHeightPx = container.height.toFloat()
+        val numAyahLines = lines.count { it.type == "ayah" }
+
+        if (availWidthPx <= 0 || availHeightPx <= 0) {
+            renderAsPlainText()
+            return
+        }
+
+        // --- Calculate base font size from screen width ---
+        val availWidthDp = availWidthPx / density
+        val screenScale = FONT_SCALE_MIN + (availWidthDp - WIDTH_DP_MIN) /
+                (WIDTH_DP_MAX - WIDTH_DP_MIN) * (FONT_SCALE_MAX - FONT_SCALE_MIN)
+        val clampedScreenScale = screenScale.coerceIn(FONT_SCALE_MIN, FONT_SCALE_MAX)
+
+        val testSizeSp = 24f
+        val paint = Paint().apply {
+            typeface = this@PageViewFragment.typeface
+            textSize = testSizeSp * density
+        }
+
+        // --- QuranApp-style page-wide scale ---
+        val baseGapPx = paint.textSize * CENTERED_GAP_FRACTION
+        val minGapPx = paint.textSize * MIN_INTER_WORD_GAP_FRACTION
+
+        val wideLineRatios = mutableListOf<Float>()
+        for (line in lines) {
+            if (line.type != "ayah" || line.words == null || line.words.isEmpty()) continue
+            var measuredW = 0f
+            for (w in line.words) {
+                measuredW += paint.measureText(w.text)
             }
-        } catch (_: OutOfMemoryError) {
-            QuranLineData.clearCache()
-            renderAsPlainText()
-        } catch (_: Exception) {
-            renderAsPlainText()
+            if (line.words.size > 1) {
+                val gap = if (line.centered) maxOf(baseGapPx, minGapPx) else minGapPx
+                measuredW += gap * (line.words.size - 1)
+            }
+            val fillRatio = measuredW / availWidthPx
+            if (!line.centered && fillRatio >= FILL_THRESHOLD) {
+                wideLineRatios.add((availWidthPx / measuredW).coerceAtLeast(0f))
+            }
+        }
+
+        val medianRatio = if (wideLineRatios.isNotEmpty()) {
+            val sorted = wideLineRatios.sorted()
+            sorted[sorted.size / 2]
+        } else {
+            1f
+        }
+        val pageScale = medianRatio.coerceIn(FONT_SCALE_MIN, min(clampedScreenScale, FONT_SCALE_MAX))
+        val baseFontSizeSp = testSizeSp * pageScale
+
+        // --- Height constraint ---
+        val lineHeightPx = baseFontSizeSp * density * LINE_HEIGHT_MULT
+        val totalContentPx = lineHeightPx * numAyahLines
+        val heightScale = if (totalContentPx > availHeightPx) {
+            // Need to shrink
+            (availHeightPx / totalContentPx).coerceIn(0.5f, 1f)
+        } else if (numAyahLines > 1) {
+            // Can expand to fill
+            (availHeightPx / totalContentPx).coerceIn(1f, 1.5f)
+        } else {
+            1f
+        }
+
+        val finalFontSizeSp = baseFontSizeSp * heightScale
+
+        // --- Recalculate at final size ---
+        paint.textSize = finalFontSizeSp * density
+        val finalGapPx = maxOf(
+            paint.textSize * CENTERED_GAP_FRACTION,
+            paint.textSize * MIN_INTER_WORD_GAP_FRACTION
+        )
+
+        val finalLineHeightPx = paint.textSize * LINE_HEIGHT_MULT
+        val totalFinalPx = finalLineHeightPx * numAyahLines
+        val extraGapPx = if (numAyahLines > 1) {
+            (availHeightPx - totalFinalPx).coerceAtLeast(0f) / (numAyahLines - 1)
+        } else 0f
+
+        // --- Build lines ---
+        val containerWidth = container.width
+
+        for (line in lines) {
+            when (line.type) {
+                "surah_name" -> {
+                    val tv = TextView(requireContext()).apply {
+                        layoutParams = LinearLayout.LayoutParams(
+                            ViewGroup.LayoutParams.MATCH_PARENT,
+                            (finalLineHeightPx + extraGapPx).toInt()
+                        )
+                        text = line.text ?: ""
+                        typeface = this@PageViewFragment.typeface
+                        setTextColor(surahHeaderColor)
+                        gravity = Gravity.CENTER
+                        textSize = finalFontSizeSp * 1.1f
+                        includeFontPadding = false
+                        textDirection = View.TEXT_DIRECTION_RTL
+                    }
+                    container.addView(tv)
+                }
+                "basmallah" -> {
+                    val tv = TextView(requireContext()).apply {
+                        layoutParams = LinearLayout.LayoutParams(
+                            ViewGroup.LayoutParams.MATCH_PARENT,
+                            (finalLineHeightPx + extraGapPx).toInt()
+                        )
+                        text = "\uFDFD"
+                        typeface = this@PageViewFragment.typeface
+                        setTextColor(ayahColor)
+                        gravity = Gravity.CENTER
+                        textSize = finalFontSizeSp * 1.1f
+                        includeFontPadding = false
+                        textDirection = View.TEXT_DIRECTION_RTL
+                    }
+                    container.addView(tv)
+                }
+                "ayah" -> {
+                    if (line.words == null || line.words.isEmpty()) continue
+                    val wordTexts = line.words.map { it.text }
+                    val wordWidthsPx = wordTexts.map { paint.measureText(it) }
+                    val totalWPx = wordWidthsPx.sumOf { it.toDouble() }.toFloat()
+                    val gapCount = wordTexts.size - 1
+
+                    // Center the line if it fits; else distribute remaining space as gaps
+                    val remainingPx = availWidthPx - totalWPx
+                    val isShort = remainingPx > finalGapPx * gapCount * 2f
+                    val wordGapPx = if (gapCount > 0 && !isShort) {
+                        remainingPx.coerceAtLeast(0f) / gapCount
+                    } else {
+                        finalGapPx
+                    }
+
+                    val lineLayout = LinearLayout(requireContext()).apply {
+                        layoutParams = LinearLayout.LayoutParams(
+                            ViewGroup.LayoutParams.MATCH_PARENT,
+                            (finalLineHeightPx + extraGapPx).toInt()
+                        )
+                        orientation = LinearLayout.HORIZONTAL
+                        gravity = Gravity.CENTER_VERTICAL
+                        layoutDirection = View.LAYOUT_DIRECTION_RTL
+                    }
+
+                    for ((i, wText) in wordTexts.withIndex()) {
+                        val isVerseNum = wText.all { it in '\u0660'..'\u0669' }
+                        val tv = TextView(requireContext()).apply {
+                            val lp = LinearLayout.LayoutParams(
+                                ViewGroup.LayoutParams.WRAP_CONTENT,
+                                ViewGroup.LayoutParams.WRAP_CONTENT
+                            )
+                            if (i > 0 && !isShort) {
+                                lp.marginEnd = wordGapPx.toInt()
+                            } else if (i > 0 && isShort) {
+                                lp.marginEnd = finalGapPx.toInt()
+                            }
+                            layoutParams = lp
+                            text = wText
+                            typeface = this@PageViewFragment.typeface
+                            setTextColor(ayahColor)
+                            textSize = finalFontSizeSp * (if (isVerseNum) 0.7f else 1f)
+                            includeFontPadding = false
+                            textDirection = View.TEXT_DIRECTION_RTL
+                            gravity = Gravity.CENTER
+                        }
+                        lineLayout.addView(tv)
+                    }
+
+                    if (isShort) {
+                        lineLayout.gravity = Gravity.CENTER_HORIZONTAL
+                    }
+                    container.addView(lineLayout)
+                }
+            }
         }
     }
 
@@ -84,150 +284,15 @@ class PageViewFragment : Fragment() {
             text = ayahText
             typeface = this@PageViewFragment.typeface
             setTextColor(ayahColor)
-            if (Build.VERSION.SDK_INT >= 26) {
-                justificationMode = 1
-            }
             textSize = 29f
+            textDirection = View.TEXT_DIRECTION_RTL
+            gravity = Gravity.CENTER
         }
     }
 
-    private fun renderLineByLine() {
-        val lines = try {
-            QuranLineData.getPageLines(pageNumber, requireContext())
-        } catch (_: Exception) {
-            emptyList()
-        }
-        if (lines.isEmpty()) {
-            renderAsPlainText()
-            return
-        }
-
-        val container = linesContainer ?: return
-        val lineCount = lines.size
-
-        // Measure line height ratio for this font at 1sp (in pixels, then convert)
-        val tf = typeface
-        val paint = Paint().apply {
-            tf?.let { this.typeface = it }
-            textSize = resources.displayMetrics.density  // 1sp in pixels
-        }
-        val fm = paint.fontMetrics
-        val lineHeightAt1sp = fm.descent - fm.ascent + fm.leading
-        val fontMetricsRatio = lineHeightAt1sp / resources.displayMetrics.density
-
-        // Container will take weight=1 so we need to measure after layout
-        // estimate using available screen height
-        val screenHeight = resources.displayMetrics.heightPixels
-        val estimatedAvailableHeight = screenHeight * 0.55f // rough estimate
-        val maxFontSize = 72f
-        val minFontSize = 12f
-
-        var fontSize = (estimatedAvailableHeight / (lineCount * fontMetricsRatio))
-            .coerceIn(minFontSize, maxFontSize)
-
-        for (i in 0 until lineCount) {
-            val ln = lines[i]
-            val nextIsHeader = if (i + 1 < lineCount) lines[i + 1].type == "sh" else false
-            val isShortLine = ln.type == "txt" && (ln.text?.length ?: 0) < 20
-
-            val tv = TextView(requireContext()).apply {
-                layoutParams = LinearLayout.LayoutParams(
-                    ViewGroup.LayoutParams.MATCH_PARENT,
-                    ViewGroup.LayoutParams.WRAP_CONTENT
-                )
-                typeface = tf
-                setTextColor(ayahColor)
-                textDirection = View.TEXT_DIRECTION_RTL
-                includeFontPadding = false
-                textSize = fontSize
-
-                when (ln.type) {
-                    "sh" -> {
-                        text = ln.surah?.let { surahNameFromCode(it) } ?: ln.text ?: ""
-                        gravity = Gravity.CENTER
-                        setTextColor(surahHeaderColor)
-                    }
-                    "b" -> {
-                        text = "\uFDFD"
-                        gravity = Gravity.CENTER
-                    }
-                    "txt" -> {
-                        text = ln.text ?: ""
-                        gravity = Gravity.START or Gravity.CENTER_VERTICAL
-                        if (nextIsHeader || isShortLine) {
-                            gravity = Gravity.CENTER
-                        }
-                        if (Build.VERSION.SDK_INT >= 26) {
-                            justificationMode = 1
-                        }
-                    }
-                }
-            }
-            container.addView(tv)
-        }
-
-        // Refine font size after layout
-        container.post {
-            if (container.height <= 0) return@post
-            val availableHeight = container.height
-            var totalLineHeight = 0f
-            val children = mutableListOf<TextView>()
-            for (i in 0 until container.childCount) {
-                val child = container.getChildAt(i) as? TextView ?: continue
-                children.add(child)
-                totalLineHeight += child.lineHeight.toFloat()
-            }
-            if (children.isEmpty()) return@post
-            if (totalLineHeight <= 0f) return@post
-
-            val targetHeight = availableHeight * 0.88f
-            val scale = (targetHeight / totalLineHeight).coerceIn(0.4f, 2.5f)
-            val currentSize = children[0].textSize / resources.displayMetrics.density
-            val newSize = (currentSize * scale).coerceIn(minFontSize, maxFontSize)
-            for (tv in children) {
-                tv.textSize = newSize
-            }
-        }
-    }
-
-    private fun surahNameFromCode(code: String): String {
-        val names = arrayOf(
-            "", "الفاتحة", "البقرة", "آل عمران", "النساء", "المائدة", "الأنعام",
-            "الأعراف", "الأنفال", "التوبة", "يونس", "هود", "يوسف", "الرعد",
-            "إبراهيم", "الحجر", "النحل", "الإسراء", "الكهف", "مريم", "طه",
-            "الأنبياء", "الحج", "المؤمنون", "النور", "الفرقان", "الشعراء",
-            "النمل", "القصص", "العنكبوت", "الروم", "لقمان", "السجدة",
-            "الأحزاب", "سبأ", "فاطر", "يس", "الصافات", "ص", "الزمر",
-            "غافر", "فصلت", "الشورى", "الزخرف", "الدخان", "الجاثية",
-            "الأحقاف", "محمد", "الفتح", "الحجرات", "ق", "الذاريات",
-            "الطور", "النجم", "القمر", "الرحمن", "الواقعة", "الحديد",
-            "المجادلة", "الحشر", "الممتحنة", "الصف", "الجمعة", "المنافقون",
-            "التغابن", "الطلاق", "التحريم", "الملك", "القلم", "الحاقة",
-            "المعارج", "نوح", "الجن", "المزمل", "المدثر", "القيامة",
-            "الإنسان", "المرسلات", "النبأ", "النازعات", "عبس", "التكوير",
-            "الانفطار", "المطففين", "الانشقاق", "البروج", "الطارق",
-            "الأعلى", "الغاشية", "الفجر", "البلد", "الشمس", "الليل",
-            "الضحى", "الشرح", "التين", "العلق", "القدر", "البينة",
-            "الزلزلة", "العاديات", "القارعة", "التكاثر", "العصر",
-            "الهمزة", "الفيل", "قريش", "الماعون", "الكوثر", "الكافرون",
-            "النصر", "المسد", "الإخلاص", "الفلق", "الناس"
-        )
-        val idx = code.toIntOrNull() ?: return "سورة"
-        return if (idx in names.indices) "سورة ${names[idx]}" else "سورة"
-    }
-
-    companion object {
-        private const val ARG_PAGE_NUMBER = "page_number"
-        private const val ARG_RIWAYA = "riwaya"
-
-        fun newInstance(pageNumber: Int, riwaya: String): PageViewFragment {
-            val args = Bundle().apply {
-                putInt(ARG_PAGE_NUMBER, pageNumber)
-                putString(ARG_RIWAYA, riwaya)
-            }
-            val fragment = PageViewFragment()
-            fragment.arguments = args
-            return fragment
-        }
+    override fun onDestroyView() {
+        super.onDestroyView()
+        linesContainer = null
+        tvPageNumber = null
     }
 }
