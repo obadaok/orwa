@@ -9,6 +9,7 @@ class UrwahApplication : Application() {
     override fun onCreate() {
         super.onCreate()
         applyNightMode()
+        ReadingTimeTracker.registerLifecycleCallbacks(this)
     }
 
     private fun applyNightMode() {

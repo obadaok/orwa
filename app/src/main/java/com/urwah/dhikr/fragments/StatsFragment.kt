@@ -5,14 +5,11 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.ImageView
 import android.widget.TextView
 import androidx.fragment.app.Fragment
-import androidx.navigation.fragment.findNavController
-import com.urwah.dhikr.FavoritesManager
+import com.urwah.dhikr.KhatmaManager
 import com.urwah.dhikr.R
-import java.util.Date
-import java.util.Locale
+import com.urwah.dhikr.ReadingTimeTracker
 
 class StatsFragment : Fragment() {
 
@@ -29,17 +26,32 @@ class StatsFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+        loadStats()
+    }
 
-        val prefs = requireContext().getSharedPreferences("urwah_stats", Context.MODE_PRIVATE)
-        val totalCompleted = prefs.getInt("total_completed", 0)
-        val completedToday = prefs.getInt("completed_today", 0)
-        val favoriteCount = FavoritesManager.getAllFavorites().size
+    override fun onResume() {
+        super.onResume()
+        loadStats()
+    }
 
-        root.findViewById<TextView>(R.id.tv_total_completed).text =
-            "إجمالي الإكمالات: $totalCompleted"
-        root.findViewById<TextView>(R.id.tv_completed_today).text =
-            "إكمالات اليوم: $completedToday"
-        root.findViewById<TextView>(R.id.tv_total_favorites).text =
-            "المفضلة: $favoriteCount"
+    private fun loadStats() {
+        val ctx = requireContext()
+        val prefs = ctx.getSharedPreferences("urwah_stats", Context.MODE_PRIVATE)
+        val adhkarCount = prefs.getInt("total_completed", 0)
+
+        val appTimeMs = ReadingTimeTracker.getTotalAppMs(ctx)
+        val quranTimeMs = ReadingTimeTracker.getQuranMs(ctx)
+        val khatmaTimeMs = ReadingTimeTracker.getKhatmaMs(ctx)
+
+        val khatmas = KhatmaManager.getAll(ctx)
+        val completedKhatmas = khatmas.count { !it.isActive }
+        val activeKhatmas = khatmas.count { it.isActive }
+
+        root.findViewById<TextView>(R.id.tv_adhkar_count).text = adhkarCount.toString()
+        root.findViewById<TextView>(R.id.tv_app_time).text = ReadingTimeTracker.formatDuration(appTimeMs)
+        root.findViewById<TextView>(R.id.tv_quran_time).text = ReadingTimeTracker.formatDuration(quranTimeMs)
+        root.findViewById<TextView>(R.id.tv_khatma_time).text = ReadingTimeTracker.formatDuration(khatmaTimeMs)
+        root.findViewById<TextView>(R.id.tv_completed_khatmas).text = completedKhatmas.toString()
+        root.findViewById<TextView>(R.id.tv_active_khatmas).text = activeKhatmas.toString()
     }
 }

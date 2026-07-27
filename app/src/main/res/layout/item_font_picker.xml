@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginBottom="6dp"
+    android:background="@drawable/bg_search_result_normal"
+    android:clickable="true"
+    android:focusable="true"
+    android:orientation="vertical"
+    android:padding="14dp">
+
+    <TextView
+        android:id="@+id/tvFontName"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:fontFamily="@font/alyamama_bold"
+        android:textColor="@color/urwah_thread_dark"
+        android:textSize="14sp" />
+
+    <TextView
+        android:id="@+id/tvFontPreview"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="4dp"
+        android:text="بسم الله الرحمن الرحيم"
+        android:textColor="@color/urwah_thread_brown"
+        android:textSize="18sp" />
+
+    <ImageView
+        android:id="@+id/ivFontCheck"
+        android:layout_width="24dp"
+        android:layout_height="24dp"
+        android:layout_gravity="top|end"
+        android:src="@drawable/ic_bookmark_filled"
+        android:tint="@color/urwah_thread_brown"
+        android:visibility="gone"
+        android:contentDescription="محدد" />
+
+</LinearLayout>

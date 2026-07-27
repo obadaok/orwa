@@ -12,72 +12,138 @@
         <LinearLayout
             android:id="@+id/topToolbar"
             android:layout_width="match_parent"
-            android:layout_height="56dp"
+            android:layout_height="wrap_content"
             android:background="@color/urwah_nav_bg"
-            android:gravity="center_vertical"
-            android:orientation="horizontal"
-            android:paddingHorizontal="8dp">
+            android:orientation="vertical"
+            android:paddingHorizontal="8dp"
+            android:paddingVertical="6dp">
 
-            <ImageButton
-                android:id="@+id/btnBack"
-                android:layout_width="44dp"
-                android:layout_height="44dp"
-                android:background="?attr/selectableItemBackgroundBorderless"
-                android:contentDescription="رجوع"
-                android:padding="10dp"
-                android:src="@drawable/ic_arrow_back"
-                android:tint="@color/urwah_thread_dark" />
-
-            <TextView
-                android:id="@+id/tvKhatmaTitle"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:fontFamily="@font/alyamama"
-                android:gravity="center"
-                android:textColor="@color/urwah_thread_dark"
-                android:textSize="16sp"
-                android:textStyle="bold"
-                android:maxLines="1"
-                android:ellipsize="end" />
-
+            <!-- Row 1: Back + Khatma name + auto-scroll button -->
             <LinearLayout
-                android:layout_width="wrap_content"
+                android:layout_width="match_parent"
+                android:layout_height="40dp"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <ImageButton
+                    android:id="@+id/btnBack"
+                    android:layout_width="36dp"
+                    android:layout_height="36dp"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:contentDescription="رجوع"
+                    android:padding="6dp"
+                    android:src="@drawable/ic_arrow_back"
+                    android:tint="@color/urwah_thread_dark" />
+
+                <TextView
+                    android:id="@+id/tvKhatmaTitle"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:fontFamily="@font/alyamama"
+                    android:gravity="center"
+                    android:textColor="@color/urwah_thread_dark"
+                    android:textSize="16sp"
+                    android:textStyle="bold"
+                    android:maxLines="1"
+                    android:ellipsize="end" />
+
+                <ImageButton
+                    android:id="@+id/btnAutoScroll"
+                    android:layout_width="36dp"
+                    android:layout_height="36dp"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:contentDescription="التمرير التلقائي"
+                    android:padding="6dp"
+                    android:src="@drawable/ic_play_arrow"
+                    android:tint="@color/urwah_thread_dark" />
+            </LinearLayout>
+
+            <!-- Row 2: Day info + Surah • Juz • Hizb -->
+            <LinearLayout
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:gravity="center"
-                android:orientation="vertical">
+                android:orientation="horizontal"
+                android:layout_marginTop="2dp">
 
                 <TextView
                     android:id="@+id/tvProgress"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_marginEnd="4dp"
-                    android:paddingStart="6dp"
                     android:fontFamily="@font/alyamama"
                     android:textColor="@color/urwah_thread_brown"
-                    android:textSize="14sp" />
+                    android:textSize="12sp" />
 
                 <TextView
-                    android:id="@+id/tvTimeRemaining"
+                    android:id="@+id/tvSeparator1"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_marginEnd="4dp"
-                    android:paddingStart="6dp"
-                    android:fontFamily="@font/alyamama"
+                    android:layout_marginHorizontal="6dp"
+                    android:text="•"
                     android:textColor="@color/urwah_thread_light"
-                    android:textSize="11sp"
+                    android:textSize="12sp"
+                    android:visibility="gone" />
+
+                <TextView
+                    android:id="@+id/tvSurahName"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:fontFamily="@font/alyamama"
+                    android:textColor="@color/urwah_thread_dark"
+                    android:textSize="12sp"
+                    android:visibility="gone" />
+
+                <TextView
+                    android:id="@+id/tvSeparator2"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginHorizontal="6dp"
+                    android:text="•"
+                    android:textColor="@color/urwah_thread_light"
+                    android:textSize="12sp"
+                    android:visibility="gone" />
+
+                <TextView
+                    android:id="@+id/tvJuzName"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:fontFamily="@font/alyamama"
+                    android:textColor="@color/urwah_thread_dark"
+                    android:textSize="12sp"
+                    android:visibility="gone" />
+
+                <TextView
+                    android:id="@+id/tvSeparator3"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginHorizontal="6dp"
+                    android:text="•"
+                    android:textColor="@color/urwah_thread_light"
+                    android:textSize="12sp"
+                    android:visibility="gone" />
+
+                <TextView
+                    android:id="@+id/tvHizbName"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:fontFamily="@font/alyamama"
+                    android:textColor="@color/urwah_thread_dark"
+                    android:textSize="12sp"
                     android:visibility="gone" />
             </LinearLayout>
 
-            <ImageButton
-                android:id="@+id/btnAutoScroll"
-                android:layout_width="40dp"
-                android:layout_height="40dp"
-                android:background="?attr/selectableItemBackgroundBorderless"
-                android:contentDescription="التمرير التلقائي"
-                android:padding="8dp"
-                android:src="@drawable/ic_play_arrow"
-                android:tint="@color/urwah_thread_dark" />
+            <!-- Row 3: Time remaining (only visible during auto-scroll) -->
+            <TextView
+                android:id="@+id/tvTimeRemaining"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center"
+                android:fontFamily="@font/alyamama"
+                android:textColor="@color/urwah_thread_light"
+                android:textSize="11sp"
+                android:layout_marginTop="2dp"
+                android:visibility="gone" />
         </LinearLayout>
 
         <View

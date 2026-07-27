@@ -1,0 +1,213 @@
+<?xml version="1.0" encoding="utf-8"?>
+<com.google.android.material.card.MaterialCardView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginHorizontal="8dp"
+    android:layout_marginVertical="10dp"
+    app:cardCornerRadius="14dp"
+    app:cardElevation="0dp"
+    app:strokeWidth="2dp"
+    app:strokeColor="@color/urwah_thread_dark"
+    app:cardBackgroundColor="@color/urwah_card_bg">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="16dp">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical">
+
+            <FrameLayout
+                android:layout_width="52dp"
+                android:layout_height="52dp"
+                android:background="@drawable/bg_category_icon_circle">
+
+                <ImageView
+                    android:id="@+id/iv_category_icon"
+                    android:layout_width="26dp"
+                    android:layout_height="26dp"
+                    android:layout_gravity="center"
+                    android:src="@drawable/ic_open_book"
+                    android:tint="@color/icon_on_category_circle"
+                    android:contentDescription="@null" />
+            </FrameLayout>
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:layout_marginStart="14dp"
+                android:orientation="vertical">
+
+                <TextView
+                    android:id="@+id/tv_category_name"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:fontFamily="@font/alyamama"
+                    android:textColor="@color/urwah_thread_dark"
+                    android:textSize="17sp"
+                    android:textStyle="bold"
+                    android:maxLines="2"
+                    android:ellipsize="end" />
+
+                <TextView
+                    android:id="@+id/tv_category_count"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:fontFamily="@font/alyamama"
+                    android:textColor="@color/urwah_thread_light"
+                    android:textSize="13sp" />
+
+                <TextView
+                    android:id="@+id/tvBookType"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:fontFamily="@font/alyamama"
+                    android:textColor="@color/urwah_thread_dark"
+                    android:textSize="11sp"
+                    android:visibility="gone" />
+
+                <LinearLayout
+                    android:id="@+id/statsRow"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="6dp"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:visibility="gone">
+
+                    <ImageView
+                        android:id="@+id/ivPagesIcon"
+                        android:layout_width="14dp"
+                        android:layout_height="14dp"
+                        android:src="@drawable/ic_pages_14dp"
+                        android:contentDescription="@null" />
+
+                    <TextView
+                        android:id="@+id/tvPageCount"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="4dp"
+                        android:fontFamily="@font/alyamama"
+                        android:textColor="@color/urwah_thread_light"
+                        android:textSize="12sp" />
+
+                    <TextView
+                        android:id="@+id/tvStatsSeparator"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginHorizontal="6dp"
+                        android:text="·"
+                        android:textColor="@color/urwah_thread_light"
+                        android:textSize="14sp"
+                        android:visibility="gone" />
+
+                    <ImageView
+                        android:id="@+id/ivTimeIcon"
+                        android:layout_width="14dp"
+                        android:layout_height="14dp"
+                        android:src="@drawable/ic_time_14dp"
+                        android:visibility="gone"
+                        android:contentDescription="@null" />
+
+                    <TextView
+                        android:id="@+id/tvLastRead"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="4dp"
+                        android:fontFamily="@font/alyamama"
+                        android:textColor="@color/urwah_thread_light"
+                        android:textSize="12sp"
+                        android:visibility="gone" />
+                </LinearLayout>
+            </LinearLayout>
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnAction"
+                style="@style/Widget.Material3.Button.TonalButton"
+                android:layout_width="wrap_content"
+                android:layout_height="34dp"
+                android:fontFamily="@font/alyamama"
+                android:textSize="12sp"
+                android:text="تحميل"
+                app:cornerRadius="14dp"
+                app:backgroundTint="@color/urwah_background"
+                android:textColor="@color/urwah_thread_dark"
+                app:strokeColor="@color/urwah_thread_dark"
+                app:strokeWidth="1.5dp"
+                app:icon="@drawable/ic_download"
+                app:iconTint="@color/urwah_thread_dark"
+                app:iconSize="16dp"
+                app:iconPadding="4dp" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/readingProgressRow"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:orientation="vertical"
+            android:visibility="gone">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical">
+
+                <TextView
+                    android:id="@+id/tvReadingProgress"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:fontFamily="@font/alyamama"
+                    android:textColor="@color/urwah_thread_dark"
+                    android:textSize="11sp"
+                    android:textStyle="bold" />
+
+                <View
+                    android:layout_width="0dp"
+                    android:layout_height="0dp"
+                    android:layout_weight="1" />
+
+                <TextView
+                    android:id="@+id/tvProgressPage"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:fontFamily="@font/alyamama"
+                    android:textColor="@color/urwah_thread_light"
+                    android:textSize="11sp" />
+            </LinearLayout>
+
+            <com.google.android.material.progressindicator.LinearProgressIndicator
+                android:id="@+id/progressReading"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:indeterminate="false"
+                app:trackThickness="4dp"
+                app:trackCornerRadius="2dp"
+                app:trackColor="@color/oc_primary_08"
+                app:indicatorColor="@color/oc_primary" />
+        </LinearLayout>
+
+        <com.google.android.material.progressindicator.LinearProgressIndicator
+            android:id="@+id/progressDownload"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:indeterminate="false"
+            app:trackThickness="4dp"
+            app:trackCornerRadius="2dp"
+            app:trackColor="@color/oc_primary_08"
+            app:indicatorColor="@color/oc_primary"
+            android:visibility="gone" />
+    </LinearLayout>
+</com.google.android.material.card.MaterialCardView>

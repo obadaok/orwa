@@ -218,7 +218,7 @@ class KhatmaFragment : Fragment() {
 
             val percentage = if (k.totalDays > 0) (k.currentDay * 100 / k.totalDays) else 0
             h.tvProgress.text = "تم $percentage%"
-            h.tvDays.text = "اليوم ${k.currentDay} من ${k.totalDays}"
+            h.tvDays.text = "اليوم ${k.currentDay + 1} من ${k.totalDays}"
 
             h.tvRange.text = JuzData.formatDayRange(k.startJuz, k.totalDays, k.currentDay)
 

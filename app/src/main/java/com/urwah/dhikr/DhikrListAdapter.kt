@@ -236,7 +236,7 @@ class DhikrListAdapter(
         val uthmanicFont = ResourcesCompat.getFont(context, QuranDataLoader.getUthmanicFontRes(context)) ?: return applyDhikrFormatting(item.arabic)
         val hindi = arrayOf("٠", "١", "٢", "٣", "٤", "٥", "٦", "٧", "٨", "٩")
         val prefs = context.getSharedPreferences("urwah_quran", Context.MODE_PRIVATE)
-        val singleLine = prefs.getBoolean("ayah_single_line", true)
+        val singleLine = prefs.getBoolean("ayah_single_line", false)
 
         val sb = SpannableStringBuilder()
         if (surahNum != 9) {

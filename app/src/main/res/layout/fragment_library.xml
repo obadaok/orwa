@@ -1,0 +1,187 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/urwah_background">
+
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/rvCategories"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:clipToPadding="false"
+        android:paddingTop="68dp"
+        android:paddingBottom="24dp"
+        android:paddingHorizontal="12dp"
+        android:layoutAnimation="@anim/layout_animation_slide_up" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="top"
+        android:orientation="vertical">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="58dp"
+            android:background="@color/urwah_nav_bg"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:paddingHorizontal="8dp">
+
+            <ImageView
+                android:id="@+id/ivBack"
+                android:layout_width="44dp"
+                android:layout_height="44dp"
+                android:src="@drawable/ic_arrow_back"
+                android:tint="@color/urwah_thread_dark"
+                android:contentDescription="رجوع"
+                android:clickable="true"
+                android:focusable="true"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:padding="10dp" />
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:gravity="center"
+                android:fontFamily="@font/alyamama_bold"
+                android:text="المكتبة الشاملة"
+                android:textColor="@color/urwah_thread_dark"
+                android:textSize="19sp" />
+
+            <ImageView
+                android:id="@+id/ivSearch"
+                android:layout_width="44dp"
+                android:layout_height="44dp"
+                android:src="@drawable/ic_search"
+                android:tint="@color/urwah_thread_dark"
+                android:contentDescription="بحث"
+                android:clickable="true"
+                android:focusable="true"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:padding="10dp" />
+        </LinearLayout>
+
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="2.5dp"
+            android:background="@color/urwah_thread_dark" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:id="@+id/searchBar"
+        android:layout_width="match_parent"
+        android:layout_height="58dp"
+        android:layout_gravity="top"
+        android:background="@color/urwah_nav_bg"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:paddingHorizontal="8dp"
+        android:visibility="gone">
+
+        <ImageView
+            android:id="@+id/ivSearchBack"
+            android:layout_width="44dp"
+            android:layout_height="44dp"
+            android:src="@drawable/ic_arrow_back"
+            android:tint="@color/urwah_thread_dark"
+            android:contentDescription="رجوع"
+            android:clickable="true"
+            android:focusable="true"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:padding="10dp" />
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="42dp"
+            android:layout_weight="1"
+            android:layout_marginStart="4dp"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:background="@drawable/bg_search_bar_neo"
+            android:paddingHorizontal="10dp">
+
+            <EditText
+                android:id="@+id/etSearch"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:hint="ابحث عن كتاب، مؤلف، أو قسم..."
+                android:fontFamily="@font/alyamama"
+                android:textColor="@color/urwah_thread_dark"
+                android:textColorHint="@color/urwah_thread_light"
+                android:textSize="15sp"
+                android:background="@null"
+                android:inputType="text"
+                android:imeOptions="actionSearch"
+                android:maxLines="1" />
+
+            <ImageView
+                android:id="@+id/ivClearSearch"
+                android:layout_width="28dp"
+                android:layout_height="28dp"
+                android:src="@drawable/ic_close_circle"
+                android:tint="@color/urwah_thread_light"
+                android:contentDescription="مسح"
+                android:clickable="true"
+                android:focusable="true"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:padding="4dp"
+                android:visibility="gone" />
+        </LinearLayout>
+    </LinearLayout>
+
+    <!-- Search results -->
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/rvSearchResults"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_marginTop="58dp"
+        android:clipToPadding="false"
+        android:paddingTop="8dp"
+        android:paddingBottom="24dp"
+        android:paddingHorizontal="12dp"
+        android:background="@color/urwah_background"
+        android:layoutAnimation="@anim/layout_animation_slide_up"
+        android:visibility="gone" />
+
+    <!-- Empty state for search -->
+    <LinearLayout
+        android:id="@+id/emptySearchView"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center"
+        android:orientation="vertical"
+        android:gravity="center"
+        android:visibility="gone">
+
+        <ImageView
+            android:layout_width="64dp"
+            android:layout_height="64dp"
+            android:src="@drawable/ic_search"
+            android:tint="@color/urwah_thread_light"
+            android:alpha="0.5"
+            android:contentDescription="@null" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:fontFamily="@font/alyamama_bold"
+            android:textColor="@color/urwah_thread_light"
+            android:textSize="16sp"
+            android:text="لم يتم العثور على نتائج" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:fontFamily="@font/alyamama"
+            android:textColor="@color/urwah_thread_light"
+            android:textSize="13sp"
+            android:alpha="0.7"
+            android:text="جرّب كلمات بحث مختلفة" />
+    </LinearLayout>
+</FrameLayout>

@@ -21,4 +21,16 @@
 
     <string name="privacy_policy_title">سياسة الخصوصية</string>
     <string name="terms_title">شروط الاستخدام</string>
+
+    <!-- Orwa Calendar -->
+    <string name="oc_screen_title">تقويم عروة</string>
+    <string name="oc_ramadan_countdown_format">رمضان بعد %1$d يوماً</string>
+    <string name="oc_ramadan_today">رمضان كريم</string>
+    <string name="oc_surah_ref_format">%1$s — الآية %2$d</string>
+    <string name="oc_names_title">من أسماء الله الحسنى</string>
+    <string name="oc_ayah_title">آية اليوم</string>
+    <string name="oc_tafsir_title">التفسير</string>
+    <string name="oc_hadith_title">حديث اليوم</string>
+    <string name="oc_scholars_title">مأثورات العلماء</string>
+    <string name="oc_read_more">عرض كامل</string>
 </resources>

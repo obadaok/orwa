@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    عنصر الفهرس: نفس الـ id الأصلي (tvTocItem) لكنه الآن ضمن صف يحوي
+    شريط توجيه رفيع لتمييز الفصول/العناوين الفرعية بصريًا.
+-->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="horizontal"
+    android:gravity="center_vertical"
+    android:paddingHorizontal="16dp"
+    android:background="@drawable/bg_toc_item_neo">
+
+    <View
+        android:layout_width="3dp"
+        android:layout_height="34dp"
+        android:background="@color/sh_toc_indent_line" />
+
+    <TextView
+        android:id="@+id/tvTocItem"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:layout_marginStart="12dp"
+        android:fontFamily="@font/alyamama"
+        android:textColor="@color/urwah_thread_dark"
+        android:textSize="14sp"
+        android:paddingVertical="12dp"
+        android:drawablePadding="8dp"
+        android:maxLines="2"
+        android:ellipsize="end" />
+</LinearLayout>

@@ -133,7 +133,7 @@ class SettingsFragment : Fragment() {
     }
 
     private fun setupQuranSettings(prefs: SharedPreferences) {
-        val ayahDisplayMode = prefs.getBoolean("ayah_single_line", true)
+        val ayahDisplayMode = prefs.getBoolean("ayah_single_line", false)
         val qiraatMode = QuranDataLoader.getQiraat(requireContext())
 
         binding.tvAyahDisplayMode.text = if (ayahDisplayMode) "كل آية في سطر مستقل" else "عرض متواصل"
@@ -265,7 +265,7 @@ class SettingsFragment : Fragment() {
 
     private fun showViewModeDialog(prefs: SharedPreferences) {
         val view = LayoutInflater.from(requireContext()).inflate(R.layout.dialog_view_mode, null)
-        val current = prefs.getBoolean("ayah_single_line", true)
+        val current = prefs.getBoolean("ayah_single_line", false)
 
         val dialog = android.app.AlertDialog.Builder(requireContext())
             .setView(view)

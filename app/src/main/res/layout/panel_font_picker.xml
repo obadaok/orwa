@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:background="@drawable/bg_reader_bottom_panel"
+    android:orientation="vertical"
+    android:padding="20dp">
+
+    <!-- Drag handle -->
+    <View
+        android:layout_width="40dp"
+        android:layout_height="4dp"
+        android:layout_gravity="center"
+        android:layout_marginBottom="14dp"
+        android:background="@color/urwah_thread_light" />
+
+    <!-- Title -->
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center"
+        android:fontFamily="@font/alyamama_bold"
+        android:text="اختيار الخط"
+        android:textColor="@color/urwah_thread_dark"
+        android:textSize="18sp" />
+
+    <View
+        android:layout_width="48dp"
+        android:layout_height="2.5dp"
+        android:layout_gravity="center"
+        android:layout_marginVertical="10dp"
+        android:background="@color/urwah_thread_brown" />
+
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/rvFonts"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:clipToPadding="false"
+        android:maxHeight="360dp"
+        android:nestedScrollingEnabled="false"
+        android:paddingBottom="4dp" />
+
+    <Button
+        android:id="@+id/btnCloseFontPicker"
+        android:layout_width="match_parent"
+        android:layout_height="40dp"
+        android:layout_marginTop="10dp"
+        android:background="@drawable/bg_secondary_button"
+        android:fontFamily="@font/alyamama"
+        android:text="إغلاق"
+        android:textColor="@color/urwah_thread_dark"
+        android:textSize="13sp" />
+
+</LinearLayout>

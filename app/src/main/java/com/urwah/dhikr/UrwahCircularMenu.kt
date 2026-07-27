@@ -74,6 +74,17 @@ class UrwahCircularMenu @JvmOverloads constructor(
         invalidate()
     }
 
+    fun clearMenuItems() {
+        cancelAllAnimations()
+        items.clear()
+        itemAnimations.clear()
+        selectedIndex = -1
+        isShowing = false
+        isHiding = false
+        visibility = GONE
+        invalidate()
+    }
+
     private fun updateThemeColors() {
         val ctx = context
         primaryColor = ctx.getColor(R.color.urwah_primary)

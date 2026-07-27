@@ -1,0 +1,104 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <!-- ============================================================
+         Orwa Calendar — Typography
+         كل الأنماط مبنية فقط على خطوط مشروع Orwa الموجودة مسبقاً:
+         @font/alyamama_extrabold / _bold / _regular / _light / _black / _semibold
+         و @font/uthmanic_hafs للقرآن الكريم فقط
+         ============================================================ -->
+
+    <!-- Root namespace — prevents AAPT from looking for parent "OC" -->
+    <style name="OC" />
+
+    <!-- Base style — required for OC.Text.* dot-notation inheritance -->
+    <style name="OC.Text" />
+
+    <!-- عنوان رئيسي: اسم الشاشة، عناوين الأقسام الكبيرة -->
+    <style name="OC.Text.Headline">
+        <item name="fontFamily">@font/alyamama_extrabold</item>
+        <item name="android:fontFamily">@font/alyamama_extrabold</item>
+        <item name="android:textColor">@color/oc_text_primary</item>
+        <item name="android:textSize">24sp</item>
+        <item name="android:letterSpacing">0</item>
+    </style>
+
+    <!-- عنوان فرعي: عناوين البطاقات (اسم الله، الحديث، فائدة اليوم...) -->
+    <style name="OC.Text.Subhead">
+        <item name="fontFamily">@font/alyamama_bold</item>
+        <item name="android:fontFamily">@font/alyamama_bold</item>
+        <item name="android:textColor">@color/oc_text_primary</item>
+        <item name="android:textSize">16sp</item>
+    </style>
+
+    <!-- نص أساسي: الشرح، فائدة اليوم، متن الحديث -->
+    <style name="OC.Text.Body">
+        <item name="fontFamily">@font/alyamama_regular</item>
+        <item name="android:fontFamily">@font/alyamama_regular</item>
+        <item name="android:textColor">@color/oc_text_primary</item>
+        <item name="android:textSize">15sp</item>
+        <item name="android:lineSpacingMultiplier">1.35</item>
+    </style>
+
+    <!-- نص صغير: الراوي، المصدر، تسميات ثانوية -->
+    <style name="OC.Text.Caption">
+        <item name="fontFamily">@font/alyamama_light</item>
+        <item name="android:fontFamily">@font/alyamama_light</item>
+        <item name="android:textColor">@color/oc_text_secondary</item>
+        <item name="android:textSize">12sp</item>
+    </style>
+
+    <!-- اسم اليوم (الاثنين، الثلاثاء...) -->
+    <style name="OC.Text.DayName">
+        <item name="fontFamily">@font/alyamama_black</item>
+        <item name="android:fontFamily">@font/alyamama_black</item>
+        <item name="android:textColor">@color/oc_text_primary</item>
+        <item name="android:textSize">20sp</item>
+    </style>
+
+    <!-- أسماء الشهور الهجرية / الميلادية -->
+    <style name="OC.Text.MonthName">
+        <item name="fontFamily">@font/alyamama_semibold</item>
+        <item name="android:fontFamily">@font/alyamama_semibold</item>
+        <item name="android:textColor">@color/oc_text_primary</item>
+        <item name="android:textSize">14sp</item>
+    </style>
+
+    <!-- الآية الكريمة فقط — الخط العثماني الحديث، ممنوع اليمامة هنا -->
+    <style name="OC.Text.Ayah">
+        <item name="fontFamily">@font/uthmanic_hafs</item>
+        <item name="android:fontFamily">@font/uthmanic_hafs</item>
+        <item name="android:textColor">@color/oc_text_primary</item>
+        <item name="android:textSize">22sp</item>
+        <item name="android:lineSpacingMultiplier">1.9</item>
+        <item name="android:textDirection">rtl</item>
+    </style>
+
+    <!-- رقم/اسم السورة تحت الآية -->
+    <style name="OC.Text.SurahRef">
+        <item name="fontFamily">@font/alyamama_semibold</item>
+        <item name="android:fontFamily">@font/alyamama_semibold</item>
+        <item name="android:textColor">@color/oc_primary</item>
+        <item name="android:textSize">13sp</item>
+    </style>
+
+    <!-- الحديث الشريف بالكامل: Alyamama Regular حسب الطلب -->
+    <style name="OC.Text.Hadith">
+        <item name="fontFamily">@font/alyamama_regular</item>
+        <item name="android:fontFamily">@font/alyamama_regular</item>
+        <item name="android:textColor">@color/oc_text_primary</item>
+        <item name="android:textSize">16sp</item>
+        <item name="android:lineSpacingMultiplier">1.5</item>
+    </style>
+
+    <!-- ============================================================
+         Motion — قيم موحّدة لأي حركة Ripple / Fade / Scale
+         ============================================================ -->
+
+    <style name="OC.Motion" />
+
+    <style name="OC.Motion.CardPress" parent="android:Widget">
+        <item name="android:stateListAnimator">@animator/oc_card_press_anim</item>
+    </style>
+
+</resources>

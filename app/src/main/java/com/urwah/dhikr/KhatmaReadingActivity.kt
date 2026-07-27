@@ -37,6 +37,12 @@ class KhatmaReadingActivity : AppCompatActivity() {
     private lateinit var tvKhatmaTitle: TextView
     private lateinit var tvProgress: TextView
     private lateinit var tvTimeRemaining: TextView
+    private lateinit var tvSurahName: TextView
+    private lateinit var tvJuzName: TextView
+    private lateinit var tvHizbName: TextView
+    private lateinit var tvSeparator1: TextView
+    private lateinit var tvSeparator2: TextView
+    private lateinit var tvSeparator3: TextView
     private lateinit var readingProgress: SeekBar
     private lateinit var progressMarkers: FrameLayout
     private lateinit var topToolbar: View
@@ -83,13 +89,19 @@ class KhatmaReadingActivity : AppCompatActivity() {
         tvKhatmaTitle = findViewById(R.id.tvKhatmaTitle)
         tvProgress = findViewById(R.id.tvProgress)
         tvTimeRemaining = findViewById(R.id.tvTimeRemaining)
+        tvSurahName = findViewById(R.id.tvSurahName)
+        tvJuzName = findViewById(R.id.tvJuzName)
+        tvHizbName = findViewById(R.id.tvHizbName)
+        tvSeparator1 = findViewById(R.id.tvSeparator1)
+        tvSeparator2 = findViewById(R.id.tvSeparator2)
+        tvSeparator3 = findViewById(R.id.tvSeparator3)
         scrollView = findViewById(R.id.scrollView)
         containerAyahs = findViewById(R.id.containerAyahs)
         readingProgress = findViewById(R.id.readingProgress)
         progressMarkers = findViewById(R.id.progressMarkers)
         topToolbar = findViewById(R.id.topToolbar)
         progressContainer = findViewById(R.id.progressContainer)
-        singleLineMode = quranPrefs.getBoolean("ayah_single_line", true)
+        singleLineMode = quranPrefs.getBoolean("ayah_single_line", false)
 
         // Keep screen on
         applyKeepScreenOnIfEnabled()
@@ -136,6 +148,15 @@ class KhatmaReadingActivity : AppCompatActivity() {
         loadDayAyahs()
         renderKhatma()
 
+        // Set initial toolbar info
+        if (currentDayAyahs.isNotEmpty()) {
+            val firstAyah = currentDayAyahs.first()
+            val initialIdx = allAyahsFlat.indexOfFirst {
+                it.surahNumber == firstAyah.surahNumber && it.number == firstAyah.number
+            }
+            if (initialIdx >= 0) updateToolbarInfo(initialIdx)
+        }
+
         // Touch listener: detect tap for UI toggle (never stops auto-scroll)
         var touchDownX = 0f
         var touchDownY = 0f
@@ -173,10 +194,12 @@ class KhatmaReadingActivity : AppCompatActivity() {
     override fun onResume() {
         super.onResume()
         applyKeepScreenOnIfEnabled()
+        ReadingTimeTracker.startSession(this, ReadingTimeTracker.TYPE_KHATMA)
     }
 
     override fun onPause() {
         super.onPause()
+        ReadingTimeTracker.stopSession(this)
         stopAutoScroll()
         if (!isFinishing) {
             saveScrollPosition()
@@ -245,7 +268,32 @@ class KhatmaReadingActivity : AppCompatActivity() {
 
         if (visibleGlobalIdx >= 0) {
             toastHelper?.onPositionReached(visibleGlobalIdx)
+            updateToolbarInfo(visibleGlobalIdx)
         }
+    }
+
+    private fun updateToolbarInfo(globalIndex: Int) {
+        if (globalIndex < 0 || globalIndex >= allAyahsFlat.size) return
+        val ayah = allAyahsFlat[globalIndex]
+
+        val surahName = JuzData.findSurahNameForAyah(ayah.surahNumber)
+        if (surahName.isNotEmpty()) {
+            tvSurahName.text = surahName
+            tvSurahName.visibility = View.VISIBLE
+            tvSeparator1.visibility = View.VISIBLE
+        }
+
+        val juzNum = JuzData.getJuzNumberForAyah(allAyahsFlat, globalIndex)
+        val hindi = arrayOf("٠", "١", "٢", "٣", "٤", "٥", "٦", "٧", "٨", "٩")
+        val toHindi = { n: Int -> n.toString().map { hindi[it - '0'] }.joinToString("") }
+        tvJuzName.text = "جزء ${toHindi(juzNum)}"
+        tvJuzName.visibility = View.VISIBLE
+        tvSeparator2.visibility = View.VISIBLE
+
+        val hizbNum = JuzData.getHizbNumberForAyah(allAyahsFlat, globalIndex)
+        tvHizbName.text = "حزب ${toHindi(hizbNum)}"
+        tvHizbName.visibility = View.VISIBLE
+        tvSeparator3.visibility = View.VISIBLE
     }
 
     private fun loadDayAyahs() {
@@ -485,25 +533,50 @@ class KhatmaReadingActivity : AppCompatActivity() {
     }
 
     private fun scrollToSavedPosition() {
+        if (savedSurah < 0 || savedAyah < 0) return
+        if (currentDayAyahs.isEmpty()) return
+
+        val targetIdx = JuzData.findAyahIndexInRange(currentDayAyahs, savedSurah, savedAyah)
+
         val khatmas = KhatmaManager.getAll(this)
         val khatma = khatmas.find { it.id == khatmaId }
         val savedOffset = khatma?.lastScrollOffset ?: -1
 
-        if (savedSurah < 0 || savedAyah < 0) return
-
-        if (savedOffset > 0) {
-            scrollView.post {
-                val content = scrollView.getChildAt(0)
-                val maxScroll = ((content?.height ?: 0) - scrollView.height).coerceAtLeast(0)
-                scrollView.scrollTo(0, savedOffset.coerceIn(0, maxScroll))
-            }
+        if (savedOffset > 0 && targetIdx >= 0) {
+            scheduleScrollWithOffsetOrAyah(savedOffset, targetIdx, 5)
             return
         }
 
-        if (currentDayAyahs.isEmpty()) return
-        val targetIdx = JuzData.findAyahIndexInRange(currentDayAyahs, savedSurah, savedAyah)
         if (targetIdx < 0) return
         scheduleScrollToIndex(targetIdx, 5)
+    }
+
+    private fun scheduleScrollWithOffsetOrAyah(savedOffset: Int, targetIdx: Int, retries: Int) {
+        if (retries <= 0) {
+            scheduleScrollToIndex(targetIdx, 3)
+            return
+        }
+        scrollView.postDelayed({
+            val content = scrollView.getChildAt(0)
+            val contentHeight = content?.height ?: 0
+            val viewportHeight = scrollView.height
+            if (contentHeight <= 0 || viewportHeight <= 0) {
+                scheduleScrollWithOffsetOrAyah(savedOffset, targetIdx, retries - 1)
+                return@postDelayed
+            }
+            val maxScroll = (contentHeight - viewportHeight).coerceAtLeast(0)
+            if (maxScroll <= 0) {
+                scheduleScrollWithOffsetOrAyah(savedOffset, targetIdx, retries - 1)
+                return@postDelayed
+            }
+            val target = savedOffset.coerceIn(0, maxScroll)
+            scrollView.scrollTo(0, target)
+            scrollView.post {
+                if (scrollView.scrollY == 0 && target > 0) {
+                    scheduleScrollToIndex(targetIdx, 3)
+                }
+            }
+        }, 100)
     }
 
     private fun scheduleScrollToIndex(targetIdx: Int, retries: Int) {
@@ -599,7 +672,7 @@ class KhatmaReadingActivity : AppCompatActivity() {
             setTextColor(ayahColor)
             textDirection = View.TEXT_DIRECTION_RTL
             gravity = Gravity.START
-            setLineSpacing(4f, 1f)
+            setLineSpacing(dpToPx(1f).toFloat(), 1f)
             includeFontPadding = true
             if (Build.VERSION.SDK_INT >= 26) {
                 justificationMode = 1

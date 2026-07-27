@@ -1,0 +1,434 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/oc_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/oc_background">
+
+    <!-- ═══ Toolbar ═══ -->
+    <com.google.android.material.appbar.MaterialToolbar
+        android:id="@+id/oc_toolbar"
+        android:layout_width="0dp"
+        android:layout_height="36dp"
+        android:background="@android:color/transparent"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:title="تقويم عروة"
+        app:titleTextAppearance="@style/OC.Text.Subhead"
+        app:navigationIconTint="@color/oc_primary"
+        app:contentInsetStart="16dp" />
+
+    <!-- ═══ الهيدر ═══ -->
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:id="@+id/oc_hero"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:background="@drawable/bg_hero_geometric"
+        android:paddingHorizontal="20dp"
+        android:paddingTop="6dp"
+        android:paddingBottom="8dp"
+        app:layout_constraintTop_toBottomOf="@id/oc_toolbar"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent">
+
+        <TextView
+            android:id="@+id/tvDayName"
+            style="@style/OC.Text.DayName"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textSize="16sp"
+            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintStart_toStartOf="parent" />
+
+        <TextView
+            android:id="@+id/tvHijriDate"
+            style="@style/OC.Text.MonthName"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="1dp"
+            app:layout_constraintTop_toBottomOf="@id/tvDayName"
+            app:layout_constraintStart_toStartOf="parent" />
+
+        <TextView
+            android:id="@+id/tvGregorianDate"
+            style="@style/OC.Text.Caption"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="1dp"
+            app:layout_constraintTop_toBottomOf="@id/tvHijriDate"
+            app:layout_constraintStart_toStartOf="parent" />
+
+        <TextView
+            android:id="@+id/tvRamadanCountdown"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:background="@drawable/bg_chip_pill"
+            android:paddingHorizontal="10dp"
+            android:paddingVertical="3dp"
+            android:fontFamily="@font/alyamama_medium"
+            android:textSize="10sp"
+            android:textColor="@color/oc_primary"
+            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toEndOf="parent" />
+
+    </androidx.constraintlayout.widget.ConstraintLayout>
+
+    <!-- ═══ أسماء الله الحسنى ═══ -->
+    <FrameLayout
+        android:id="@+id/cardAsmaHusna"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginHorizontal="14dp"
+        android:layout_marginTop="6dp"
+        android:background="@drawable/bg_card_soft"
+        android:foreground="@drawable/ripple_card"
+        android:clickable="true"
+        android:focusable="true"
+        android:elevation="1dp"
+        app:layout_constraintTop_toBottomOf="@id/oc_hero"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:paddingHorizontal="14dp"
+            android:paddingVertical="8dp"
+            android:gravity="center_vertical">
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:orientation="vertical">
+
+                <TextView
+                    style="@style/OC.Text.Caption"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/oc_names_title"
+                    android:textSize="9sp" />
+
+                <TextView
+                    android:id="@+id/tvAsmaHusnaName"
+                    style="@style/OC.Text.Headline"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:textSize="18sp"
+                    android:textColor="@color/oc_primary" />
+
+            </LinearLayout>
+
+            <TextView
+                android:id="@+id/tvAsmaHusnaExplanation"
+                style="@style/OC.Text.Body"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="2"
+                android:layout_marginStart="10dp"
+                android:textSize="11sp"
+                android:maxLines="2"
+                android:ellipsize="end" />
+
+        </LinearLayout>
+    </FrameLayout>
+
+    <!-- ═══ آية اليوم ═══ -->
+    <FrameLayout
+        android:id="@+id/cardAyah"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginHorizontal="14dp"
+        android:layout_marginTop="6dp"
+        android:background="@drawable/bg_ayah_card"
+        android:foreground="@drawable/ripple_card"
+        android:clickable="true"
+        android:focusable="true"
+        android:elevation="2dp"
+        app:layout_constraintTop_toBottomOf="@id/cardAsmaHusna"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:paddingHorizontal="18dp"
+            android:paddingVertical="12dp"
+            android:gravity="center">
+
+            <TextView
+                style="@style/OC.Text.Caption"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/oc_ayah_title"
+                android:textSize="9sp" />
+
+            <TextView
+                android:id="@+id/tvAyahText"
+                style="@style/OC.Text.Ayah"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:textSize="20sp"
+                android:lineSpacingMultiplier="1.6"
+                android:gravity="center"
+                android:maxLines="5"
+                android:ellipsize="end" />
+
+            <TextView
+                android:id="@+id/tvSurahRef"
+                style="@style/OC.Text.SurahRef"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:textSize="10sp" />
+
+            <TextView
+                android:id="@+id/btnAyahMore"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center"
+                android:layout_marginTop="4dp"
+                android:text="@string/oc_read_more"
+                android:textSize="11sp"
+                android:textColor="@color/oc_primary"
+                android:fontFamily="@font/alyamama_medium"
+                android:visibility="gone" />
+
+        </LinearLayout>
+    </FrameLayout>
+
+    <!-- ═══ تفسير الآية ═══ -->
+    <FrameLayout
+        android:id="@+id/cardTafsir"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginHorizontal="14dp"
+        android:layout_marginTop="4dp"
+        android:background="@drawable/bg_card_soft"
+        android:foreground="@drawable/ripple_card"
+        android:clickable="true"
+        android:focusable="true"
+        android:elevation="1dp"
+        app:layout_constraintTop_toBottomOf="@id/cardAyah"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:paddingHorizontal="14dp"
+            android:paddingVertical="8dp">
+
+            <View
+                android:layout_width="30dp"
+                android:layout_height="2dp"
+                android:background="@color/oc_primary_24" />
+
+            <TextView
+                style="@style/OC.Text.Caption"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="5dp"
+                android:text="@string/oc_tafsir_title"
+                android:textSize="9sp" />
+
+            <TextView
+                android:id="@+id/tvTafsirText"
+                style="@style/OC.Text.Body"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="3dp"
+                android:textSize="12sp"
+                android:maxLines="2"
+                android:ellipsize="end" />
+
+            <TextView
+                android:id="@+id/btnTafsirMore"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="2dp"
+                android:text="@string/oc_read_more"
+                android:textSize="11sp"
+                android:textColor="@color/oc_primary"
+                android:fontFamily="@font/alyamama_medium"
+                android:visibility="gone" />
+
+        </LinearLayout>
+    </FrameLayout>
+
+    <!-- ═══ حديث اليوم ═══ -->
+    <FrameLayout
+        android:id="@+id/cardHadith"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginHorizontal="14dp"
+        android:layout_marginTop="4dp"
+        android:background="@drawable/bg_card_soft"
+        android:foreground="@drawable/ripple_card"
+        android:clickable="true"
+        android:focusable="true"
+        android:elevation="1dp"
+        app:layout_constraintTop_toBottomOf="@id/cardTafsir"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:paddingHorizontal="14dp"
+            android:paddingVertical="8dp">
+
+            <TextView
+                style="@style/OC.Text.Subhead"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/oc_hadith_title"
+                android:textSize="12sp" />
+
+            <TextView
+                android:id="@+id/tvHadithText"
+                style="@style/OC.Text.Hadith"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:textSize="13sp"
+                android:maxLines="3"
+                android:ellipsize="end" />
+
+            <TextView
+                android:id="@+id/btnHadithMore"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="2dp"
+                android:text="@string/oc_read_more"
+                android:textSize="11sp"
+                android:textColor="@color/oc_primary"
+                android:fontFamily="@font/alyamama_medium"
+                android:visibility="gone" />
+
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:layout_marginTop="4dp"
+                android:background="@color/oc_card_stroke" />
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:layout_marginTop="4dp"
+                android:gravity="center_vertical">
+
+                <TextView
+                    android:id="@+id/tvHadithNarrator"
+                    style="@style/OC.Text.Caption"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:textSize="9sp" />
+
+                <TextView
+                    style="@style/OC.Text.Caption"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginHorizontal="4dp"
+                    android:text="·"
+                    android:textSize="9sp" />
+
+                <TextView
+                    android:id="@+id/tvHadithSource"
+                    style="@style/OC.Text.Caption"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:gravity="end"
+                    android:textSize="9sp" />
+
+            </LinearLayout>
+
+        </LinearLayout>
+    </FrameLayout>
+
+    <!-- ═══ مأثورات العلماء ═══ -->
+    <FrameLayout
+        android:id="@+id/cardBenefit"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginHorizontal="14dp"
+        android:layout_marginTop="4dp"
+        android:layout_marginBottom="4dp"
+        android:background="@drawable/bg_card_soft"
+        android:foreground="@drawable/ripple_card"
+        android:clickable="true"
+        android:focusable="true"
+        android:elevation="1dp"
+        app:layout_constraintTop_toBottomOf="@id/cardHadith"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:paddingHorizontal="14dp"
+            android:paddingVertical="8dp"
+            android:gravity="center_vertical">
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:orientation="vertical">
+
+                <TextView
+                    style="@style/OC.Text.Caption"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/oc_scholars_title"
+                    android:textSize="9sp" />
+
+                <TextView
+                    android:id="@+id/tvBenefitText"
+                    style="@style/OC.Text.Body"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="3dp"
+                    android:textSize="12sp"
+                    android:maxLines="2"
+                    android:ellipsize="end" />
+
+                <TextView
+                    android:id="@+id/btnBenefitMore"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
+                    android:text="@string/oc_read_more"
+                    android:textSize="11sp"
+                    android:textColor="@color/oc_primary"
+                    android:fontFamily="@font/alyamama_medium"
+                    android:visibility="gone" />
+
+            </LinearLayout>
+
+            <TextView
+                android:id="@+id/tvScholarName"
+                style="@style/OC.Text.SurahRef"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="8dp"
+                android:textSize="10sp"
+                android:textColor="@color/oc_primary" />
+
+        </LinearLayout>
+    </FrameLayout>
+
+</androidx.constraintlayout.widget.ConstraintLayout>

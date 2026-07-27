@@ -55,4 +55,26 @@
 
     <!-- Swipe delete color -->
     <color name="delete_swipe_bg">#33CC5555</color>
+
+    <!-- Orwa Calendar — Light Mode -->
+    <color name="oc_primary">#8B6F5E</color>
+    <color name="oc_background">#F7F5F0</color>
+    <color name="oc_surface">#FDFCF8</color>
+    <color name="oc_card">#FFFDFA</color>
+    <color name="oc_text_primary">#5E4B40</color>
+    <color name="oc_text_secondary">#C4AFA3</color>
+    <color name="oc_primary_08">#148B6F5E</color>
+    <color name="oc_primary_14">#248B6F5E</color>
+    <color name="oc_primary_24">#3D8B6F5E</color>
+    <color name="oc_text_secondary_40">#66C4AFA3</color>
+    <color name="oc_card_stroke">#1A8B6F5E</color>
+    <color name="oc_ripple">#298B6F5E</color>
+
+    <!-- Neo-Brutalism / Shamela library colors -->
+    <color name="sh_shadow_dark">#5E4B40</color>
+    <color name="sh_cover_grad_start">#C4AFA3</color>
+    <color name="sh_cover_grad_end">#AE9686</color>
+    <color name="sh_divider_line">#E4D9CF</color>
+    <color name="sh_toc_indent_line">#C4AFA3</color>
+    <color name="sh_quote_bg">#F1E9E1</color>
 </resources>

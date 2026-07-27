@@ -157,9 +157,6 @@ class SurahDetailActivity : AppCompatActivity() {
 
         scrollView = findViewById(R.id.scrollView)
         scrollView.setOnTouchListener { _, event ->
-            if (isAutoScrolling && event.action == MotionEvent.ACTION_MOVE) {
-                stopAutoScroll()
-            }
             false
         }
         containerAyahs = findViewById(R.id.containerAyahs)
@@ -211,13 +208,19 @@ class SurahDetailActivity : AppCompatActivity() {
         // Share feature removed
     }
 
+    override fun onResume() {
+        super.onResume()
+        ReadingTimeTracker.startSession(this, ReadingTimeTracker.TYPE_QURAN)
+    }
+
     override fun onPause() {
         super.onPause()
+        ReadingTimeTracker.stopSession(this)
         stopAutoScroll()
         if (isKhatmaMode) return
 
         val quranPrefs = getSharedPreferences("urwah_quran", Context.MODE_PRIVATE)
-        val singleLineMode = quranPrefs.getBoolean("ayah_single_line", true)
+        val singleLineMode = quranPrefs.getBoolean("ayah_single_line", false)
 
         if (singleLineMode) {
             val ayahViews = containerAyahs.findAyahViews()
@@ -265,7 +268,7 @@ class SurahDetailActivity : AppCompatActivity() {
         val highlightColor = if (isDark) Color.parseColor("#338B6F5E") else Color.parseColor("#1A8B6F5E")
 
         val quranPrefs = getSharedPreferences("urwah_quran", Context.MODE_PRIVATE)
-        val singleLineMode = quranPrefs.getBoolean("ayah_single_line", true)
+        val singleLineMode = quranPrefs.getBoolean("ayah_single_line", false)
 
         if (singleLineMode) {
             ayahs.forEachIndexed { index, ayah ->
@@ -345,7 +348,7 @@ class SurahDetailActivity : AppCompatActivity() {
                 setTextColor(ayahColor)
                 textDirection = View.TEXT_DIRECTION_RTL
                 gravity = Gravity.START
-                setLineSpacing(4f, 1f)
+                setLineSpacing(dpToPx(1f).toFloat(), 1f)
                 letterSpacing = 0f
                 includeFontPadding = true
                 if (Build.VERSION.SDK_INT >= 26) {
@@ -894,7 +897,7 @@ class SurahDetailActivity : AppCompatActivity() {
             scrollDebounce?.let { scrollHandler?.removeCallbacks(it) }
             scrollDebounce = Runnable {
                 var visibleGlobalIdx = -1
-                val singleLine = quranPrefs.getBoolean("ayah_single_line", true)
+                val singleLine = quranPrefs.getBoolean("ayah_single_line", false)
                 if (singleLine) {
                     for (i in 0 until containerAyahs.childCount) {
                         val child = containerAyahs.getChildAt(i)

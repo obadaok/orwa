@@ -42,6 +42,15 @@ class MainActivity : AppCompatActivity() {
                 if (circularMenu.visibility == View.VISIBLE) {
                     circularMenu.hide()
                 } else {
+                    val currentFragment = supportFragmentManager.findFragmentById(R.id.nav_host_fragment)
+                        ?.childFragmentManager?.fragments?.firstOrNull()
+                    if (currentFragment is CircularMenuProvider) {
+                        circularMenu.clearMenuItems()
+                        currentFragment.setupCircularMenu(circularMenu)
+                    } else {
+                        circularMenu.clearMenuItems()
+                        setupDefaultCircularMenu(circularMenu, navController, navAnimOptions)
+                    }
                     circularMenu.show()
                 }
                 return@setOnItemSelectedListener false
@@ -55,27 +64,7 @@ class MainActivity : AppCompatActivity() {
             true
         }
 
-        circularMenu.addMenuItem(R.drawable.ic_search, "بحث") {
-            val navFragment = supportFragmentManager.findFragmentById(R.id.nav_host_fragment)
-            val childFragment = navFragment?.childFragmentManager?.fragments?.firstOrNull()
-            if (childFragment is SearchableFragment) {
-                childFragment.showSearch()
-            } else {
-                navController.navigate(R.id.nav_home, null, navAnimOptions)
-            }
-        }
-        circularMenu.addMenuItem(R.drawable.ic_favorites, "المفضلة") {
-            navController.navigate(R.id.nav_favorites, null, navAnimOptions)
-        }
-        circularMenu.addMenuItem(R.drawable.ic_statistics, "الإحصائيات") {
-            navController.navigate(R.id.nav_stats, null, navAnimOptions)
-        }
-        circularMenu.addMenuItem(R.drawable.ic_dua, "الأدعية") {
-            navController.navigate(R.id.nav_dua, null, navAnimOptions)
-        }
-        circularMenu.addMenuItem(R.drawable.ic_settings, "الإعدادات") {
-            navController.navigate(R.id.nav_settings, null, navAnimOptions)
-        }
+        setupDefaultCircularMenu(circularMenu, navController, navAnimOptions)
 
         checkConsent()
     }
@@ -110,6 +99,37 @@ class MainActivity : AppCompatActivity() {
     override fun onResume() {
         super.onResume()
         rescheduleReminders()
+    }
+
+    private fun setupDefaultCircularMenu(
+        circularMenu: UrwahCircularMenu,
+        navController: androidx.navigation.NavController,
+        navAnimOptions: androidx.navigation.NavOptions
+    ) {
+        circularMenu.addMenuItem(R.drawable.ic_search, "بحث") {
+            val navFragment = supportFragmentManager.findFragmentById(R.id.nav_host_fragment)
+            val childFragment = navFragment?.childFragmentManager?.fragments?.firstOrNull()
+            if (childFragment is SearchableFragment) {
+                childFragment.showSearch()
+            } else {
+                navController.navigate(R.id.nav_home, null, navAnimOptions)
+            }
+        }
+        circularMenu.addMenuItem(R.drawable.ic_favorites, "المفضلة") {
+            navController.navigate(R.id.nav_favorites, null, navAnimOptions)
+        }
+        circularMenu.addMenuItem(R.drawable.ic_statistics, "الإحصائيات") {
+            navController.navigate(R.id.nav_stats, null, navAnimOptions)
+        }
+        circularMenu.addMenuItem(R.drawable.ic_dua, "الأدعية") {
+            navController.navigate(R.id.nav_dua, null, navAnimOptions)
+        }
+        circularMenu.addMenuItem(R.drawable.ic_settings, "الإعدادات") {
+            navController.navigate(R.id.nav_settings, null, navAnimOptions)
+        }
+        circularMenu.addMenuItem(R.drawable.ic_khatmah, "الختمات") {
+            navController.navigate(R.id.nav_khatma, null, navAnimOptions)
+        }
     }
 
     private fun rescheduleReminders() {

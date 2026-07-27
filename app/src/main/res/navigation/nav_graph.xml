@@ -3,12 +3,18 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:id="@+id/nav_graph"
-    app:startDestination="@id/nav_home">
+    app:startDestination="@id/nav_calendar">
+
+    <fragment
+        android:id="@+id/nav_calendar"
+        android:name="com.urwah.dhikr.calendar.OrwaCalendarFragment"
+        android:label="التقويم"
+        tools:layout="@layout/fragment_orwa_calendar" />
 
     <fragment
         android:id="@+id/nav_home"
         android:name="com.urwah.dhikr.fragments.HomeFragment"
-        android:label="الرئيسية"
+        android:label="الأذكار"
         tools:layout="@layout/fragment_home" />
 
     <fragment
@@ -46,4 +52,10 @@
         android:name="com.urwah.dhikr.fragments.DuaFragment"
         android:label="الأدعية"
         tools:layout="@layout/fragment_dua" />
+
+    <fragment
+        android:id="@+id/nav_library"
+        android:name="com.urwah.dhikr.fragments.LibraryFragment"
+        android:label="المكتبة"
+        tools:layout="@layout/fragment_library" />
 </navigation>

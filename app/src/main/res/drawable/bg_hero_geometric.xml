@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    خلفية الـ Hero: زخارف هندسية مجردة (دوائر متقاطعة + قوس ثمانية أضلاع خفيف)
+    تُرسم فوق تدرّج بسيط من Primary فقط بدرجات شفافية مختلفة — لا صور، لا أيقونات مسجد.
+-->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- الطبقة الأساسية: تدرّج ناعم من الخلفية إلى Primary بشفافية منخفضة -->
+    <item>
+        <shape android:shape="rectangle">
+            <gradient
+                android:type="linear"
+                android:angle="115"
+                android:startColor="@color/oc_primary_08"
+                android:centerColor="@color/oc_surface"
+                android:endColor="@color/oc_surface" />
+        </shape>
+    </item>
+
+    <!-- دائرة كبيرة مجزوءة أعلى اليمين -->
+    <item
+        android:width="220dp"
+        android:height="220dp"
+        android:gravity="top|end"
+        android:top="-90dp"
+        android:end="-70dp">
+        <shape android:shape="oval">
+            <stroke android:width="1.5dp" android:color="@color/oc_primary_24" />
+            <solid android:color="@android:color/transparent" />
+        </shape>
+    </item>
+
+    <!-- دائرة متوسطة متقاطعة معها -->
+    <item
+        android:width="150dp"
+        android:height="150dp"
+        android:gravity="top|end"
+        android:top="10dp"
+        android:end="-30dp">
+        <shape android:shape="oval">
+            <stroke android:width="1.2dp" android:color="@color/oc_primary_14" />
+            <solid android:color="@android:color/transparent" />
+        </shape>
+    </item>
+
+    <!-- دائرة صغيرة أسفل اليسار لموازنة التكوين -->
+    <item
+        android:width="90dp"
+        android:height="90dp"
+        android:gravity="bottom|start"
+        android:bottom="-40dp"
+        android:start="-25dp">
+        <shape android:shape="oval">
+            <stroke android:width="1dp" android:color="@color/oc_primary_24" />
+            <solid android:color="@android:color/transparent" />
+        </shape>
+    </item>
+
+    <!-- مضلّع ثماني خفيف جداً في المنتصف كإشارة هندسية إسلامية بسيطة -->
+    <item
+        android:width="130dp"
+        android:height="130dp"
+        android:gravity="center_vertical|end"
+        android:end="60dp">
+        <rotate
+            android:fromDegrees="22.5"
+            android:toDegrees="22.5"
+            android:pivotX="50%"
+            android:pivotY="50%">
+            <shape android:shape="rectangle">
+                <stroke android:width="1dp" android:color="@color/oc_primary_14" />
+                <solid android:color="@android:color/transparent" />
+                <corners android:radius="18dp" />
+            </shape>
+        </rotate>
+    </item>
+
+</layer-list>

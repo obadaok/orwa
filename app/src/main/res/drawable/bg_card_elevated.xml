@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- يُستخدم مع android:elevation على الـ View نفسها (وليس داخل الـ drawable) لإنتاج
+     ظل ناعم Material3، هذا الـ drawable يوفر فقط الشكل + التعبئة + الحد -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
+    <solid android:color="@color/oc_card" />
+    <corners android:radius="28dp" />
+</shape>

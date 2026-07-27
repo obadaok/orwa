@@ -51,4 +51,18 @@
     <!-- Splash screen colors -->
     <color name="splash_background">#14120E</color>
     <color name="splash_logo_color">#E8DCD0</color>
+
+    <!-- Orwa Calendar — Dark Mode -->
+    <color name="oc_primary">#C9A182</color>
+    <color name="oc_background">#121212</color>
+    <color name="oc_surface">#1E1E1E</color>
+    <color name="oc_card">#2C2C2C</color>
+    <color name="oc_text_primary">#E8DCD0</color>
+    <color name="oc_text_secondary">#A89888</color>
+    <color name="oc_primary_08">#14C9A182</color>
+    <color name="oc_primary_14">#24C9A182</color>
+    <color name="oc_primary_24">#3DC9A182</color>
+    <color name="oc_text_secondary_40">#66A89888</color>
+    <color name="oc_card_stroke">#1AC9A182</color>
+    <color name="oc_ripple">#29C9A182</color>
 </resources>

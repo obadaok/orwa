@@ -227,6 +227,31 @@ object JuzData {
         return SurahDataProvider.allSurahs.find { it.number == surahNumber }?.name ?: ""
     }
 
+    fun getJuzNumberForAyah(allAyahs: List<AyahData>, globalIndex: Int): Int {
+        if (globalIndex < 0 || allAyahs.isEmpty()) return 1
+        for (juz in JUZ_BOUNDARIES.reversed()) {
+            val si = allAyahs.indexOfFirst { it.surahNumber == juz.startSurah && it.number == juz.startAyah }
+            val ei = allAyahs.indexOfFirst { it.surahNumber == juz.endSurah && it.number == juz.endAyah }
+            if (si < 0 || ei < 0) continue
+            if (globalIndex in si..ei) return juz.juzNumber
+        }
+        return 1
+    }
+
+    fun getHizbNumberForAyah(allAyahs: List<AyahData>, globalIndex: Int): Int {
+        if (globalIndex < 0 || allAyahs.isEmpty()) return 1
+        for (juz in JUZ_BOUNDARIES.reversed()) {
+            val si = allAyahs.indexOfFirst { it.surahNumber == juz.startSurah && it.number == juz.startAyah }
+            val ei = allAyahs.indexOfFirst { it.surahNumber == juz.endSurah && it.number == juz.endAyah }
+            if (si < 0 || ei < 0) continue
+            if (globalIndex !in si..ei) continue
+            val n = ei - si + 1
+            val half = si + n / 2
+            return if (globalIndex < half) juz.juzNumber * 2 - 1 else juz.juzNumber * 2
+        }
+        return 1
+    }
+
     fun formatAyahRange(ayahs: List<AyahData>, startIndex: Int, endIndex: Int): String {
         if (ayahs.isEmpty() || startIndex >= ayahs.size) return ""
         val start = ayahs[startIndex]

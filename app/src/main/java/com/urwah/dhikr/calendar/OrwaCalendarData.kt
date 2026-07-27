@@ -1,0 +1,177 @@
+package com.urwah.dhikr.calendar
+
+import android.content.Context
+import org.json.JSONArray
+import org.json.JSONObject
+import java.util.Calendar
+import java.util.GregorianCalendar
+import kotlin.math.floor
+
+object OrwaCalendarData {
+
+    private var cachedState: OrwaCalendarUiState? = null
+    private var cachedDayOfYear: Int = -1
+
+    fun buildToday(context: Context): OrwaCalendarUiState {
+        val today = GregorianCalendar()
+        val dayOfYear = today.get(Calendar.DAY_OF_YEAR)
+
+        if (cachedState != null && cachedDayOfYear == dayOfYear) {
+            return cachedState!!
+        }
+
+        val hijri = gregorianToHijri(today)
+        val data = loadCalendarData(context)
+        val dailyIndex = dayOfYear % minOf(
+            data.ayahs.length(),
+            data.hadiths.length(),
+            data.scholarQuotes.length(),
+            data.namesOfAllah.length()
+        )
+
+        val ayah = data.ayahs.getJSONObject(dailyIndex)
+        val hadith = data.hadiths.getJSONObject(dailyIndex)
+        val quote = data.scholarQuotes.getJSONObject(dailyIndex)
+        val name = data.namesOfAllah.getJSONObject(dailyIndex)
+
+        val state = OrwaCalendarUiState(
+            dayName = arabicDayName(today.get(Calendar.DAY_OF_WEEK)),
+            hijriDate = formatHijriDate(hijri),
+            gregorianDate = formatGregorianDate(today),
+            daysUntilRamadan = daysUntilRamadan(hijri),
+            asmaHusnaName = name.getString("name"),
+            asmaHusnaExplanation = name.getString("explanation"),
+            ayahText = ayah.getString("text"),
+            surahName = ayah.getString("surah_name_ar"),
+            ayahNumber = ayah.getInt("ayah_number"),
+            tafsirText = ayah.optString("tafsir", ""),
+            hadithText = hadith.getString("text"),
+            hadithNarrator = hadith.optString("narrator", ""),
+            hadithSource = hadith.optString("source", ""),
+            benefitOfTheDay = quote.getString("text"),
+            scholarName = quote.getString("author")
+        )
+
+        cachedState = state
+        cachedDayOfYear = dayOfYear
+        return state
+    }
+
+    private data class CalendarData(
+        val ayahs: JSONArray,
+        val hadiths: JSONArray,
+        val scholarQuotes: JSONArray,
+        val namesOfAllah: JSONArray
+    )
+
+    private fun loadCalendarData(context: Context): CalendarData {
+        val jsonStr = context.assets.open("calendar_data.json").bufferedReader().use { it.readText() }
+        val root = JSONObject(jsonStr)
+        return CalendarData(
+            ayahs = root.getJSONArray("ayahs"),
+            hadiths = root.getJSONArray("hadiths"),
+            scholarQuotes = root.getJSONArray("scholar_quotes"),
+            namesOfAllah = root.getJSONArray("names_of_allah")
+        )
+    }
+
+    // ──────────────────────────────────────────────
+    //  Hijri date conversion (tabular algorithm)
+    // ──────────────────────────────────────────────
+
+    private data class HijriDate(val year: Int, val month: Int, val day: Int)
+
+    private fun gregorianToHijri(gc: GregorianCalendar): HijriDate {
+        val jd = gregorianToJulianDay(gc)
+        return julianDayToHijri(jd)
+    }
+
+    private fun gregorianToJulianDay(gc: GregorianCalendar): Int {
+        val y = gc.get(Calendar.YEAR)
+        val m = gc.get(Calendar.MONTH) + 1
+        val d = gc.get(Calendar.DAY_OF_MONTH)
+        val a = floor((14.0 - m) / 12.0).toInt()
+        val yy = y + 4800 - a
+        val mm = m + 12 * a - 3
+        return d + floor((153.0 * mm + 2.0) / 5.0).toInt() +
+                365 * yy + floor(yy / 4.0).toInt() -
+                floor(yy / 100.0).toInt() + floor(yy / 400.0).toInt() - 32045
+    }
+
+    private fun julianDayToHijri(jd: Int): HijriDate {
+        val l = jd - 1948440 + 10632
+        val n = floor((l - 1.0) / 10631.0).toInt()
+        var l2 = l - 10631 * n + 354
+        val j = floor((10985.0 - l2) / 5316.0).toInt() * floor((50.0 * l2) / 17719.0).toInt() +
+                floor(l2 / 5670.0).toInt() * floor((43.0 * l2) / 15238.0).toInt()
+        l2 = l2 - floor((30.0 - j) / 15.0).toInt() * floor((17719.0 * j) / 50.0).toInt() -
+                floor(j / 16.0).toInt() * floor((15238.0 * j) / 43.0).toInt() + 29
+        val m = floor((24.0 * l2) / 709.0).toInt()
+        val d = (l2 - floor((709.0 * m) / 24.0)).toInt()
+        val y = 30 * n + j - 30
+        return HijriDate(y, m, d)
+    }
+
+    private fun hijriToJulianDay(h: HijriDate): Int {
+        return floor((11.0 * h.year + 3.0) / 30.0).toInt() +
+                354 * h.year + 30 * h.month -
+                floor((h.month - 1.0) / 2.0).toInt() + h.day + 1948440 - 385
+    }
+
+    // ──────────────────────────────────────────────
+    //  Formatting
+    // ──────────────────────────────────────────────
+
+    private val hijriMonths = arrayOf(
+        "", "محرّم", "صفر", "ربيع الأول", "ربيع الثاني",
+        "جمادى الأولى", "جمادى الآخرة", "رجب", "شعبان",
+        "رمضان", "شوّال", "ذو القعدة", "ذو الحجة"
+    )
+
+    private val gregorianMonths = arrayOf(
+        "", "يناير", "فبراير", "مارس", "أبريل", "مايو", "يونيو",
+        "يوليو", "أغسطس", "سبتمبر", "أكتوبر", "نوفمبر", "ديسمبر"
+    )
+
+    private fun formatHijriDate(h: HijriDate): String {
+        return "${toArabicNum(h.day)} ${hijriMonths[h.month]} ${toArabicNum(h.year)} هـ"
+    }
+
+    private fun formatGregorianDate(gc: GregorianCalendar): String {
+        val d = gc.get(Calendar.DAY_OF_MONTH)
+        val m = gc.get(Calendar.MONTH) + 1
+        val y = gc.get(Calendar.YEAR)
+        return "$d ${gregorianMonths[m]} $y م"
+    }
+
+    private fun toArabicNum(n: Int): String {
+        val arabicDigits = charArrayOf('٠', '١', '٢', '٣', '٤', '٥', '٦', '٧', '٨', '٩')
+        return n.toString().map { arabicDigits[it - '0'] }.joinToString("")
+    }
+
+    private fun arabicDayName(dow: Int): String = when (dow) {
+        Calendar.SUNDAY -> "الأحد"
+        Calendar.MONDAY -> "الاثنين"
+        Calendar.TUESDAY -> "الثلاثاء"
+        Calendar.WEDNESDAY -> "الأربعاء"
+        Calendar.THURSDAY -> "الخميس"
+        Calendar.FRIDAY -> "الجمعة"
+        Calendar.SATURDAY -> "السبت"
+        else -> ""
+    }
+
+    // ──────────────────────────────────────────────
+    //  Ramadan countdown
+    // ──────────────────────────────────────────────
+
+    private fun daysUntilRamadan(currentHijri: HijriDate): Int {
+        val ramadanMonth = 9
+        var targetYear = currentHijri.year
+        if (currentHijri.month > ramadanMonth || (currentHijri.month == ramadanMonth && currentHijri.day >= 1)) {
+            targetYear++
+        }
+        val targetJd = hijriToJulianDay(HijriDate(targetYear, ramadanMonth, 1))
+        val currentJd = hijriToJulianDay(currentHijri)
+        return targetJd - currentJd
+    }
+}
