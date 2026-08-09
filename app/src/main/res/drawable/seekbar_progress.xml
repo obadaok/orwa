@@ -1,17 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    قبل: سماكة 4dp فقط، بالكاد تُرى وتُلمس، وألوان hex ثابتة (#1A8B6F5E و #8B6F5E)
+    غير مرتبطة بموارد الألوان — تنكسر مع أي تعديل مستقبلي على لوحة الألوان أو
+    الوضع الليلي.
+
+    بعد: سماكة 6dp لوضوح أكبر أثناء التلاوة (شاشة يُنظر إليها من مسافة أطول
+    غالبًا)، والألوان مربوطة بـ @color/urwah_thread_brown مع نفس درجات الشفافية
+    السابقة، فتتماشى تلقائيًا مع أي تغيير لاحق في الهوية اللونية.
+
+    ملاحظة: إن لم يكن لديك مورد لون بشفافية جاهز، أضف في colors.xml:
+    <color name="urwah_track_bg">#1A8B6F5E</color>
+-->
 <layer-list xmlns:android="http://schemas.android.com/apk/res/android">
     <item android:id="@android:id/background">
         <shape>
-            <solid android:color="#1A8B6F5E" />
-            <corners android:radius="3dp" />
-            <size android:height="4dp" />
+            <solid android:color="@color/urwah_track_bg" />
+            <corners android:radius="4dp" />
+            <size android:height="6dp" />
         </shape>
     </item>
     <item android:id="@android:id/progress">
-        <clip>
+        <clip android:gravity="start">
             <shape>
-                <solid android:color="#8B6F5E" />
-                <corners android:radius="3dp" />
-                <size android:height="4dp" />
+                <solid android:color="@color/urwah_thread_brown" />
+                <corners android:radius="4dp" />
+                <size android:height="6dp" />
             </shape>
         </clip>
     </item>

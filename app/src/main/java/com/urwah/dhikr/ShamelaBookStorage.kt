@@ -11,6 +11,7 @@ object ShamelaBookStorage {
     private const val PREFS_NAME = "urwah_shamela_downloads"
     private const val KEY_LAST_READ = "last_read_%d"
     private const val KEY_LAST_PAGE = "last_page_%d"
+    private const val KEY_LAST_CHAR_OFFSET = "last_char_offset_%d"
     private const val KEY_FONT_SIZE = "font_size"
     private const val KEY_LINE_SPACING = "line_spacing"
     private const val KEY_PARA_SPACING = "para_spacing"
@@ -158,6 +159,18 @@ object ShamelaBookStorage {
         return ShamelaBookContent(metadata = metadata, toc = toc, pages = pages)
     }
 
+    /** يقرأ إصدار الكتاب المحفوظ محليًا من book_metadata.json إن وُجد. */
+    fun getStoredVersion(context: Context, bookId: Int): String? {
+        val metaFile = File(getBookDir(context, bookId), "book_metadata.json")
+        if (!metaFile.exists()) return null
+        return try {
+            val obj = JSONObject(metaFile.readText())
+            "${obj.optInt("version_major", 1)}.${obj.optInt("version_minor", 0)}"
+        } catch (_: Exception) {
+            null
+        }
+    }
+
     fun deleteBook(context: Context, bookId: Int): Boolean {
         val dir = getBookDir(context, bookId)
         if (dir.exists()) {
@@ -208,6 +221,16 @@ object ShamelaBookStorage {
     fun saveLastReadPage(context: Context, bookId: Int, page: Int) {
         val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         prefs.edit().putInt(String.format(KEY_LAST_PAGE, bookId), page).apply()
+    }
+
+    fun getLastReadCharOffset(context: Context, bookId: Int): Int {
+        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        return prefs.getInt(String.format(KEY_LAST_CHAR_OFFSET, bookId), -1)
+    }
+
+    fun saveLastReadCharOffset(context: Context, bookId: Int, charOffset: Int) {
+        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        prefs.edit().putInt(String.format(KEY_LAST_CHAR_OFFSET, bookId), charOffset).apply()
     }
 
     fun getLastReadTime(context: Context, bookId: Int): Long {
@@ -294,7 +317,6 @@ object ShamelaBookStorage {
         val downloadedIds = getDownloadedBooks(context)
         if (downloadedIds.isEmpty()) return emptyList()
 
-        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         val booksWithTime = downloadedIds.mapNotNull { bookId ->
             val lastRead = getLastReadTime(context, bookId)
             if (lastRead > 0L) {
@@ -328,6 +350,7 @@ object ShamelaBookStorage {
             val metaFile = File(getBookDir(context, bookId), "book_metadata.json")
             if (metaFile.exists()) {
                 val obj = JSONObject(metaFile.readText())
+                val lastRead = getLastReadTime(context, bookId)
                 ShamelaBook(
                     id = obj.optInt("book_id", bookId),
                     shamelaId = obj.optInt("shamela_id", 0),
@@ -337,7 +360,32 @@ object ShamelaBookStorage {
                     categoryId = obj.optInt("category_id", 0),
                     version = "${obj.optInt("version_major", 1)}.${obj.optInt("version_minor", 0)}",
                     hasMultiPart = obj.optBoolean("has_multi_part", false),
-                    bookType = obj.optString("book_type_label", "كتاب")
+                    bookType = obj.optString("book_type_label", "كتاب"),
+                    lastReadAt = lastRead
+                )
+            } else null
+        }.sortedByDescending { it.lastReadAt }
+    }
+
+    fun getBookmarkedBooksWithMeta(context: Context): List<ShamelaBook> {
+        val bookIds = ShamelaBookmarkManager.getBookmarkedBookIds(context)
+        if (bookIds.isEmpty()) return emptyList()
+        return bookIds.mapNotNull { bookId ->
+            val metaFile = File(getBookDir(context, bookId), "book_metadata.json")
+            if (metaFile.exists()) {
+                val obj = JSONObject(metaFile.readText())
+                val lastRead = getLastReadTime(context, bookId)
+                ShamelaBook(
+                    id = obj.optInt("book_id", bookId),
+                    shamelaId = obj.optInt("shamela_id", 0),
+                    title = obj.optString("title_ar", ""),
+                    author = obj.optString("main_author_name_ar", ""),
+                    deathHijri = if (obj.has("main_author_death_hijri")) obj.getInt("main_author_death_hijri") else null,
+                    categoryId = obj.optInt("category_id", 0),
+                    version = "${obj.optInt("version_major", 1)}.${obj.optInt("version_minor", 0)}",
+                    hasMultiPart = obj.optBoolean("has_multi_part", false),
+                    bookType = obj.optString("book_type_label", "كتاب"),
+                    lastReadAt = lastRead
                 )
             } else null
         }

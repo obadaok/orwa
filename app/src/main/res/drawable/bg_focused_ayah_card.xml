@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    قبل: خلفية شبه شفافة (ألفا 0D فقط) بلا ظل ولا حدّ حقيقي، فكانت بطاقة الآية
+    -وهي أهم عنصر في الشاشة- أضعف بصريًا من أي شريحة (chip) حواليها. هذا يكسر
+    هوية الـ Neo-Brutalism (ظل صلب Offset + حدّ سميك) المستخدمة في بقية التطبيق.
+
+    بعد: نفس أسلوب bg_surah_header_box (طبقة ظل صلبة + طبقة بطاقة بحدّ سميك)
+    لتصبح بطاقة الآية هي البؤرة البصرية الحقيقية لوضع التلاوة المركزة.
+-->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <item
+        android:start="5dp"
+        android:top="5dp">
+        <shape android:shape="rectangle">
+            <solid android:color="@color/urwah_card_shadow" />
+            <corners android:radius="16dp" />
+        </shape>
+    </item>
+
+    <item
+        android:bottom="5dp"
+        android:end="5dp">
+        <shape android:shape="rectangle">
+            <solid android:color="@color/urwah_card_bg" />
+            <corners android:radius="16dp" />
+            <stroke
+                android:width="2.5dp"
+                android:color="@color/urwah_thread_dark" />
+        </shape>
+    </item>
+
+</layer-list>

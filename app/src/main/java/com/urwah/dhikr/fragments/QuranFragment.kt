@@ -13,11 +13,14 @@ import android.view.inputmethod.InputMethodManager
 import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.fragment.app.Fragment
+import androidx.lifecycle.lifecycleScope
 import androidx.navigation.fragment.findNavController
 import androidx.recyclerview.widget.LinearLayoutManager
+import kotlinx.coroutines.launch
 
 import com.urwah.dhikr.BookmarksActivity
 import com.urwah.dhikr.R
+import com.urwah.dhikr.ReadingTracker
 import com.urwah.dhikr.SurahAdapter
 import com.urwah.dhikr.SurahData
 import com.urwah.dhikr.SurahDataProvider
@@ -67,6 +70,7 @@ class QuranFragment : Fragment(), com.urwah.dhikr.SearchableFragment {
         )
         binding.rvSurahs.adapter = adapter
 
+        observePositionFlow()
         setupSearch()
     }
 
@@ -75,8 +79,18 @@ class QuranFragment : Fragment(), com.urwah.dhikr.SearchableFragment {
         updateContinueReadingBanner()
     }
 
+    private fun observePositionFlow() {
+        viewLifecycleOwner.lifecycleScope.launch {
+            ReadingTracker.positionFlow.collect {
+                if (isResumed) {
+                    updateContinueReadingBanner()
+                }
+            }
+        }
+    }
+
     private fun setupContinueReadingBanner(): View? {
-        val pos = com.urwah.dhikr.ReadingTracker.getPosition(requireContext()) ?: return null
+        val pos = ReadingTracker.getPosition(requireContext()) ?: return null
         val banner = LayoutInflater.from(requireContext())
             .inflate(R.layout.item_continue_reading, binding.rvSurahs, false) as LinearLayout
         banner.findViewById<TextView>(R.id.tvContinueSurahName).text = pos.surahName
@@ -98,11 +112,25 @@ class QuranFragment : Fragment(), com.urwah.dhikr.SearchableFragment {
     }
 
     private fun updateContinueReadingBanner() {
-        val pos = com.urwah.dhikr.ReadingTracker.getPosition(requireContext())
+        val pos = ReadingTracker.getPosition(requireContext())
         val existing = binding.rvSurahs.findViewWithTag<View>("continue_banner")
         if (pos == null && existing != null) {
             (existing.parent as? ViewGroup)?.removeView(existing)
             adapter?.notifyDataSetChanged()
+        } else if (pos != null && existing != null) {
+            existing.findViewById<TextView>(R.id.tvContinueSurahName).text = pos.surahName
+            existing.findViewById<TextView>(R.id.tvContinueAyahNum).text = "الآية ${pos.ayahNumber}"
+            existing.setOnClickListener {
+                val surah = allSurahs.find { it.number == pos.surahNumber }
+                if (surah != null) {
+                    val intent = Intent(requireContext(), SurahDetailActivity::class.java)
+                    intent.putExtra("SURAH_NUMBER", surah.number)
+                    intent.putExtra("SURAH_NAME", surah.name)
+                    intent.putExtra("VERSE_COUNT", surah.verseCount)
+                    intent.putExtra("LAST_AYAH", pos.ayahNumber)
+                    startActivity(intent)
+                }
+            }
         } else if (pos != null && existing == null) {
             adapter?.notifyDataSetChanged()
         }

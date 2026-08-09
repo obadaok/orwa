@@ -106,59 +106,19 @@
                     android:textSize="13sp"
                     android:textStyle="bold" />
 
-                <LinearLayout
-                    android:id="@+id/llRiwayaContainer"
+                <HorizontalScrollView
                     android:layout_width="match_parent"
-                    android:layout_height="48dp"
+                    android:layout_height="wrap_content"
                     android:layout_marginTop="8dp"
-                    android:orientation="horizontal"
-                    android:gravity="center">
+                    android:overScrollMode="never"
+                    android:scrollbars="none">
 
-                    <FrameLayout
-                        android:id="@+id/cardRiwayaHafs"
-                        android:layout_width="0dp"
-                        android:layout_height="match_parent"
-                        android:layout_weight="1"
-                        android:layout_marginEnd="4dp"
-                        android:background="@drawable/bg_segment_unselected"
-                        android:clickable="true"
-                        android:focusable="true">
-
-                        <TextView
-                            android:id="@+id/tvRiwayaHafs"
-                            android:layout_width="match_parent"
-                            android:layout_height="match_parent"
-                            android:fontFamily="@font/alyamama"
-                            android:gravity="center"
-                            android:text="حفص"
-                            android:textColor="@color/urwah_thread_dark"
-                            android:textSize="14sp"
-                            android:textStyle="bold" />
-                    </FrameLayout>
-
-                    <FrameLayout
-                        android:id="@+id/cardRiwayaWarsh"
-                        android:layout_width="0dp"
-                        android:layout_height="match_parent"
-                        android:layout_weight="1"
-                        android:layout_marginStart="4dp"
-                        android:background="@drawable/bg_segment_unselected"
-                        android:clickable="true"
-                        android:focusable="true">
-
-                        <TextView
-                            android:id="@+id/tvRiwayaWarsh"
-                            android:layout_width="match_parent"
-                            android:layout_height="match_parent"
-                            android:fontFamily="@font/alyamama"
-                            android:gravity="center"
-                            android:text="ورش"
-                            android:textColor="@color/urwah_thread_dark"
-                            android:textSize="14sp"
-                            android:textStyle="bold" />
-                    </FrameLayout>
-
-                </LinearLayout>
+                    <LinearLayout
+                        android:id="@+id/llRiwayaChips"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal" />
+                </HorizontalScrollView>
             </LinearLayout>
         </FrameLayout>
 

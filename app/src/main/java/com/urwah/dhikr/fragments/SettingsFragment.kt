@@ -4,6 +4,7 @@ import android.Manifest
 import android.content.Context
 import android.content.SharedPreferences
 import com.urwah.dhikr.QuranDataLoader
+import com.urwah.dhikr.MurattalThemeManager
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
@@ -18,10 +19,14 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.appcompat.widget.SwitchCompat
 import androidx.core.content.ContextCompat
+import androidx.core.content.res.ResourcesCompat
 import androidx.fragment.app.Fragment
 import androidx.navigation.fragment.findNavController
 import com.urwah.dhikr.NotificationHelper
+import com.urwah.dhikr.UrwahToast
 import com.urwah.dhikr.R
+import com.urwah.dhikr.ShamelaBook
+import com.urwah.dhikr.ShamelaBookStorage
 import com.urwah.dhikr.databinding.FragmentSettingsBinding
 
 class SettingsFragment : Fragment() {
@@ -38,6 +43,14 @@ class SettingsFragment : Fragment() {
             pendingReminder?.let { enableReminder(it) }
         }
         pendingReminder = null
+    }
+
+    private val themePickerLauncher = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) {
+        val theme = com.urwah.dhikr.MurattalThemeManager.current(requireContext())
+        binding.tvMurattalTheme.text = theme.name
+        applyThemeSwatches(theme)
     }
 
     private data class ReminderData(
@@ -102,15 +115,64 @@ class SettingsFragment : Fragment() {
             prefs = prefs
         )
         setupReminder(
-            switchView = binding.switchMulk,
-            timeText = binding.tvMulkTime,
-            type = NotificationHelper.TYPE_MULK,
-            defaultHour = 22, defaultMinute = 0,
+            switchView = binding.switchKahf,
+            timeText = binding.tvKahfTime,
+            type = NotificationHelper.TYPE_KAHF,
+            defaultHour = 6, defaultMinute = 0,
+            prefs = prefs
+        )
+        setupReminder(
+            switchView = binding.switchKhatma,
+            timeText = binding.tvKhatmaTime,
+            type = NotificationHelper.TYPE_KHATMA,
+            defaultHour = 8, defaultMinute = 0,
             prefs = prefs
         )
 
         setupQuranSettings(quranPrefs)
+        setupLibrarySection()
         setupAboutSection()
+    }
+
+    private fun setupLibrarySection() {
+        binding.rowOpenLibrary.setOnClickListener {
+            findNavController().navigate(R.id.nav_library)
+        }
+        binding.rowClearAllBooks.setOnClickListener {
+            val ctx = requireContext()
+            val downloaded = ShamelaBookStorage.getDownloadedBooks(ctx)
+            if (downloaded.isEmpty()) {
+                UrwahToast.show(ctx, "لا توجد كتب محملة")
+                return@setOnClickListener
+            }
+            val totalSize = ShamelaBookStorage.getTotalStorageUsed(ctx)
+            val sizeText = ShamelaBookStorage.formatFileSize(totalSize)
+            val dialog = com.urwah.dhikr.BookCustomConfirmDialog(
+                ctx,
+                "حذف جميع الكتب",
+                "سيتم حذف ${downloaded.size} كتاب ( $sizeText ). لا يمكن التراجع عن هذا الإجراء.",
+                positiveText = "حذف الكل",
+                negativeText = "إلغاء",
+                onPositive = {
+                    for (bookId in downloaded) {
+                        ShamelaBookStorage.deleteBook(ctx, bookId)
+                    }
+                    UrwahToast.show(ctx, "تم حذف جميع الكتب")
+                    updateStorageInfo()
+                }
+            )
+            dialog.show()
+        }
+        updateStorageInfo()
+    }
+
+    private fun updateStorageInfo() {
+        val ctx = requireContext()
+        val downloadedIds = ShamelaBookStorage.getDownloadedBooks(ctx)
+        val count = downloadedIds.size
+        val size = ShamelaBookStorage.getTotalStorageUsed(ctx)
+        binding.tvBooksCount.text = "$count كتاب"
+        binding.tvStorageUsed.text = ShamelaBookStorage.formatFileSize(size)
     }
 
     private fun setupAboutSection() {
@@ -119,6 +181,9 @@ class SettingsFragment : Fragment() {
         }
         binding.rowTerms.setOnClickListener {
             showPolicyDialog(requireContext(), "terms")
+        }
+        binding.rowArabicIdentity.setOnClickListener {
+            com.urwah.dhikr.MainActivity.showArabicIdentityDialog(requireContext())
         }
         try {
             binding.tvVersionName.text = requireContext().packageManager
@@ -135,9 +200,11 @@ class SettingsFragment : Fragment() {
     private fun setupQuranSettings(prefs: SharedPreferences) {
         val ayahDisplayMode = prefs.getBoolean("ayah_single_line", false)
         val qiraatMode = QuranDataLoader.getQiraat(requireContext())
+        val alignment = prefs.getInt("quran_alignment", 3)
 
         binding.tvAyahDisplayMode.text = if (ayahDisplayMode) "كل آية في سطر مستقل" else "عرض متواصل"
-        binding.tvQiraatMode.text = if (qiraatMode == "hafs") "حفص عن عاصم" else "ورش عن نافع"
+        binding.tvQiraatMode.text = QuranDataLoader.getRiwayatInfo(qiraatMode).arabicName
+        binding.tvAyahAlignment.text = alignmentLabel(alignment)
 
         binding.tvAyahDisplayMode.setOnClickListener {
             showViewModeDialog(prefs)
@@ -146,6 +213,82 @@ class SettingsFragment : Fragment() {
         binding.tvQiraatMode.setOnClickListener {
             showRiwayaDialog()
         }
+
+        binding.tvAyahAlignment.setOnClickListener {
+            showAlignmentDialog(prefs)
+        }
+
+        val murattalTheme = MurattalThemeManager.current(requireContext())
+        binding.tvMurattalTheme.text = murattalTheme.name
+        binding.root.findViewById<View>(R.id.row_murattal_theme)
+            .setOnClickListener { showMurattalThemeDialog() }
+        binding.tvMurattalTheme.setOnClickListener { showMurattalThemeDialog() }
+        applyThemeSwatches(murattalTheme)
+    }
+
+    private fun applyThemeSwatches(theme: com.urwah.dhikr.MurattalTheme) {
+        val p = MurattalThemeManager.palette(requireContext(), theme)
+        var drawable = binding.root.findViewById<View>(R.id.swatch_theme_bg).background
+        drawable.mutate().setTint(p.background)
+        drawable = binding.root.findViewById<View>(R.id.swatch_theme_surface).background
+        drawable.mutate().setTint(p.surface)
+        drawable = binding.root.findViewById<View>(R.id.swatch_theme_accent).background
+        drawable.mutate().setTint(p.accent)
+    }
+
+    private fun showMurattalThemeDialog() {
+        themePickerLauncher.launch(
+            android.content.Intent(requireContext(), com.urwah.dhikr.MurattalThemePickerActivity::class.java)
+        )
+    }
+
+    private fun alignmentLabel(alignment: Int): String = when (alignment) {
+        0 -> "يمين"
+        1 -> "وسط"
+        2 -> "يسار"
+        else -> "ضبط"
+    }
+
+    private fun showAlignmentDialog(prefs: SharedPreferences) {
+        val view = LayoutInflater.from(requireContext()).inflate(R.layout.dialog_ayah_alignment, null)
+        val current = prefs.getInt("quran_alignment", 3)
+
+        val dialog = android.app.AlertDialog.Builder(requireContext())
+            .setView(view)
+            .create()
+        dialog.window?.setBackgroundDrawableResource(android.R.color.transparent)
+
+        val radios = mapOf(
+            R.id.radioAlignRight to 0,
+            R.id.radioAlignCenter to 1,
+            R.id.radioAlignLeft to 2,
+            R.id.radioAlignJustify to 3
+        )
+        val options = mapOf(
+            R.id.optionAlignRight to 0,
+            R.id.optionAlignCenter to 1,
+            R.id.optionAlignLeft to 2,
+            R.id.optionAlignJustify to 3
+        )
+
+        fun updateRadios(selected: Int) {
+            radios.forEach { (radioId, value) ->
+                val radio = view.findViewById<TextView>(radioId)
+                radio.text = if (value == selected) "●" else "○"
+            }
+        }
+        updateRadios(current)
+
+        options.forEach { (optionId, value) ->
+            view.findViewById<LinearLayout>(optionId).setOnClickListener {
+                prefs.edit().putInt("quran_alignment", value).apply()
+                binding.tvAyahAlignment.text = alignmentLabel(value)
+                dialog.dismiss()
+            }
+        }
+
+        view.findViewById<Button>(R.id.btnCancelAlignment).setOnClickListener { dialog.dismiss() }
+        dialog.show()
     }
 
     private fun setupDarkMode(prefs: SharedPreferences) {
@@ -230,7 +373,7 @@ class SettingsFragment : Fragment() {
 
     private fun enableReminder(data: ReminderData) {
         NotificationHelper.createChannel(requireContext())
-        NotificationHelper.scheduleReminder(requireContext(), data.type, data.hour, data.minute)
+        NotificationHelper.scheduleNext(requireContext(), data.type, data.hour, data.minute)
     }
 
     private fun showCustomTimePicker(
@@ -255,7 +398,7 @@ class SettingsFragment : Fragment() {
             prefs.edit().putInt(hourKey, h).putInt(minKey, m).apply()
             timeText.text = formatTime(h, m)
             if (switchView.isChecked) {
-                NotificationHelper.scheduleReminder(requireContext(), type, h, m)
+                NotificationHelper.scheduleNext(requireContext(), type, h, m)
             }
             dialog.dismiss()
         }
@@ -298,37 +441,115 @@ class SettingsFragment : Fragment() {
     }
 
     private fun showRiwayaDialog() {
-        val view = LayoutInflater.from(requireContext()).inflate(R.layout.dialog_riwaya, null)
-        val current = QuranDataLoader.getQiraat(requireContext())
+        val context = requireContext()
+        val view = LayoutInflater.from(context).inflate(R.layout.dialog_riwaya, null)
+        val list = view.findViewById<LinearLayout>(R.id.riwayaList)
+        val current = QuranDataLoader.getQiraat(context)
 
-        val dialog = android.app.AlertDialog.Builder(requireContext())
+        val dialog = android.app.AlertDialog.Builder(context)
             .setView(view)
             .create()
         dialog.window?.setBackgroundDrawableResource(android.R.color.transparent)
 
-        val radioHafs = view.findViewById<TextView>(R.id.radioHafs)
-        val radioWarsh = view.findViewById<TextView>(R.id.radioWarsh)
-        val optionHafs = view.findViewById<LinearLayout>(R.id.optionHafs)
-        val optionWarsh = view.findViewById<LinearLayout>(R.id.optionWarsh)
+        fun dp(value: Int): Int = (resources.displayMetrics.density * value).toInt()
 
-        fun updateRadio(isHafs: Boolean) {
-            radioHafs.text = if (isHafs) "●" else "○"
-            radioWarsh.text = if (isHafs) "○" else "●"
-        }
-        updateRadio(current == "hafs")
+        fun buildRow(info: com.urwah.dhikr.RiwayatInfo): View {
+            val row = LinearLayout(context).apply {
+                orientation = LinearLayout.HORIZONTAL
+                gravity = android.view.Gravity.CENTER_VERTICAL
+                isClickable = info.available
+                isFocusable = info.available
+                background = resources.getDrawable(R.drawable.bg_dhikr_icon_action, null)
+                setPadding(dp(14), dp(12), dp(14), dp(12))
+            }
 
-        optionHafs.setOnClickListener {
-            QuranDataLoader.setQiraat(requireContext(), "hafs")
-            QuranDataLoader.invalidateCache()
-            binding.tvQiraatMode.text = "حفص عن عاصم"
-            dialog.dismiss()
+            val radio = TextView(context).apply {
+                layoutParams = LinearLayout.LayoutParams(dp(20), dp(20))
+                background = resources.getDrawable(R.drawable.bg_ayah_number, null)
+                gravity = android.view.Gravity.CENTER
+                setTextColor(android.graphics.Color.WHITE)
+                textSize = 11f
+                typeface = android.graphics.Typeface.DEFAULT_BOLD
+                text = if (info.available && info.id == current) "●" else "○"
+            }
+
+            val nameColor = if (info.available) {
+                ContextCompat.getColor(context, R.color.urwah_thread_dark)
+            } else {
+                ContextCompat.getColor(context, R.color.urwah_thread_light)
+            }
+
+            val texts = LinearLayout(context).apply {
+                orientation = LinearLayout.VERTICAL
+                layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+                setPadding(dp(12), 0, 0, 0)
+            }
+            texts.addView(TextView(context).apply {
+                text = info.arabicName
+                setTextColor(nameColor)
+                textSize = 15f
+                typeface = ResourcesCompat.getFont(context, R.font.alyamama)
+            })
+            texts.addView(TextView(context).apply {
+                text = info.description
+                setTextColor(ContextCompat.getColor(context, R.color.urwah_thread_light))
+                textSize = 11f
+                typeface = ResourcesCompat.getFont(context, R.font.alyamama)
+            })
+
+            row.addView(radio)
+            row.addView(texts)
+
+            if (info.available) {
+                row.setOnClickListener {
+                    QuranDataLoader.setQiraat(context, info.id)
+                    QuranDataLoader.invalidateCache()
+                    binding.tvQiraatMode.text = info.arabicName
+                    dialog.dismiss()
+                }
+            } else {
+                row.setOnClickListener {
+                    UrwahToast.show(
+                        context,
+                        "رواية ${info.arabicName} ستتوفر قريباً في التحديث القادم"
+                    )
+                }
+            }
+            return row
         }
-        optionWarsh.setOnClickListener {
-            QuranDataLoader.setQiraat(requireContext(), "warsh")
-            QuranDataLoader.invalidateCache()
-            binding.tvQiraatMode.text = "ورش عن نافع"
-            dialog.dismiss()
+
+        QuranDataLoader.qiraaGroups.forEachIndexed { gi, (qiraaName, items) ->
+            if (gi > 0) {
+                val divider = View(context).apply {
+                    layoutParams = LinearLayout.LayoutParams(
+                        LinearLayout.LayoutParams.MATCH_PARENT, dp(1)
+                    )
+                    setBackgroundColor(ContextCompat.getColor(context, R.color.urwah_shadow_faint))
+                }
+                list.addView(divider)
+            }
+
+            list.addView(TextView(context).apply {
+                text = qiraaName
+                setTextColor(ContextCompat.getColor(context, R.color.urwah_thread_brown))
+                textSize = 13f
+                typeface = android.graphics.Typeface.DEFAULT_BOLD
+                setPadding(0, if (gi == 0) 0 else dp(14), 0, dp(6))
+            })
+
+            items.forEach { info ->
+                list.addView(buildRow(info))
+                if (items.last() != info) {
+                    list.addView(View(context).apply {
+                        layoutParams = LinearLayout.LayoutParams(
+                            LinearLayout.LayoutParams.MATCH_PARENT, dp(1)
+                        )
+                        setBackgroundColor(ContextCompat.getColor(context, R.color.urwah_shadow_faint))
+                    })
+                }
+            }
         }
+
         view.findViewById<Button>(R.id.btnCancelRiwaya).setOnClickListener { dialog.dismiss() }
         dialog.show()
     }

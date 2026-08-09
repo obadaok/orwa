@@ -9,8 +9,11 @@ import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.text.Editable
+import android.text.Layout
 import android.text.SpannableStringBuilder
 import android.text.Spanned
+import android.text.TextWatcher
 import android.text.style.BackgroundColorSpan
 import android.view.Gravity
 import android.view.LayoutInflater
@@ -24,14 +27,25 @@ import android.widget.ImageButton
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.PopupWindow
+import android.widget.ProgressBar
 import android.widget.SeekBar
 import android.widget.TextView
 import android.widget.Toast
+import androidx.activity.addCallback
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.ContextCompat
 import androidx.core.content.res.ResourcesCompat
 import androidx.core.widget.NestedScrollView
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import com.urwah.dhikr.audio.AudioPlaybackState
+import com.urwah.dhikr.audio.AudioPlayerService
+import com.urwah.dhikr.audio.Reciter
+import com.urwah.dhikr.audio.ReciterCatalog
+import kotlinx.coroutines.launch
 
 class SurahDetailActivity : AppCompatActivity() {
 
@@ -67,7 +81,33 @@ class SurahDetailActivity : AppCompatActivity() {
     private var scrollHandler: android.os.Handler? = null
     private var scrollDebounce: Runnable? = null
 
+    private val playerAutoHideHandler = Handler(Looper.getMainLooper())
+    private val playerAutoHideRunnable = Runnable { hideAudioPlayer() }
+    private val focusedAutoHideHandler = Handler(Looper.getMainLooper())
+    private val focusedAutoHideRunnable = Runnable { hideFocusedTools() }
+    private val focusedTools = mutableListOf<View>()
+    private var playerUiVisible = false
+    private var lastPlaybackActive = false
+
+    private val audioPrefs by lazy {
+        getSharedPreferences("urwah_audio", Context.MODE_PRIVATE)
+    }
+    private var currentReciterId: Int = 0
+    private var playbackColorSpanActive = false
+    private var lastPlaybackAyah = -1
+    private var displayedRiwayatId: String = "hafs"
+    private var lastSyncedReciterId: Int = -1
+    private var userSeeking = false
+    private var isFocusedMode = false
+    private var lastFocusedAyah = -1
+    private var allAyahsGlobal: List<AyahData> = emptyList()
+    private var juzAyahIndexes: Map<Int, Int> = emptyMap()
+
     companion object {
+        private const val PLAYER_AUTO_HIDE_DELAY = 3000L
+        private const val FOCUSED_AUTO_HIDE_DELAY = 10000L
+        private const val REQUEST_RECITER_SELECT = 4101
+        private const val REQUEST_MURATTAL_THEME = 4102
         private val ENGLISH_NAMES = mapOf(
             1 to "Al-Fatiha", 2 to "Al-Baqarah", 3 to "Aal-e-Imran", 4 to "An-Nisa'",
             5 to "Al-Ma'idah", 6 to "Al-An'am", 7 to "Al-A'raf", 8 to "Al-Anfal",
@@ -118,6 +158,7 @@ class SurahDetailActivity : AppCompatActivity() {
 
         val data = QuranDataLoader.getSurah(this, surahNumber)
         ayahs = data?.ayahs ?: emptyList()
+        displayedRiwayatId = QuranDataLoader.getQiraat(this)
 
         val displayName = buildSurahDisplayName(surahName)
         surahInfo = SurahInfo(
@@ -142,14 +183,17 @@ class SurahDetailActivity : AppCompatActivity() {
             onBackPressedDispatcher.onBackPressed()
         }
 
-        findViewById<ImageButton>(R.id.btnAutoScroll).setOnClickListener {
-            if (isAutoScrolling) {
-                stopAutoScroll()
-                updateAutoScrollButton(false)
+        onBackPressedDispatcher.addCallback(this) {
+            val circularMenu = findViewById<UrwahCircularMenu>(R.id.circularMenu)
+            if (circularMenu.visibility == View.VISIBLE) {
+                circularMenu.hide()
             } else {
-                showAutoScrollDialog()
+                isEnabled = false
+                onBackPressedDispatcher.onBackPressed()
             }
         }
+
+        setupCircularMenu()
 
         // findViewById<ImageButton>(R.id.btnViewMode).setOnClickListener {
         //     toggleViewMode()
@@ -192,18 +236,9 @@ class SurahDetailActivity : AppCompatActivity() {
 
         setupJuzHizbToast()
 
-        findViewById<ImageButton>(R.id.btnJumpToAyah).setOnClickListener {
-            showJumpToAyahDialog()
-        }
-
-        findViewById<ImageButton>(R.id.btnBookmarks).setOnClickListener {
-            if (highlightedAyahs.isNotEmpty()) {
-                showAddBookmarkDialog(highlightedAyahs.first())
-            } else {
-                val intent = Intent(this, BookmarksActivity::class.java)
-                startActivity(intent)
-            }
-        }
+        currentReciterId = audioPrefs.getInt("selected_reciter", 0)
+        setupAudioPlayer()
+        setupPlayWindowControls()
 
         // Share feature removed
     }
@@ -263,12 +298,18 @@ class SurahDetailActivity : AppCompatActivity() {
     private fun renderAyahsInSingleCard(container: LinearLayout, ayahs: List<AyahData>, isDark: Boolean) {
         container.removeAllViews()
         val uthmanicTypeface = ResourcesCompat.getFont(this, QuranDataLoader.getUthmanicFontRes(this))
+        val riwayatInfo = QuranDataLoader.getRiwayatInfo(QuranDataLoader.getQiraat(this))
+        findViewById<TextView>(R.id.tvBasmala)?.apply {
+            text = riwayatInfo.basmala
+            typeface = uthmanicTypeface
+        }
         val ayahColor = if (isDark) Color.parseColor("#e8e0d6") else Color.parseColor("#5E4B40")
         val dividerColor = Color.parseColor("#1A8B6F5E")
         val highlightColor = if (isDark) Color.parseColor("#338B6F5E") else Color.parseColor("#1A8B6F5E")
 
         val quranPrefs = getSharedPreferences("urwah_quran", Context.MODE_PRIVATE)
         val singleLineMode = quranPrefs.getBoolean("ayah_single_line", false)
+        val alignment = quranPrefs.getInt("quran_alignment", 3)
 
         if (singleLineMode) {
             ayahs.forEachIndexed { index, ayah ->
@@ -297,14 +338,10 @@ class SurahDetailActivity : AppCompatActivity() {
                     typeface = uthmanicTypeface
                     textSize = 29f
                     setTextColor(ayahColor)
-                    textDirection = View.TEXT_DIRECTION_RTL
-                    gravity = Gravity.START
+                    applyAyahAlignment(this, alignment, continuous = false)
                     setLineSpacing(4f, 1f)
                     letterSpacing = 0f
                     includeFontPadding = true
-                    if (Build.VERSION.SDK_INT >= 26) {
-                        justificationMode = 1
-                    }
                     text = "${ayah.text} ${toHindiDigits(ayah.number)}"
                     setTextIsSelectable(false)
                     layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
@@ -346,14 +383,10 @@ class SurahDetailActivity : AppCompatActivity() {
                 typeface = uthmanicTypeface
                 textSize = 29f
                 setTextColor(ayahColor)
-                textDirection = View.TEXT_DIRECTION_RTL
-                gravity = Gravity.START
+                applyAyahAlignment(this, alignment, continuous = true)
                 setLineSpacing(dpToPx(1f).toFloat(), 1f)
                 letterSpacing = 0f
                 includeFontPadding = true
-                if (Build.VERSION.SDK_INT >= 26) {
-                    justificationMode = 1
-                }
                 setTextIsSelectable(false)
                 layoutParams = LinearLayout.LayoutParams(
                     LinearLayout.LayoutParams.MATCH_PARENT,
@@ -406,6 +439,44 @@ class SurahDetailActivity : AppCompatActivity() {
         showActionPopup(row)
     }
 
+    /**
+     * يطبّق المحاذاة المختارة (يمين/وسط/يسار/ضبط) على TextView من آيات المصحف.
+     * alignment: 0=يمين، 1=وسط، 2=يسار، 3=ضبط.
+     * الضبط يُفعّل في العرض المتواصل فقط حتى لا تظهر فراغات كبيرة عند عرض آية
+     * واحدة في سطر مستقل.
+     */
+    private fun applyAyahAlignment(tv: TextView, alignment: Int, continuous: Boolean) {
+        tv.textDirection = View.TEXT_DIRECTION_RTL
+        when (alignment) {
+            1 -> {
+                tv.gravity = Gravity.CENTER
+                tv.textAlignment = View.TEXT_ALIGNMENT_CENTER
+                if (Build.VERSION.SDK_INT >= 26) tv.justificationMode = Layout.JUSTIFICATION_MODE_NONE
+            }
+            2 -> {
+                tv.gravity = Gravity.END
+                tv.textAlignment = View.TEXT_ALIGNMENT_TEXT_END
+                if (Build.VERSION.SDK_INT >= 26) tv.justificationMode = Layout.JUSTIFICATION_MODE_NONE
+            }
+            3 -> {
+                tv.gravity = Gravity.START
+                tv.textAlignment = View.TEXT_ALIGNMENT_TEXT_START
+                if (Build.VERSION.SDK_INT >= 26) {
+                    tv.justificationMode = if (continuous) {
+                        Layout.JUSTIFICATION_MODE_INTER_WORD
+                    } else {
+                        Layout.JUSTIFICATION_MODE_NONE
+                    }
+                }
+            }
+            else -> {
+                tv.gravity = Gravity.START
+                tv.textAlignment = View.TEXT_ALIGNMENT_TEXT_START
+                if (Build.VERSION.SDK_INT >= 26) tv.justificationMode = Layout.JUSTIFICATION_MODE_NONE
+            }
+        }
+    }
+
     private fun clearHighlights() {
         for (num in highlightedAyahs.toSet()) {
             ayahRowMap[num]?.setBackgroundColor(Color.TRANSPARENT)
@@ -414,9 +485,17 @@ class SurahDetailActivity : AppCompatActivity() {
         selectedAyahNumber = -1
         actionPopup?.dismiss()
         actionPopup = null
-        continuousViewRef?.let { tv ->
-            val original = tv.tag as? SpannableStringBuilder
-            if (original != null) tv.text = original
+        val current = AudioPlaybackState.state.value
+        if (playbackColorSpanActive && current.isActive && current.surahNumber == surahNumber &&
+            (current.isPlaying || current.isBuffering)
+        ) {
+            applyPlaybackHighlight(current.currentAyah, scroll = false)
+        } else {
+            continuousViewRef?.let { tv ->
+                val original = tv.tag as? SpannableStringBuilder
+                if (original != null) tv.text = original
+            }
+            playbackColorSpanActive = false
         }
     }
 
@@ -438,6 +517,16 @@ class SurahDetailActivity : AppCompatActivity() {
             actionPopup = null
             clearHighlights()
             showAddBookmarkDialog(ayahNum)
+        }
+
+        popupView.findViewById<View>(R.id.btnPlayFromHere).setOnClickListener {
+            val ayahNum = selectedAyahNumber
+            if (ayahNum <= 0) return@setOnClickListener
+            actionPopup?.dismiss()
+            actionPopup = null
+            clearHighlights()
+            startPlaybackFrom(currentReciterId, ayahNum)
+            UrwahToast.show(this, "تشغيل التلاوة من الآية ${toHindiDigits(ayahNum)}")
         }
 
         popupView.findViewById<View>(R.id.btnClearHighlight).setOnClickListener {
@@ -631,7 +720,7 @@ class SurahDetailActivity : AppCompatActivity() {
             scheduleScrollToAyah(ayahNumber, 3)
             return
         }
-        performScrollToView(target)
+        smoothScrollToCentered(accumulateTop(target), target.height)
     }
 
     private fun scrollToAyahContinuous(ayahNumber: Int) {
@@ -645,17 +734,67 @@ class SurahDetailActivity : AppCompatActivity() {
                 val layout = tv.layout ?: return@inner
                 if (start >= layout.text.length) return@inner
                 val line = layout.getLineForOffset(start)
-                val targetY = tv.top + layout.getLineTop(line)
-                val scrollContent = scrollView.getChildAt(0) ?: return@inner
-                var p = tv.parent
-                var offset = targetY
-                while (p is View && p != scrollContent) {
-                    offset += (p as View).top
-                    p = (p as View).parent
-                }
-                scrollView.scrollTo(0, (offset - dpToPx(40f)).coerceAtLeast(0))
+                val targetY = accumulateTop(tv) + layout.getLineTop(line)
+                val lineHeight = layout.getLineBottom(line) - layout.getLineTop(line)
+                smoothScrollToCentered(targetY, lineHeight)
             }
         }
+    }
+
+    private fun accumulateTop(v: View): Int {
+        val scrollContent = scrollView.getChildAt(0) ?: return v.top
+        var offset = v.top
+        var p = v.parent
+        while (p is View && p != scrollContent) {
+            offset += (p as View).top
+            p = (p as View).parent
+        }
+        return offset
+    }
+
+    /**
+     * ينقل الشاشة بسلاسة بحيث تكون الآية في منتصف الشاشة، مع مراعاة
+     * نهاية المحتوى والمشغل السفلي (المهمة 121 + 122).
+     */
+    private fun smoothScrollToCentered(ayahTop: Int, ayahHeight: Int) {
+        val content = scrollView.getChildAt(0) ?: return
+        val viewHeight = scrollView.height
+        val maxScroll = (content.height - viewHeight).coerceAtLeast(0)
+
+        val playerBar = findViewById<View>(R.id.audioPlayerBar)
+        val playerHeight = if (playerBar.visibility == View.VISIBLE && playerBar.height > 0) {
+            playerBar.height
+        } else {
+            0
+        }
+        val safeBottom = dpToPx(20f)
+
+        val effectiveHeight = viewHeight - playerHeight - safeBottom
+        val centered = ayahTop - (effectiveHeight - ayahHeight) / 2
+        val minScroll = (ayahTop + ayahHeight - effectiveHeight).coerceAtLeast(0)
+        val target = centered.coerceAtLeast(minScroll).coerceIn(0, maxScroll)
+
+        animateScrollTo(target)
+    }
+
+    private var scrollAnimator: android.animation.ValueAnimator? = null
+
+    private fun animateScrollTo(targetY: Int) {
+        scrollAnimator?.cancel()
+        val startY = scrollView.scrollY
+        if (Math.abs(targetY - startY) < 2) {
+            scrollView.scrollTo(0, targetY)
+            return
+        }
+        val animator = android.animation.ValueAnimator.ofInt(startY, targetY).apply {
+            duration = 320L
+            interpolator = android.view.animation.DecelerateInterpolator(1.6f)
+            addUpdateListener {
+                scrollView.scrollTo(0, it.animatedValue as Int)
+            }
+        }
+        scrollAnimator = animator
+        animator.start()
     }
 
     private fun scheduleScrollToAyah(ayahNumber: Int, retries: Int) {
@@ -675,48 +814,13 @@ class SurahDetailActivity : AppCompatActivity() {
     }
 
     private fun performScrollToView(target: View) {
-        val scrollContent = scrollView.getChildAt(0) ?: return
-        fun accumulateParentOffsets(v: View): Int {
-            var offset = v.top
-            var p = v.parent
-            while (p is View && p != scrollContent) {
-                offset += (p as View).top
-                p = (p as View).parent
-            }
-            return offset
-        }
-        val targetY = accumulateParentOffsets(target)
-        scrollView.post {
-            scrollView.scrollTo(0, (targetY - dpToPx(40f)).coerceAtLeast(0))
-        }
+        smoothScrollToCentered(accumulateTop(target), target.height)
     }
 
     private fun showJumpToAyahDialog() {
-        val view = LayoutInflater.from(this).inflate(R.layout.dialog_jump_to_ayah, null)
-        val etAyah = view.findViewById<EditText>(R.id.etAyahNumber)
-        val tvRange = view.findViewById<TextView>(R.id.tvAyahRange)
-        tvRange.text = "الآيات ١-${toHindiDigits(ayahs.size)}"
-        etAyah.hint = "أدخل رقم الآية (١-${toHindiDigits(ayahs.size)})"
-
-        val dialog = AlertDialog.Builder(this)
-            .setView(view)
-            .create()
-        dialog.window?.setBackgroundDrawableResource(android.R.color.transparent)
-
-        view.findViewById<Button>(R.id.btnJumpGo).setOnClickListener {
-            val num = etAyah.text.toString().toIntOrNull()
-            if (num != null && num >= 1 && num <= ayahs.size) {
-                scrollToAyah(num)
-                dialog.dismiss()
-            } else {
-                Toast.makeText(this, "رقم غير صحيح", Toast.LENGTH_SHORT).show()
-            }
+        showJumpToAyahDialog { ayahNum ->
+            scrollToAyah(ayahNum)
         }
-        view.findViewById<Button>(R.id.btnJumpCancel).setOnClickListener {
-            dialog.dismiss()
-        }
-
-        dialog.show()
     }
 
     private fun toHindiDigits(number: Int): String {
@@ -786,6 +890,7 @@ class SurahDetailActivity : AppCompatActivity() {
         autoScrollRunnable = object : Runnable {
             private var lastTime = System.nanoTime()
             private var accumulator = 0f
+            private var lastFollowedAyah = -1
             private val generation = autoScrollGeneration
 
             override fun run() {
@@ -796,16 +901,25 @@ class SurahDetailActivity : AppCompatActivity() {
 
                 accumulator += autoScrollPixelsPerSecond * delta / 1000f
                 val step = accumulator.toInt()
-                if (step < 1) {
+                accumulator -= step
+
+                val content = scrollView.getChildAt(0) ?: return
+                val maxScroll = (content.height - scrollView.height).coerceAtLeast(0)
+
+                val playingAyah = AudioPlaybackState.state.value.currentAyah.takeIf {
+                    AudioPlaybackState.state.value.isActive &&
+                        AudioPlaybackState.state.value.isPlaying &&
+                        AudioPlaybackState.state.value.surahNumber == surahNumber
+                } ?: -1
+
+                if (playingAyah > 0 && playingAyah != lastFollowedAyah) {
+                    lastFollowedAyah = playingAyah
+                    scrollToAyah(playingAyah)
                     scrollView.postOnAnimation(this)
                     return
                 }
-                accumulator -= step
 
-                val scrollContent = scrollView.getChildAt(0) ?: return
-                val maxScroll = (scrollContent.height - scrollView.height).coerceAtLeast(0)
                 val newScroll = scrollView.scrollY + step
-
                 if (newScroll >= maxScroll) {
                     scrollView.scrollTo(0, maxScroll)
                     stopAutoScroll()
@@ -834,12 +948,115 @@ class SurahDetailActivity : AppCompatActivity() {
     }
 
     private fun updateAutoScrollButton(isPlaying: Boolean) {
-        val btn = findViewById<ImageButton>(R.id.btnAutoScroll)
-        val targetRes = if (isPlaying) R.drawable.ic_scroll_pause else R.drawable.ic_scroll_play
-        btn.animate().alpha(0f).setDuration(150).withEndAction {
-            btn.setImageResource(targetRes)
-            btn.animate().alpha(1f).setDuration(150).start()
-        }.start()
+        if (isPlaying) {
+            UrwahToast.show(this, "التشغيل الذاتي بدأ")
+        }
+    }
+
+    private fun setupCircularMenu() {
+        val circularMenu = findViewById<UrwahCircularMenu>(R.id.circularMenu)
+        circularMenu.onMenuDismissed = {
+            circularMenu.visibility = View.GONE
+        }
+        findViewById<ImageButton>(R.id.btnCircularMenu).setOnClickListener {
+            if (circularMenu.visibility == View.VISIBLE) {
+                circularMenu.hide()
+            } else {
+                setupCircularMenuItems()
+                circularMenu.visibility = View.VISIBLE
+                circularMenu.bringToFront()
+                circularMenu.show()
+            }
+        }
+    }
+
+    private fun setupCircularMenuItems() {
+        val circularMenu = findViewById<UrwahCircularMenu>(R.id.circularMenu)
+        circularMenu.clearMenuItems()
+
+        circularMenu.addMenuItem(R.drawable.ic_search, "بحث") {
+            showSurahSearchDialog()
+        }
+
+        circularMenu.addMenuItem(R.drawable.ic_go_to_page, "آية") {
+            showJumpToAyahDialog()
+        }
+
+        circularMenu.addMenuItem(R.drawable.ic_bookmark, "علامة") {
+            if (highlightedAyahs.isNotEmpty()) {
+                showAddBookmarkDialog(highlightedAyahs.first())
+            } else {
+                startActivity(Intent(this, BookmarksActivity::class.java))
+            }
+        }
+
+        circularMenu.addMenuItem(R.drawable.ic_scroll_play, "تمرير تلقائي") {
+            if (isAutoScrolling) {
+                stopAutoScroll()
+            } else {
+                showAutoScrollDialog()
+            }
+        }
+
+        circularMenu.addMenuItem(R.drawable.ic_play_arrow, "تلاوة") {
+            startPlaybackFrom(currentReciterId, 1)
+        }
+
+        circularMenu.addMenuItem(R.drawable.ic_book_quran_24dp, getString(R.string.focused_mode_short)) {
+            enterFocusedMode()
+        }
+    }
+
+    private fun showSurahSearchDialog() {
+        val view = LayoutInflater.from(this).inflate(R.layout.dialog_surah_search, null)
+        val etSearch = view.findViewById<EditText>(R.id.etSurahSearch)
+        val rvResults = view.findViewById<RecyclerView>(R.id.rvSurahSearchResults)
+        val tvEmpty = view.findViewById<TextView>(R.id.tvSurahSearchEmpty)
+        rvResults.layoutManager = LinearLayoutManager(this)
+        val dialog = AlertDialog.Builder(this)
+            .setView(view)
+            .create()
+        dialog.window?.setBackgroundDrawableResource(android.R.color.transparent)
+
+        fun applySearch() {
+            val q = etSearch.text.toString().trim()
+            val results = if (q.isEmpty()) {
+                emptyList<AyahData>()
+            } else {
+                ayahs.filter { it.text.contains(q) }
+            }
+            tvEmpty.visibility = if (results.isEmpty()) View.VISIBLE else View.GONE
+            rvResults.adapter = object : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
+                override fun getItemCount() = results.size
+                override fun onCreateViewHolder(p: ViewGroup, vt: Int) = object : RecyclerView.ViewHolder(
+                    LayoutInflater.from(p.context).inflate(R.layout.item_search_result, p, false)
+                ) {}
+                override fun onBindViewHolder(h: RecyclerView.ViewHolder, pos: Int) {
+                    val ayah = results[pos]
+                    val pageNum = h.itemView.findViewById<TextView>(R.id.tvResultPageNum)
+                    pageNum.text = "الآية ${toHindiDigits(ayah.number)}"
+                    val snippet = h.itemView.findViewById<TextView>(R.id.tvResultSnippet)
+                    snippet.typeface = ResourcesCompat.getFont(this@SurahDetailActivity, QuranDataLoader.getUthmanicFontRes(this@SurahDetailActivity))
+                    snippet.textSize = 18f
+                    snippet.text = ayah.text
+                    h.itemView.setOnClickListener {
+                        dialog.dismiss()
+                        scrollToAyah(ayah.number)
+                        UrwahToast.show(this@SurahDetailActivity, "الآية ${toHindiDigits(ayah.number)}")
+                    }
+                }
+            }
+        }
+
+        etSearch.addTextChangedListener(object : TextWatcher {
+            override fun beforeTextChanged(s: CharSequence?, a: Int, b: Int, c: Int) {}
+            override fun onTextChanged(s: CharSequence?, a: Int, b: Int, c: Int) {}
+            override fun afterTextChanged(s: Editable?) { applySearch() }
+        })
+
+        view.findViewById<Button>(R.id.btnSurahSearchClose).setOnClickListener { dialog.dismiss() }
+        etSearch.post { etSearch.requestFocus() }
+        dialog.show()
     }
 
 
@@ -847,16 +1064,16 @@ class SurahDetailActivity : AppCompatActivity() {
 
 
     private fun addNextSurahButton() {
-        val btn = Button(this).apply {
-            text = "السورة التالية"
-            compoundDrawablePadding = dpToPx(8f)
-            setCompoundDrawablesWithIntrinsicBounds(0, 0, R.drawable.ic_next_surah, 0)
-            typeface = ResourcesCompat.getFont(this@SurahDetailActivity, R.font.alyamama)
-            textSize = 15f
-            setTextColor(Color.WHITE)
-            setBackgroundResource(R.drawable.bg_button_next_surah)
+        val btn = ImageButton(this).apply {
+            contentDescription = "السورة التالية"
+            setImageResource(R.drawable.ic_next_surah)
+            setColorFilter(ContextCompat.getColor(this@SurahDetailActivity, R.color.urwah_thread_brown))
+            val attr = intArrayOf(android.R.attr.selectableItemBackgroundBorderless)
+            val typedArray = this@SurahDetailActivity.obtainStyledAttributes(attr)
+            background = typedArray.getDrawable(0)
+            typedArray.recycle()
             layoutParams = LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT, dpToPx(48f)
+                LinearLayout.LayoutParams.WRAP_CONTENT, dpToPx(56f)
             ).apply {
                 topMargin = dpToPx(20f)
                 marginStart = dpToPx(20f)
@@ -933,8 +1150,972 @@ class SurahDetailActivity : AppCompatActivity() {
 
     override fun onDestroy() {
         super.onDestroy()
+        scrollAnimator?.cancel()
         toastHelper?.detach()
         toastHelper = null
         scrollHandler?.removeCallbacksAndMessages(null)
+        playerAutoHideHandler.removeCallbacksAndMessages(null)
+        focusedAutoHideHandler.removeCallbacksAndMessages(null)
+        if (isFinishing) {
+            val st = AudioPlaybackState.state.value
+            if (st.isActive && st.surahNumber == surahNumber) {
+                AudioPlayerService.stop(this)
+            }
+        }
+        isFocusedMode = false
+    }
+
+    override fun dispatchTouchEvent(ev: android.view.MotionEvent): Boolean {
+        if (isFocusedMode) return super.dispatchTouchEvent(ev)
+        if (ev.action == android.view.MotionEvent.ACTION_DOWN) {
+            val playWindowRoot = findViewById<View>(R.id.playWindowRoot)
+            if (playWindowRoot.visibility != View.VISIBLE) {
+                val bar = findViewById<View>(R.id.audioPlayerBar)
+                if (bar.visibility == View.VISIBLE) {
+                    schedulePlayerAutoHide()
+                } else if (AudioPlaybackState.state.value.isActive) {
+                    showAudioPlayer()
+                }
+            }
+        }
+        return super.dispatchTouchEvent(ev)
+    }
+
+    private fun enterFocusedMode() {
+        val overlay = findViewById<View>(R.id.focusedRecitationOverlay)
+        if (overlay.visibility == View.VISIBLE) {
+            exitFocusedMode()
+            return
+        }
+        isFocusedMode = true
+        lastFocusedAyah = -1
+
+        buildGlobalAyahIndex()
+        setupFocusedControls()
+        applyMurattalTheme(MurattalThemeManager.current(this))
+
+        overlay.alpha = 0f
+        overlay.visibility = View.VISIBLE
+        overlay.bringToFront()
+        overlay.animate().alpha(1f).setDuration(250).start()
+
+        focusedTools.clear()
+        focusedTools.add(findViewById<View>(R.id.topBarLayout))
+        focusedTools.add(findViewById<View>(R.id.focusedInfoCard))
+        focusedTools.add(findViewById<View>(R.id.murattalOrnamentTop))
+        focusedTools.add(findViewById<View>(R.id.audioPlayerBar))
+        showFocusedTools()
+
+        val st = AudioPlaybackState.state.value
+        if (st.isActive && st.surahNumber == surahNumber) {
+            updateFocusedAyah(st.currentAyah)
+            updateFocusedReciter(st.reciterId)
+        } else {
+            UrwahToast.show(this, getString(R.string.focused_mode_enter_hint))
+        }
+
+        var downX = 0f
+        var downY = 0f
+        var moving = false
+        val overlayTouch = View.OnTouchListener { _, event ->
+            when (event.actionMasked) {
+                android.view.MotionEvent.ACTION_DOWN -> {
+                    downX = event.x
+                    downY = event.y
+                    moving = false
+                }
+                android.view.MotionEvent.ACTION_MOVE -> {
+                    val dx = event.x - downX
+                    val dy = event.y - downY
+                    if (dx * dx + dy * dy > dpToPx(12f) * dpToPx(12f)) moving = true
+                }
+                android.view.MotionEvent.ACTION_UP -> {
+                    if (!moving) handleFocusedOverlayTouch()
+                }
+            }
+            false
+        }
+        overlay.setOnTouchListener(overlayTouch)
+        val ayahArea = findViewById<View>(R.id.focusedAyahArea)
+        if (ayahArea != null) {
+            ayahArea.setOnTouchListener(overlayTouch)
+        }
+        scheduleFocusedAutoHide()
+    }
+
+    private fun hideFocusedTools() {
+        val wasVisible = focusedTools.any { it.visibility == View.VISIBLE && it.alpha >= 1f }
+        if (!wasVisible) return
+        focusedTools.forEach { tool ->
+            tool.animate().cancel()
+            tool.visibility = View.VISIBLE
+            tool.animate().alpha(0f).setDuration(200).withEndAction {
+                tool.visibility = View.GONE
+            }.start()
+        }
+        playerUiVisible = false
+    }
+
+    private fun showFocusedTools() {
+        focusedTools.forEach { tool ->
+            tool.animate().cancel()
+            tool.visibility = View.VISIBLE
+            tool.animate().alpha(1f).setDuration(200).start()
+        }
+        val playerBar = findViewById<View>(R.id.audioPlayerBar)
+        playerBar.bringToFront()
+        playerUiVisible = true
+    }
+
+    private fun scheduleFocusedAutoHide() {
+        focusedAutoHideHandler.removeCallbacks(focusedAutoHideRunnable)
+        focusedAutoHideHandler.postDelayed(focusedAutoHideRunnable, FOCUSED_AUTO_HIDE_DELAY)
+    }
+
+    private fun handleFocusedOverlayTouch() {
+        val topBar = focusedTools.firstOrNull { it.id == R.id.topBarLayout } ?: return
+        val visible = topBar.visibility == View.VISIBLE && topBar.alpha >= 1f
+        if (visible) {
+            hideFocusedTools()
+        } else {
+            showFocusedTools()
+        }
+        scheduleFocusedAutoHide()
+    }
+
+    private fun exitFocusedMode() {
+        val overlay = findViewById<View>(R.id.focusedRecitationOverlay)
+        if (overlay.visibility != View.VISIBLE) return
+        isFocusedMode = false
+        focusedAutoHideHandler.removeCallbacksAndMessages(null)
+        findViewById<TextView>(R.id.tvPlayerTitle).visibility = View.VISIBLE
+        findViewById<TextView>(R.id.tvPlayerMeta).visibility = View.VISIBLE
+        findViewById<TextView>(R.id.tvPlayerAvatar).visibility = View.VISIBLE
+        findViewById<View>(R.id.btnPlayerClose).visibility = View.VISIBLE
+        overlay.animate().alpha(0f).setDuration(200).withEndAction {
+            overlay.visibility = View.GONE
+            val st = AudioPlaybackState.state.value
+            if (st.isActive && (st.isPlaying || st.isBuffering)) {
+                showAudioPlayer()
+            } else {
+                hideAudioPlayer()
+            }
+        }.start()
+    }
+
+    private fun buildGlobalAyahIndex() {
+        val all = QuranDataLoader.load(this)
+        val sorted = all.entries
+            .sortedBy { it.key }
+            .flatMap { (_, s) -> s.ayahs.sortedBy { it.number } }
+        allAyahsGlobal = sorted
+
+        val juzIndexes = mutableMapOf<Int, Int>()
+        for (juz in JuzData.JUZ_BOUNDARIES) {
+            val idx = sorted.indexOfFirst {
+                it.surahNumber == juz.startSurah && it.number == juz.startAyah
+            }
+            if (idx >= 0) juzIndexes[juz.juzNumber] = idx
+        }
+        juzAyahIndexes = juzIndexes
+    }
+
+    private fun currentJuzHizb(surahNum: Int, ayahNum: Int): String {
+        val idx = allAyahsGlobal.indexOfFirst {
+            it.surahNumber == surahNum && it.number == ayahNum
+        }
+        if (idx < 0) return ""
+        var juz = 1
+        for ((j, startIdx) in juzAyahIndexes) {
+            if (startIdx <= idx && j > juz) juz = j
+        }
+        val hindi = arrayOf("٠", "١", "٢", "٣", "٤", "٥", "٦", "٧", "٨", "٩")
+        val h = { n: Int -> n.toString().map { hindi[it - '0'] }.joinToString("") }
+        return "الجزء ${h(juz)} • الحزب ${h(juz * 2 - 1)}"
+    }
+
+    private fun setupFocusedControls() {
+        findViewById<View>(R.id.btnFocusedClose).setOnClickListener { exitFocusedMode() }
+        findViewById<View>(R.id.btnFocusedMinimize).setOnClickListener { exitFocusedMode() }
+        findViewById<View>(R.id.btnFocusedTheme).setOnClickListener { showMurattalThemeDialog() }
+    }
+
+    private fun applyMurattalTheme(theme: MurattalTheme) {
+        val p = MurattalThemeManager.palette(this, theme)
+        val overlay = findViewById<View>(R.id.focusedRecitationOverlay)
+        overlay.setBackgroundColor(p.background)
+
+        // — الشريط العلوي وبطاقة المعلومات —
+        findViewById<View>(R.id.topBarLayout).apply {
+            background = MurattalThemeManager.neoCardDrawable(
+                this@SurahDetailActivity, p, radiusDp = 14f, strokeDp = 2f,
+                shadowOffsetDp = 3f
+            )
+            val lp = layoutParams
+            if (lp is ViewGroup.MarginLayoutParams) {
+                lp.setMargins(dpToPx(10f), dpToPx(6f), dpToPx(10f), dpToPx(0f))
+                layoutParams = lp
+            }
+        }
+        findViewById<View>(R.id.focusedInfoCard).apply {
+            background = MurattalThemeManager.neoCardDrawable(
+                this@SurahDetailActivity, p, radiusDp = 16f, strokeDp = 2.5f,
+                shadowOffsetDp = 5f
+            )
+        }
+
+        // — منطقة الآية —
+        findViewById<TextView>(R.id.tvFocusedAyah).apply {
+            background = MurattalThemeManager.neoCardDrawable(
+                this@SurahDetailActivity, p, radiusDp = 22f, strokeDp = 2f,
+                shadowOffsetDp = 6f, fill = p.quranFrame
+            )
+            setTextColor(p.textPrimary)
+        }
+
+        findViewById<TextView>(R.id.tvFocusedSurahMini).setTextColor(p.textSecondary)
+        findViewById<TextView>(R.id.tvFocusedAyahCounter).apply {
+            background = MurattalThemeManager.circleDrawable(
+                this@SurahDetailActivity, p, p.accent
+            ).also { drawable ->
+                drawable.setStroke(
+                    MurattalThemeManager.dpToPx(this@SurahDetailActivity, 1.5f).toInt(),
+                    p.accent
+                )
+            }
+            setTextColor(p.accentText)
+            setPadding(
+                dpToPx(14f), dpToPx(5f), dpToPx(14f), dpToPx(5f)
+            )
+        }
+        findViewById<TextView>(R.id.tvFocusedJuzHizb).setTextColor(p.textSecondary)
+        findViewById<TextView>(R.id.tvFocusedReciter).setTextColor(p.textSecondary)
+        findViewById<TextView>(R.id.tvFocusedPercent).setTextColor(p.accent)
+
+        listOf(
+            R.id.btnFocusedClose,
+            R.id.btnFocusedTheme,
+            R.id.btnFocusedMinimize
+        ).forEach { id ->
+            (findViewById<View>(id) as? ImageButton)?.let {
+                it.imageTintList = android.content.res.ColorStateList.valueOf(p.textPrimary)
+            }
+        }
+
+        findViewById<ImageView>(R.id.murattalOrnamentTop).let { ornament ->
+            ornament.visibility = if (theme.showOrnament) View.VISIBLE else View.GONE
+            ornament.setColorFilter(p.accent)
+        }
+
+        findViewById<ProgressBar>(R.id.focusedProgress).apply {
+            progressDrawable = MurattalThemeManager.seekbarProgressDrawable(
+                this@SurahDetailActivity, p
+            )
+        }
+
+        // — شريط المشغّل (خلفية، آفاتار، نصوص، سيكب، أزرار) —
+        findViewById<View>(R.id.audioPlayerBar).apply {
+            background = MurattalThemeManager.neoCardDrawable(
+                this@SurahDetailActivity, p, radiusDp = 18f, strokeDp = 2f,
+                shadowOffsetDp = 6f
+            )
+        }
+        findViewById<TextView>(R.id.tvPlayerAvatar).apply {
+            background = MurattalThemeManager.circleDrawable(
+                this@SurahDetailActivity, p, p.accent
+            )
+            setTextColor(p.accentText)
+        }
+        findViewById<TextView>(R.id.tvPlayerTitle).setTextColor(p.textPrimary)
+        findViewById<TextView>(R.id.tvPlayerMeta).setTextColor(p.textSecondary)
+        findViewById<TextView>(R.id.tvPlayerCurrentTime).setTextColor(p.textSecondary)
+        findViewById<TextView>(R.id.tvPlayerRemainingTime).setTextColor(p.textSecondary)
+        findViewById<TextView>(R.id.tvPlayerSpeed).setTextColor(p.accent)
+
+        listOf(
+            R.id.btnPlayerClose,
+            R.id.btnPlayerPrevious,
+            R.id.btnPlayerNext,
+            R.id.btnPlayerRepeat,
+            R.id.btnPlayerSpeed,
+            R.id.btnPlayerReciters
+        ).forEach { id ->
+            (findViewById<View>(id) as? ImageButton)?.let {
+                it.imageTintList = android.content.res.ColorStateList.valueOf(p.iconTint)
+            }
+        }
+
+        val playBtn = findViewById<ImageButton>(R.id.btnPlayerPlayPause)
+        playBtn.background = MurattalThemeManager.circleDrawable(
+            this@SurahDetailActivity, p, p.accent
+        )
+        playBtn.imageTintList = android.content.res.ColorStateList.valueOf(p.accentText)
+
+        findViewById<SeekBar>(R.id.playerSeekBar).apply {
+            progressDrawable = MurattalThemeManager.seekbarProgressDrawable(
+                this@SurahDetailActivity, p
+            )
+            thumb = MurattalThemeManager.seekbarThumbDrawable(
+                this@SurahDetailActivity, p
+            )
+        }
+
+        applyPaletteToPlayWindow(p)
+        lastAppliedPalette = p
+    }
+
+    private var lastAppliedPalette: MurattalPalette? = null
+
+    private fun applyPaletteToPlayWindow(p: MurattalPalette) {
+        findViewById<View>(R.id.playWindowDim).setBackgroundColor(p.dim)
+        findViewById<View>(R.id.playWindowPanel).background =
+            MurattalThemeManager.neoCardDrawable(
+                this, p, radiusDp = 22f, strokeDp = 2f, shadowOffsetDp = 6f
+            )
+
+        findViewById<TextView>(R.id.tvPlayWindowReciterName).setTextColor(p.textPrimary)
+        findViewById<TextView>(R.id.tvPlayWindowReciterMeta).apply {
+            setTextColor(p.accent)
+            background = MurattalThemeManager.circleDrawable(this@SurahDetailActivity, p, p.highlight)
+        }
+        findViewById<TextView>(R.id.tvPlayWindowSpeedValue).setTextColor(p.accent)
+        findViewById<TextView>(R.id.tvPlayWindowHint).setTextColor(p.textSecondary)
+
+        findViewById<ImageView>(R.id.btnPlayWindowReciters).imageTintList =
+            android.content.res.ColorStateList.valueOf(p.iconTint)
+        listOf(
+            R.id.btnPlayWindowRepeatAyah,
+            R.id.btnPlayWindowResume,
+            R.id.btnPlayWindowSpeed
+        ).forEach { id ->
+            findViewById<View>(id).background = MurattalThemeManager.neoCardDrawable(
+                this, p, radiusDp = 14f, strokeDp = 1.5f, shadowOffsetDp = 3f,
+                fill = p.surface
+            )
+        }
+    }
+
+    private fun showMurattalThemeDialog() {
+        val intent = Intent(this, MurattalThemePickerActivity::class.java)
+        startActivityForResult(intent, REQUEST_MURATTAL_THEME)
+        overridePendingTransition(R.anim.slide_in_up, R.anim.fade_out)
+    }
+
+    private fun updateFocusedAyah(ayahNumber: Int) {
+        if (ayahNumber == lastFocusedAyah) return
+        lastFocusedAyah = ayahNumber
+        val idx = ayahs.indexOfFirst { it.number == ayahNumber }
+        if (idx < 0) return
+        val ayah = ayahs[idx]
+
+        val tvAyah = findViewById<TextView>(R.id.tvFocusedAyah)
+        tvAyah.text = "${ayah.text} ${toHindiDigits(ayah.number)}"
+        tvAyah.alpha = 0f
+        tvAyah.translationY = dpToPx(14f).toFloat()
+        tvAyah.animate().alpha(1f).translationY(0f).setDuration(280).start()
+
+        val theme = MurattalThemeManager.current(this)
+        findViewById<TextView>(R.id.tvFocusedAyahCounter).text =
+            "الآية ${toHindiDigits(ayah.number)} من ${toHindiDigits(ayahs.size)}"
+        findViewById<TextView>(R.id.tvFocusedJuzHizb).text =
+            currentJuzHizb(surahNumber, ayahNumber)
+        findViewById<TextView>(R.id.tvFocusedSurahMini).text = surahInfo.nameArabic
+
+        val percent = (ayahNumber * 100 / ayahs.size.coerceAtLeast(1)).coerceIn(0, 100)
+        findViewById<TextView>(R.id.tvFocusedPercent).text = "${toHindiDigits(percent)}٪"
+        findViewById<ProgressBar>(R.id.focusedProgress).progress = (percent * 10)
+    }
+
+    private fun updateFocusedReciter(reciterId: Int) {
+        val reciter = ReciterCatalog.getById(reciterId)
+        findViewById<TextView>(R.id.tvFocusedReciter).text =
+            "${reciter.nameArabic} • ${reciter.bitrateDisplay()}"
+    }
+
+    private fun showPlayWindow() {
+        val root = findViewById<View>(R.id.playWindowRoot)
+        if (root.visibility == View.VISIBLE) {
+            hidePlayWindow()
+            return
+        }
+
+        playerAutoHideHandler.removeCallbacks(playerAutoHideRunnable)
+
+        val reciter = ReciterCatalog.getById(currentReciterId)
+        findViewById<TextView>(R.id.tvPlayWindowReciterName).text = reciter.nameArabic
+        findViewById<TextView>(R.id.tvPlayWindowReciterMeta).text = reciter.riwaya
+        findViewById<TextView>(R.id.tvPlayWindowSpeedValue).text = formatSpeed(
+            AudioPlaybackState.state.value.speed
+        )
+
+        val st = AudioPlaybackState.state.value
+        findViewById<TextView>(R.id.tvPlayWindowHint).text = when {
+            st.isActive && st.surahNumber == surahNumber && st.isPlaying -> "قيد التشغيل الآن"
+            st.isActive && st.surahNumber == surahNumber -> "التلاوة متوقفة مؤقتاً"
+            else -> "التلاوة متوقفة حالياً"
+        }
+
+        val playerBar = findViewById<View>(R.id.audioPlayerBar)
+        playerBar.visibility = View.GONE
+
+        root.bringToFront()
+        val panel = findViewById<View>(R.id.playWindowPanel)
+        root.visibility = View.VISIBLE
+        panel.translationY = dpToPx(120f).toFloat()
+        root.alpha = 0f
+        root.animate().alpha(1f).setDuration(200).start()
+        panel.animate().translationY(0f).setDuration(250).start()
+    }
+
+    private fun hidePlayWindow() {
+        val root = findViewById<View>(R.id.playWindowRoot)
+        if (root.visibility != View.VISIBLE) return
+        val panel = findViewById<View>(R.id.playWindowPanel)
+        panel.animate().translationY(dpToPx(120f).toFloat()).setDuration(200)
+            .withEndAction {
+                root.visibility = View.GONE
+                val st = AudioPlaybackState.state.value
+                if (st.isActive && (st.isPlaying || st.isBuffering)) {
+                    showAudioPlayer()
+                }
+            }
+            .start()
+        root.animate().alpha(0f).setDuration(200).start()
+    }
+
+    private fun setupPlayWindowControls() {
+        findViewById<View>(R.id.playWindowDim).setOnClickListener { hidePlayWindow() }
+
+        findViewById<View>(R.id.btnPlayWindowReciters).setOnClickListener {
+            showRecitersDialog()
+        }
+
+        findViewById<View>(R.id.btnPlayWindowFull).setOnClickListener {
+            startPlaybackFrom(currentReciterId, 1)
+            hidePlayWindow()
+        }
+
+        findViewById<View>(R.id.btnPlayWindowFromAyah).setOnClickListener {
+            hidePlayWindow()
+            showJumpToAyahDialog { ayahNum ->
+                startPlaybackFrom(currentReciterId, ayahNum)
+                UrwahToast.show(this, "تشغيل من الآية ${toHindiDigits(ayahNum)}")
+            }
+        }
+
+        findViewById<View>(R.id.btnPlayWindowRange).setOnClickListener {
+            hidePlayWindow()
+            showRangePlaybackDialog()
+        }
+
+        findViewById<View>(R.id.btnPlayWindowRepeatAyah).setOnClickListener {
+            cycleRepeatMode()
+            UrwahToast.show(this, "تم ضبط وضع التكرار")
+        }
+
+        findViewById<View>(R.id.btnPlayWindowResume).setOnClickListener {
+            val savedPos = ReadingTracker.getPosition(this)
+            if (savedPos != null && savedPos.surahNumber == surahNumber) {
+                startPlaybackFrom(currentReciterId, savedPos.ayahNumber)
+                UrwahToast.show(this, "استكمال من الآية ${toHindiDigits(savedPos.ayahNumber)}")
+            } else {
+                startPlaybackFrom(currentReciterId, 1)
+                UrwahToast.show(this, "لا يوجد موضع سابق، بدأ من البداية")
+            }
+            hidePlayWindow()
+        }
+
+        findViewById<View>(R.id.btnPlayWindowSpeed).setOnClickListener {
+            cyclePlaybackSpeed()
+            findViewById<TextView>(R.id.tvPlayWindowSpeedValue).text = formatSpeed(
+                AudioPlaybackState.state.value.speed
+            )
+        }
+    }
+
+    private fun showJumpToAyahDialog(onJump: (Int) -> Unit) {
+        val view = LayoutInflater.from(this).inflate(R.layout.dialog_jump_to_ayah, null)
+        val etAyah = view.findViewById<EditText>(R.id.etAyahNumber)
+        val tvRange = view.findViewById<TextView>(R.id.tvAyahRange)
+        tvRange.text = "الآيات ١-${toHindiDigits(ayahs.size)}"
+        etAyah.hint = "أدخل رقم الآية (١-${toHindiDigits(ayahs.size)})"
+
+        val dialog = AlertDialog.Builder(this)
+            .setView(view)
+            .create()
+        dialog.window?.setBackgroundDrawableResource(android.R.color.transparent)
+
+        view.findViewById<Button>(R.id.btnJumpGo).setOnClickListener {
+            val num = etAyah.text.toString().toIntOrNull()
+            if (num != null && num >= 1 && num <= ayahs.size) {
+                dialog.dismiss()
+                onJump(num)
+            } else {
+                Toast.makeText(this, "رقم غير صحيح", Toast.LENGTH_SHORT).show()
+            }
+        }
+        view.findViewById<Button>(R.id.btnJumpCancel).setOnClickListener {
+            dialog.dismiss()
+        }
+
+        dialog.show()
+    }
+
+    private fun showRangePlaybackDialog() {
+        val view = LayoutInflater.from(this).inflate(R.layout.dialog_range_playback, null)
+        val etFrom = view.findViewById<EditText>(R.id.etRangeFrom)
+        val etTo = view.findViewById<EditText>(R.id.etRangeTo)
+        val tvHint = view.findViewById<TextView>(R.id.tvRangeHint)
+        tvHint.text = "الآيات ١-${toHindiDigits(ayahs.size)}"
+        etFrom.hint = "من ١"
+        etTo.hint = "إلى ${toHindiDigits(ayahs.size)}"
+
+        val dialog = AlertDialog.Builder(this)
+            .setView(view)
+            .create()
+        dialog.window?.setBackgroundDrawableResource(android.R.color.transparent)
+
+        view.findViewById<Button>(R.id.btnRangePlay).setOnClickListener {
+            val from = etFrom.text.toString().toIntOrNull()
+            val to = etTo.text.toString().toIntOrNull()
+            if (from != null && to != null && from >= 1 && to >= from && to <= ayahs.size) {
+                AudioPlayerService.playRange(
+                    this, surahNumber, from, to, currentReciterId
+                )
+                dialog.dismiss()
+                showAudioPlayer()
+                UrwahToast.show(this, "تشغيل من الآية ${toHindiDigits(from)} إلى ${toHindiDigits(to)}")
+            } else {
+                Toast.makeText(this, "نطاق غير صحيح", Toast.LENGTH_SHORT).show()
+            }
+        }
+        view.findViewById<Button>(R.id.btnRangeCancel).setOnClickListener {
+            dialog.dismiss()
+        }
+
+        dialog.show()
+    }
+
+    private fun setupAudioPlayer() {
+        findViewById<View>(R.id.audioPlayerBar).setOnClickListener {
+            showPlayWindow()
+        }
+        findViewById<View>(R.id.audioPlayerBar).setOnLongClickListener {
+            enterFocusedMode()
+            true
+        }
+
+        findViewById<View>(R.id.btnPlayerPlayPause).setOnClickListener {
+            val state = AudioPlaybackState.state.value
+            if (state.isActive && state.surahNumber == surahNumber) {
+                if (state.isPlaying) {
+                    AudioPlayerService.pause(this)
+                } else {
+                    AudioPlayerService.resume(this)
+                }
+            } else {
+                startPlaybackFrom(currentReciterId, 1)
+            }
+        }
+
+        findViewById<View>(R.id.btnPlayerPrevious).setOnClickListener {
+            AudioPlayerService.previous(this)
+        }
+
+        findViewById<View>(R.id.btnPlayerNext).setOnClickListener {
+            AudioPlayerService.next(this)
+        }
+
+        findViewById<View>(R.id.btnPlayerClose).setOnClickListener {
+            AudioPlayerService.stop(this)
+            hideAudioPlayer()
+        }
+
+        findViewById<View>(R.id.btnPlayerSpeed).setOnClickListener {
+            showSpeedDialog()
+        }
+        findViewById<View>(R.id.btnPlayerSpeed).setOnLongClickListener {
+            cyclePlaybackSpeedDown()
+            true
+        }
+
+        findViewById<View>(R.id.btnPlayerRepeat).setOnClickListener {
+            cycleRepeatMode()
+        }
+
+        findViewById<View>(R.id.btnPlayerReciters).setOnClickListener {
+            showRecitersDialog()
+        }
+
+        val seekBar = findViewById<SeekBar>(R.id.playerSeekBar)
+        seekBar.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+            override fun onProgressChanged(sb: SeekBar, progress: Int, fromUser: Boolean) {
+                if (fromUser) {
+                    val st = AudioPlaybackState.state.value
+                    if (st.isActive && st.durationMs > 0) {
+                        val pos = (progress * st.durationMs / 1000L).toLong()
+                        findViewById<TextView>(R.id.tvPlayerCurrentTime).text = formatTime(pos)
+                    }
+                }
+            }
+
+            override fun onStartTrackingTouch(sb: SeekBar) {
+                userSeeking = true
+            }
+
+            override fun onStopTrackingTouch(sb: SeekBar) {
+                val st = AudioPlaybackState.state.value
+                if (st.isActive && st.durationMs > 0) {
+                    val pos = (sb.progress * st.durationMs / 1000L).toLong()
+                    AudioPlayerService.seek(this@SurahDetailActivity, pos)
+                }
+                userSeeking = false
+            }
+        })
+
+        lifecycleScope.launch {
+            repeatOnLifecycle(Lifecycle.State.STARTED) {
+                AudioPlaybackState.state.collect { state ->
+                    if (!lastPlaybackActive && state.isActive &&
+                        (state.isPlaying || state.isBuffering)
+                    ) {
+                        showAudioPlayer()
+                    }
+                    lastPlaybackActive = state.isActive
+                    if (state.isActive && state.surahNumber == surahNumber &&
+                        state.reciterId != lastSyncedReciterId
+                    ) {
+                        lastSyncedReciterId = state.reciterId
+                        syncRiwayatWithReciter(state.reciterId, state.currentAyah)
+                    } else if (!state.isActive) {
+                        lastSyncedReciterId = -1
+                    }
+                    updateAudioPlayerUi(state)
+                    if (isFocusedMode) {
+                        if (state.isActive && state.surahNumber == surahNumber) {
+                            updateFocusedAyah(state.currentAyah)
+                            updateFocusedReciter(state.reciterId)
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private fun startPlaybackFrom(reciterId: Int, startAyah: Int) {
+        currentReciterId = reciterId
+        lastPlaybackAyah = -1
+        audioPrefs.edit().putInt("selected_reciter", reciterId).apply()
+        syncRiwayatWithReciter(reciterId, startAyah)
+        AudioPlayerService.play(
+            this,
+            surahNumber,
+            startAyah,
+            ayahs.size,
+            reciterId
+        )
+        showAudioPlayer()
+    }
+
+    private fun syncRiwayatWithReciter(reciterId: Int, currentAyah: Int) {
+        if (isKhatmaMode) return
+        val reciter = ReciterCatalog.getById(reciterId)
+        val targetId = QuranDataLoader.riwayatIdForArabicName(reciter.riwaya) ?: return
+        if (targetId == displayedRiwayatId) return
+
+        val currentInfo = QuranDataLoader.getRiwayatInfo(displayedRiwayatId)
+        if (!QuranDataLoader.isAvailable(targetId)) {
+            UrwahToast.show(
+                this,
+                "رواية ${reciter.riwaya} غير متوفرة حالياً، تم الإبقاء على ${currentInfo.arabicName}"
+            )
+            displayedRiwayatId = targetId
+            return
+        }
+
+        displayedRiwayatId = targetId
+        QuranDataLoader.setQiraat(this, targetId)
+        QuranDataLoader.invalidateCache()
+
+        val newAyahs = QuranDataLoader.getSurah(this, surahNumber)?.ayahs ?: emptyList()
+        ayahs = newAyahs
+        ayahRowMap.clear()
+        highlightedAyahs.clear()
+        continuousViewRef = null
+        continuousAyahOffsets = null
+        playbackColorSpanActive = false
+        lastPlaybackAyah = -1
+
+        renderAyahsInSingleCard(containerAyahs, ayahs, isDark)
+
+        surahInfo = surahInfo.copy(ayahCount = ayahs.size)
+        findViewById<TextView>(R.id.tvSurahMeta).text =
+            "${surahInfo.revelationPlace} • ${surahInfo.ayahCount} آيات"
+
+        UrwahToast.show(this, "تم تحويل المصحف إلى رواية ${reciter.riwaya}")
+        if (currentAyah > 0) {
+            scrollView.post { scrollToAyah(currentAyah) }
+        }
+    }
+
+    private fun showAudioPlayer() {
+        if (isFocusedMode) {
+            showFocusedTools()
+            scheduleFocusedAutoHide()
+            return
+        }
+        playerUiVisible = true
+        val bar = findViewById<View>(R.id.audioPlayerBar)
+        if (bar.visibility != View.VISIBLE) {
+            bar.alpha = 0f
+            bar.translationY = dpToPx(40f).toFloat()
+            bar.visibility = View.VISIBLE
+            bar.animate().alpha(1f).translationY(0f).setDuration(250).start()
+        }
+        schedulePlayerAutoHide()
+    }
+
+    private fun hideAudioPlayer() {
+        playerAutoHideHandler.removeCallbacks(playerAutoHideRunnable)
+        if (isFocusedMode) {
+            hideFocusedTools()
+            return
+        }
+        if (!playerUiVisible) return
+        playerUiVisible = false
+        val bar = findViewById<View>(R.id.audioPlayerBar)
+        bar.animate().alpha(0f).translationY(dpToPx(40f).toFloat()).setDuration(200)
+            .withEndAction { bar.visibility = View.GONE }
+            .start()
+    }
+
+    private fun schedulePlayerAutoHide() {
+        playerAutoHideHandler.removeCallbacks(playerAutoHideRunnable)
+        playerAutoHideHandler.postDelayed(playerAutoHideRunnable, PLAYER_AUTO_HIDE_DELAY)
+    }
+
+    private fun updateAudioPlayerUi(state: AudioPlaybackState.PlaybackUiState) {
+        if (!state.isActive) return
+
+        val bar = findViewById<View>(R.id.audioPlayerBar)
+        val playWindowRoot = findViewById<View>(R.id.playWindowRoot)
+        if (state.isPlaying || state.isBuffering) {
+            if (playerUiVisible && bar.visibility != View.VISIBLE &&
+                playWindowRoot.visibility != View.VISIBLE
+            ) {
+                showAudioPlayer()
+            }
+        }
+
+        val tvTitle = findViewById<TextView>(R.id.tvPlayerTitle)
+        val tvMeta = findViewById<TextView>(R.id.tvPlayerMeta)
+        val btnPlay = findViewById<ImageView>(R.id.btnPlayerPlayPause)
+        val tvAvatar = findViewById<TextView>(R.id.tvPlayerAvatar)
+
+        val reciter = ReciterCatalog.getById(if (state.isActive) state.reciterId else currentReciterId)
+        tvTitle.text = "سورة ${SurahDataProvider.allSurahs.find { it.number == surahNumber }?.name ?: ""}"
+        tvMeta.text = "الآية ${toHindiDigits(state.currentAyah)} من ${toHindiDigits(state.totalAyahs)} • ${reciter.nameArabic}"
+        tvAvatar.text = reciter.nameArabic.take(1)
+        btnPlay.setImageResource(
+            if (state.isPlaying) R.drawable.ic_media_pause else R.drawable.ic_play_arrow
+        )
+
+        if (isFocusedMode) {
+            tvTitle.visibility = View.GONE
+            tvMeta.visibility = View.GONE
+            tvAvatar.visibility = View.GONE
+            findViewById<View>(R.id.btnPlayerClose).visibility = View.GONE
+        } else {
+            tvTitle.visibility = View.VISIBLE
+            tvMeta.visibility = View.VISIBLE
+            tvAvatar.visibility = View.VISIBLE
+            findViewById<View>(R.id.btnPlayerClose).visibility = View.VISIBLE
+        }
+
+        findViewById<TextView>(R.id.tvPlayerSpeed).text = formatSpeed(state.speed)
+
+        val repeatBtn = findViewById<ImageView>(R.id.btnPlayerRepeat)
+        val isRepeatOn = state.repeatMode != androidx.media3.common.Player.REPEAT_MODE_OFF
+        repeatBtn.alpha = if (isRepeatOn) 1f else 0.35f
+
+        updatePlayerProgress(state)
+
+        highlightPlayingAyah(state.currentAyah)
+    }
+
+    private fun updatePlayerProgress(state: AudioPlaybackState.PlaybackUiState) {
+        val seekBar = findViewById<SeekBar>(R.id.playerSeekBar)
+        val tvCurrent = findViewById<TextView>(R.id.tvPlayerCurrentTime)
+        val tvRemaining = findViewById<TextView>(R.id.tvPlayerRemainingTime)
+
+        if (userSeeking) return
+
+        if (state.durationMs > 0) {
+            val progress = (state.positionMs * 1000L / state.durationMs).toInt().coerceIn(0, 1000)
+            seekBar.progress = progress
+            tvCurrent.text = formatTime(state.positionMs)
+            tvRemaining.text = "-${formatTime((state.durationMs - state.positionMs).coerceAtLeast(0L))}"
+        } else {
+            seekBar.progress = 0
+            tvCurrent.text = "00:00"
+            tvRemaining.text = "-00:00"
+        }
+    }
+
+    private fun formatTime(ms: Long): String {
+        val totalSec = ms / 1000
+        val m = totalSec / 60
+        val s = totalSec % 60
+        return String.format("%02d:%02d", m, s)
+    }
+
+    private fun highlightPlayingAyah(ayahNumber: Int) {
+        if (ayahNumber == lastPlaybackAyah && playbackColorSpanActive) return
+        val current = AudioPlaybackState.state.value
+        if (!current.isPlaying && !current.isBuffering) return
+        lastPlaybackAyah = ayahNumber
+        applyPlaybackHighlight(ayahNumber, scroll = true)
+    }
+
+    private fun applyPlaybackHighlight(ayahNumber: Int, scroll: Boolean) {
+        if (continuousViewRef != null && continuousAyahOffsets != null) {
+            val idx = ayahs.indexOfFirst { it.number == ayahNumber }
+            val offsets = continuousAyahOffsets ?: return
+            if (idx < 0 || idx >= offsets.size) return
+            val (s, e) = offsets[idx]
+            val rawSb = continuousViewRef?.tag as? SpannableStringBuilder ?: return
+            val copy = SpannableStringBuilder(rawSb)
+            val highlight = if (isDark) Color.parseColor("#338B6F5E") else Color.parseColor("#1A8B6F5E")
+            copy.setSpan(BackgroundColorSpan(highlight), s, e, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+            continuousViewRef?.text = copy
+            playbackColorSpanActive = true
+            if (scroll) scrollToAyah(ayahNumber)
+        } else {
+            val row = ayahRowMap[ayahNumber]
+            if (row != null) {
+                val highlight = if (isDark) Color.parseColor("#338B6F5E") else Color.parseColor("#1A8B6F5E")
+                row.setBackgroundColor(highlight)
+                playbackColorSpanActive = true
+                if (scroll) scrollToAyah(ayahNumber)
+            }
+        }
+    }
+
+    private val playbackSpeeds = listOf(0.5f, 0.75f, 1f, 1.25f, 1.5f, 1.75f, 2f)
+
+    private fun showSpeedDialog() {
+        val view = LayoutInflater.from(this).inflate(R.layout.dialog_playback_speed, null)
+        val grid = view.findViewById<LinearLayout>(R.id.speedGrid)
+        val current = AudioPlaybackState.state.value.speed
+        val currentIdx = playbackSpeeds.indexOf(current)
+
+        playbackSpeeds.forEachIndexed { idx, speed ->
+            val chip = TextView(this).apply {
+                text = formatSpeed(speed)
+                textSize = 14f
+                gravity = Gravity.CENTER
+                val selected = idx == currentIdx
+                setTextColor(resources.getColor(
+                    if (selected) R.color.urwah_surface else R.color.urwah_thread_brown
+                ))
+                setBackgroundResource(
+                    if (selected) R.drawable.bg_primary_button else R.drawable.bg_chip_neo
+                )
+                layoutParams = LinearLayout.LayoutParams(
+                    dpToPx(52f), dpToPx(44f)
+                ).apply { marginEnd = dpToPx(8f) }
+                setOnClickListener {
+                    applySpeed(speed)
+                    (it as TextView).parent.let { p ->
+                        for (i in 0 until (p as LinearLayout).childCount) {
+                            val c = p.getChildAt(i)
+                            val sel = (c as TextView).text == formatSpeed(speed)
+                            c.setBackgroundResource(if (sel) R.drawable.bg_primary_button else R.drawable.bg_chip_neo)
+                            c.setTextColor(resources.getColor(
+                                if (sel) R.color.urwah_surface else R.color.urwah_thread_brown
+                            ))
+                        }
+                    }
+                }
+            }
+            grid.addView(chip)
+        }
+
+        val dialog = AlertDialog.Builder(this)
+            .setView(view)
+            .create()
+        dialog.window?.setBackgroundDrawableResource(android.R.color.transparent)
+        dialog.show()
+    }
+
+    private fun cyclePlaybackSpeed() {
+        val current = AudioPlaybackState.state.value
+        val idx = playbackSpeeds.indexOf(current.speed)
+        val next = if (idx >= 0 && idx < playbackSpeeds.size - 1) {
+            playbackSpeeds[idx + 1]
+        } else {
+            playbackSpeeds.first()
+        }
+        applySpeed(next)
+    }
+
+    private fun cyclePlaybackSpeedDown() {
+        val current = AudioPlaybackState.state.value
+        val idx = playbackSpeeds.indexOf(current.speed)
+        val next = if (idx > 0) {
+            playbackSpeeds[idx - 1]
+        } else {
+            playbackSpeeds.last()
+        }
+        applySpeed(next)
+    }
+
+    private fun applySpeed(speed: Float) {
+        AudioPlaybackState.update { it.copy(speed = speed) }
+        AudioPlayerService.setSpeed(this, speed)
+        UrwahToast.show(this, "السرعة ${formatSpeed(speed)}")
+    }
+
+    private fun cycleRepeatMode() {
+        val current = AudioPlaybackState.state.value
+        val next = when (current.repeatMode) {
+            androidx.media3.common.Player.REPEAT_MODE_OFF -> androidx.media3.common.Player.REPEAT_MODE_ONE
+            androidx.media3.common.Player.REPEAT_MODE_ONE -> androidx.media3.common.Player.REPEAT_MODE_ALL
+            else -> androidx.media3.common.Player.REPEAT_MODE_OFF
+        }
+        AudioPlaybackState.update { it.copy(repeatMode = next) }
+        AudioPlayerService.setRepeatMode(this, next)
+    }
+
+    private fun formatSpeed(speed: Float): String {
+        val s = if (speed % 1f == 0f) speed.toInt().toString() else speed.toString()
+        return "${s}x"
+    }
+
+    private fun showRecitersDialog() {
+        val intent = Intent(this, ReciterSelectionActivity::class.java)
+        startActivityForResult(intent, REQUEST_RECITER_SELECT)
+        overridePendingTransition(R.anim.slide_in_up, R.anim.fade_out)
+    }
+
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        if (requestCode == REQUEST_RECITER_SELECT && resultCode == RESULT_OK) {
+            val reciterId = data?.getIntExtra(
+                ReciterSelectionActivity.EXTRA_RECITER_ID, currentReciterId
+            ) ?: currentReciterId
+            if (reciterId != currentReciterId) {
+                currentReciterId = reciterId
+                audioPrefs.edit().putInt("selected_reciter", reciterId).apply()
+                val st = AudioPlaybackState.state.value
+                if (st.isActive && st.surahNumber == surahNumber) {
+                    startPlaybackFrom(reciterId, st.currentAyah)
+                } else {
+                    UrwahToast.show(this, "تم اختيار ${ReciterCatalog.getById(reciterId).nameArabic}")
+                }
+            }
+        } else if (requestCode == REQUEST_MURATTAL_THEME && isFocusedMode) {
+            applyMurattalTheme(MurattalThemeManager.current(this))
+        }
     }
 }

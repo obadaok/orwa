@@ -1,6 +1,16 @@
 <resources>
     <string name="app_name">عُروة</string>
+    <string name="audio_channel_name">مشغل التلاوة</string>
+    <string name="audio_channel_desc">التحكم بتلاوة القرآن الكريم</string>
     <string name="welcome_msg">استمسك بالعروة الوثقى</string>
+
+    <string name="focused_mode_title">المرتّل</string>
+    <string name="focused_mode_short">المرتّل</string>
+    <string name="focused_mode_enter_hint">ابدأ التلاوة من السورة لعرضها في «المرتّل»</string>
+    <string name="focused_mode_tap_hint">انقر لإظهار أو إخفاء عناصر التحكم</string>
+    <string name="focused_exit_desc">الخروج من المرتّل</string>
+    <string name="focused_minimize_desc">العودة للعرض العادي</string>
+    <string name="focused_theme_desc">تغيير المظهر</string>
 
     <string name="dhikr_morning">أذكار الصباح</string>
     <string name="dhikr_evening">أذكار المساء</string>
@@ -11,6 +21,12 @@
     <string name="consent_title">مرحباً بك في عروة</string>
     <string name="consent_message">قبل استخدام التطبيق، يرجى قراءة سياسة الخصوصية وشروط الاستخدام والموافقة عليها.</string>
     <string name="consent_agree">أوافق على السياسة والشروط</string>
+
+    <string name="arabic_identity_title">العربيةُ في عُروة</string>
+    <string name="arabic_identity_badge">ض</string>
+    <string name="arabic_identity_message">بسم الله الرحمن الرحيم، وبعدُ:\n\nسُمِّيَ هذا التطبيقُ «عُروة»، وعمدْنا إلى أن يَفِيَ الاسمُ بمعناه. فالعربيةُ — كما تُقرِّرُ المجامعُ اللغويةُ وأهلُ الاختصاصِ — من أوسعِ لغاتِ العالمِ وأَثْراها وأخصبُها، شَرَّفَها اللهُ بإنزالِ كتابِه بها: ﴿إِنَّا أَنزَلْنَاهُ قُرْآنًا عَرَبِيًّا لَّعَلَّكُمْ تَعْقِلُونَ﴾ (يوسف: ٢)، فكانتِ العُروةَ الوثقى التي ربطتِ الأمَّةَ بتراثِها ودِيوَانِها.\n\nلهذا اخترنا أن تكونَ العربيةُ في عُروةَ جزءًا من هويَّةِ المشروعِ، لا مجرَّدَ لغةٍ للواجهةِ؛ فألفاظُ الواجهاتِ والمصطلحاتِ نتخيَّرُها من العربيةِ الفصيحةِ الواضحةِ، لتليقَ بالكتابِ الكريمِ الذي نَتْلوه، والكتبِ التي نُقلِّبُ صفحاتِها، والأدعيةِ التي نرفعُها، والأذكارِ التي تُؤنسُنا.\n\nلا نفرضُ عليك لفظاً، ولا نُصحِّحُ لِسانَ أحدٍ؛ فهذا اختيارٌ لمشروعٍ أرادَ أن نُقدَّمَ هذه العلومَ بلغةٍ تليقُ بها: نتخيَّرُ الألفاظَ الأوضحَ الأفصَحَ ما استطعنا إلى ذلك سبيلاً.\n\nوالحمدُ لله ربِّ العالمين.</string>
+    <string name="arabic_identity_continue">متابعة</string>
+    <string name="about_arabic_identity">هويَّة اللغة العربية</string>
 
     <string name="about_title">حول التطبيق</string>
     <string name="about_version">الإصدار الحالي</string>

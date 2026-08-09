@@ -24,7 +24,7 @@
             android:contentDescription="رجوع"
             android:focusable="true"
             android:padding="10dp"
-            android:src="@drawable/ic_arrow_back"
+            android:src="@drawable/ic_back_arrow_rtl"
             android:tint="@color/urwah_thread_dark" />
 
         <LinearLayout
@@ -62,7 +62,7 @@
             android:contentDescription="أدوات الصفحة"
             android:focusable="true"
             android:padding="10dp"
-            android:src="@drawable/ic_more_menu"
+            android:src="@drawable/ic_reading_tools_menu"
             android:tint="@color/urwah_thread_dark" />
     </LinearLayout>
 

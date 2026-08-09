@@ -1,0 +1,220 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    المرتّل — تجربة تلاوة مركزة فخمة وهادئة.
+    - الآية الحالية هي محور الصفحة ولا يُعرض أي نص سابق/لاحق.
+    - لدينا حالتان: الوضع الهادئ (الأدوات مخفية) ووضع التحكم (تظهر عند اللمس).
+    - الألوان تُطبَّق وقت التشغيل من MurattalThemeManager (خمسة Themes)
+      لذا لا يُخصص عنصر بألوان ثابتة هنا سوى افتراضات.
+-->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/focusedRecitationOverlay"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/urwah_background"
+    android:visibility="gone"
+    tools:visibility="visible">
+
+    <!-- منطقة الآية: عنصر رئيسي يملأ الشاشة للدخول في «الوضع الهادئ» -->
+    <androidx.core.widget.NestedScrollView
+        android:id="@+id/focusedAyahArea"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:clickable="true"
+        android:contentDescription="@string/focused_mode_tap_hint"
+        android:fillViewport="true"
+        android:focusable="true"
+        android:paddingHorizontal="18dp"
+        android:paddingVertical="24dp"
+        android:clipToPadding="false">
+
+        <TextView
+            android:id="@+id/tvFocusedAyah"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:breakStrategy="high_quality"
+            android:fontFamily="@font/uthmanic_hafs"
+            android:gravity="center"
+            android:lineSpacingMultiplier="1.5"
+            android:paddingHorizontal="22dp"
+            android:paddingVertical="28dp"
+            android:textColor="@color/murattal_classic_text_primary"
+            android:textSize="29sp"
+            tools:text="ٱلۡحَمۡدُ لِلَّهِ رَبِّ ٱلۡعَـٰلَمِينَ ٢" />
+
+    </androidx.core.widget.NestedScrollView>
+
+    <!-- زخرفة علوية تظهر في بعض السمات (ورقي/مخطوط، زخرفي قرآني، داكن فاخر) -->
+    <ImageView
+        android:id="@+id/murattalOrnamentTop"
+        android:layout_width="match_parent"
+        android:layout_height="44dp"
+        android:layout_gravity="top"
+        android:scaleType="fitXY"
+        android:src="@drawable/ic_ornament_corner"
+        android:tint="@color/murattal_classic_accent"
+        android:visibility="gone" />
+
+    <!-- حاوية أدوات التحكم: تُدار ككتلة واحدة للإخفاء/الإظهار -->
+    <LinearLayout
+        android:id="@+id/focusedChrome"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="top"
+        android:orientation="vertical">
+
+        <!-- الشريط العلوي -->
+        <LinearLayout
+            android:id="@+id/topBarLayout"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="@color/murattal_classic_card"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:paddingHorizontal="4dp"
+            android:paddingVertical="6dp">
+
+            <ImageButton
+                android:id="@+id/btnFocusedClose"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="@string/focused_exit_desc"
+                android:padding="12dp"
+                android:src="@drawable/ic_close_black_24dp"
+                android:tint="@color/murattal_classic_text_primary" />
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:gravity="center"
+                android:orientation="vertical">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:fontFamily="@font/alyamama_bold"
+                    android:gravity="center"
+                    android:text="@string/focused_mode_title"
+                    android:textColor="@color/murattal_classic_text_primary"
+                    android:textSize="18sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:id="@+id/tvFocusedSurahMini"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:fontFamily="@font/alyamama"
+                    android:gravity="center"
+                    android:textColor="@color/murattal_classic_text_secondary"
+                    android:textSize="12sp"
+                    tools:text="سُورَةُ البقرة" />
+            </LinearLayout>
+
+            <ImageButton
+                android:id="@+id/btnFocusedTheme"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="@string/focused_theme_desc"
+                android:padding="12dp"
+                android:src="@drawable/ic_air_black_24dp"
+                android:tint="@color/murattal_classic_text_primary" />
+
+            <ImageButton
+                android:id="@+id/btnFocusedMinimize"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="@string/focused_minimize_desc"
+                android:padding="12dp"
+                android:src="@drawable/ic_back_arrow_rtl"
+                android:tint="@color/murattal_classic_text_primary" />
+        </LinearLayout>
+
+        <!-- بطاقة معلومات القراءة -->
+        <LinearLayout
+            android:id="@+id/focusedInfoCard"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginHorizontal="16dp"
+            android:layout_marginTop="10dp"
+            android:background="@color/murattal_classic_card"
+            android:orientation="vertical"
+            android:paddingHorizontal="18dp"
+            android:paddingVertical="12dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <TextView
+                    android:id="@+id/tvFocusedAyahCounter"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:background="@drawable/bg_chip_neo_filled"
+                    android:fontFamily="@font/alyamama_bold"
+                    android:paddingHorizontal="12dp"
+                    android:paddingVertical="4dp"
+                    android:textColor="@color/murattal_classic_card"
+                    android:textSize="12sp"
+                    tools:text="الآية ٣ من ٢٨٦" />
+
+                <TextView
+                    android:id="@+id/tvFocusedJuzHizb"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="12dp"
+                    android:layout_weight="1"
+                    android:fontFamily="@font/alyamama"
+                    android:textColor="@color/murattal_classic_text_secondary"
+                    android:textSize="12sp"
+                    tools:text="الجزء ١ • الحزب ١" />
+            </LinearLayout>
+
+            <TextView
+                android:id="@+id/tvFocusedReciter"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:fontFamily="@font/alyamama"
+                android:textColor="@color/murattal_classic_text_secondary"
+                android:textSize="12sp"
+                tools:text="مشاري راشد العفاسي • ١٢٨ كيلوبت" />
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <ProgressBar
+                    android:id="@+id/focusedProgress"
+                    style="?android:attr/progressBarStyleHorizontal"
+                    android:layout_width="0dp"
+                    android:layout_height="6dp"
+                    android:layout_weight="1"
+                    android:max="1000"
+                    android:progressDrawable="@drawable/seekbar_progress"
+                    android:splitTrack="false" />
+
+                <TextView
+                    android:id="@+id/tvFocusedPercent"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="10dp"
+                    android:fontFamily="@font/alyamama"
+                    android:textColor="@color/murattal_classic_text_secondary"
+                    android:textSize="11sp"
+                    tools:text="٢٥٪" />
+            </LinearLayout>
+
+        </LinearLayout>
+
+    </LinearLayout>
+
+</FrameLayout>

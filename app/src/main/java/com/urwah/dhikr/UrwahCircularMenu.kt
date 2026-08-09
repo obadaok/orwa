@@ -105,9 +105,9 @@ class UrwahCircularMenu @JvmOverloads constructor(
 
         items.indices.forEach { index ->
             val animator = ValueAnimator.ofFloat(0f, 1f).apply {
-                duration = 400
-                startDelay = index * 100L
-                interpolator = OvershootInterpolator(1.4f)
+                duration = 280
+                startDelay = index * 60L
+                interpolator = OvershootInterpolator(1.3f)
                 addUpdateListener { animation ->
                     itemAnimations[index] = animation.animatedValue as Float
                     invalidate()
@@ -129,7 +129,7 @@ class UrwahCircularMenu @JvmOverloads constructor(
         isShowing = false
 
         val animator = ValueAnimator.ofFloat(1f, 0f).apply {
-            duration = 250
+            duration = 180
             interpolator = DecelerateInterpolator()
             addUpdateListener { animation ->
                 val progress = animation.animatedValue as Float

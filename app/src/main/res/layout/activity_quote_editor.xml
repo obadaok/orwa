@@ -1,0 +1,758 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/urwah_background">
+
+    <!-- ===== Main column ===== -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical">
+
+        <!-- Top bar -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="56dp"
+            android:background="@color/urwah_background"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:paddingHorizontal="12dp">
+
+            <TextView
+                android:id="@+id/btnClose"
+                android:layout_width="wrap_content"
+                android:layout_height="36dp"
+                android:background="@drawable/bg_chip_neo"
+                android:fontFamily="@font/alyamama"
+                android:gravity="center"
+                android:paddingHorizontal="14dp"
+                android:text="إغلاق"
+                android:textColor="@color/urwah_thread_dark"
+                android:textSize="13sp" />
+
+            <View
+                android:layout_width="0dp"
+                android:layout_height="0dp"
+                android:layout_weight="1" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:fontFamily="@font/alyamama_bold"
+                android:text="محرر الاقتباس"
+                android:textColor="@color/urwah_thread_dark"
+                android:textSize="16sp" />
+
+            <View
+                android:layout_width="0dp"
+                android:layout_height="0dp"
+                android:layout_weight="1" />
+
+            <TextView
+                android:id="@+id/btnTools"
+                android:layout_width="wrap_content"
+                android:layout_height="36dp"
+                android:background="@drawable/bg_chip_neo"
+                android:fontFamily="@font/alyamama_bold"
+                android:gravity="center"
+                android:paddingHorizontal="14dp"
+                android:text="أدوات"
+                android:textColor="@color/urwah_thread_dark"
+                android:textSize="13sp" />
+        </LinearLayout>
+
+        <!-- Editor preview area (the largest part of the screen) -->
+        <FrameLayout
+            android:id="@+id/editorContainer"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1">
+
+            <androidx.core.widget.NestedScrollView
+                android:id="@+id/editorScrollView"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:clipToPadding="false"
+                android:fillViewport="true"
+                android:padding="0dp">
+
+                <LinearLayout
+                    android:id="@+id/previewRoot"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center_horizontal"
+                    android:orientation="vertical"
+                    android:paddingVertical="32dp">
+
+                    <!-- Text content -->
+                    <TextView
+                        android:id="@+id/tvPreviewContent"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginHorizontal="24dp"
+                        android:gravity="start"
+                        android:lineSpacingExtra="0dp"
+                        android:textDirection="anyRtl"
+                        android:textColor="@color/urwah_thread_dark" />
+
+                    <TextView
+                        android:id="@+id/tvPreviewDivider"
+                        android:layout_width="match_parent"
+                        android:layout_height="1.5dp"
+                        android:layout_marginHorizontal="40dp"
+                        android:layout_marginTop="48dp"
+                        android:background="@color/urwah_thread_light"
+                        android:visibility="visible" />
+
+                    <!-- Metadata -->
+                    <TextView
+                        android:id="@+id/tvPreviewMeta"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginHorizontal="24dp"
+                        android:layout_marginTop="12dp"
+                        android:fontFamily="@font/alyamama"
+                        android:gravity="start"
+                        android:textColor="@color/urwah_thread_brown"
+                        android:textDirection="anyRtl"
+                        android:textSize="14sp" />
+
+                    <!-- Watermark -->
+                    <TextView
+                        android:id="@+id/tvPreviewWatermark"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginHorizontal="24dp"
+                        android:layout_marginTop="12dp"
+                        android:alpha="0.6"
+                        android:fontFamily="@font/alyamama"
+                        android:gravity="start"
+                        android:text="عبر تطبيق عروة"
+                        android:textColor="@color/urwah_thread_brown"
+                        android:textDirection="anyRtl"
+                        android:textSize="11sp" />
+                </LinearLayout>
+            </androidx.core.widget.NestedScrollView>
+
+            <!-- Selection tools: small floating bar (only when text selected) -->
+            <LinearLayout
+                android:id="@+id/selectionTools"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="bottom|center_horizontal"
+                android:layout_marginBottom="12dp"
+                android:background="@drawable/bg_neo_card"
+                android:orientation="vertical"
+                android:padding="6dp"
+                android:visibility="gone">
+
+                <TextView
+                    android:id="@+id/tvSelectionInfo"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="center"
+                    android:fontFamily="@font/alyamama"
+                    android:gravity="center"
+                    android:paddingBottom="2dp"
+                    android:textColor="@color/urwah_thread_brown"
+                    android:textSize="11sp" />
+
+                <HorizontalScrollView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:scrollbars="none">
+
+                    <LinearLayout
+                        android:id="@+id/effectsBar"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:gravity="center"
+                        android:orientation="horizontal">
+
+                        <TextView
+                            android:id="@+id/btnCopy"
+                            android:layout_width="wrap_content"
+                            android:layout_height="30dp"
+                            android:layout_marginHorizontal="2dp"
+                            android:background="@drawable/bg_chip_neo"
+                            android:fontFamily="@font/alyamama"
+                            android:gravity="center"
+                            android:paddingHorizontal="10dp"
+                            android:text="نسخ"
+                            android:textColor="@color/urwah_thread_dark"
+                            android:textSize="11sp" />
+
+                        <TextView
+                            android:id="@+id/btnDeleteSelection"
+                            android:layout_width="wrap_content"
+                            android:layout_height="30dp"
+                            android:layout_marginHorizontal="2dp"
+                            android:background="@drawable/bg_chip_neo"
+                            android:fontFamily="@font/alyamama"
+                            android:gravity="center"
+                            android:paddingHorizontal="10dp"
+                            android:text="حذف"
+                            android:textColor="@color/urwah_thread_dark"
+                            android:textSize="11sp" />
+
+                        <TextView
+                            android:id="@+id/btnHideUnselected"
+                            android:layout_width="wrap_content"
+                            android:layout_height="30dp"
+                            android:layout_marginHorizontal="2dp"
+                            android:background="@drawable/bg_chip_neo"
+                            android:fontFamily="@font/alyamama"
+                            android:gravity="center"
+                            android:paddingHorizontal="10dp"
+                            android:text="إخفاء غير المحدد"
+                            android:textColor="@color/urwah_thread_dark"
+                            android:textSize="11sp" />
+
+                        <TextView
+                            android:id="@+id/btnEffectHighlight"
+                            android:layout_width="wrap_content"
+                            android:layout_height="30dp"
+                            android:layout_marginHorizontal="2dp"
+                            android:background="@drawable/bg_chip_neo"
+                            android:fontFamily="@font/alyamama"
+                            android:gravity="center"
+                            android:paddingHorizontal="10dp"
+                            android:text="تمييز"
+                            android:textColor="@color/urwah_thread_dark"
+                            android:textSize="11sp" />
+
+                        <TextView
+                            android:id="@+id/btnEffectBold"
+                            android:layout_width="wrap_content"
+                            android:layout_height="30dp"
+                            android:layout_marginHorizontal="2dp"
+                            android:background="@drawable/bg_chip_neo"
+                            android:fontFamily="@font/alyamama"
+                            android:gravity="center"
+                            android:paddingHorizontal="10dp"
+                            android:text="عريض"
+                            android:textColor="@color/urwah_thread_dark"
+                            android:textSize="11sp" />
+
+                        <TextView
+                            android:id="@+id/btnEffectUnderline"
+                            android:layout_width="wrap_content"
+                            android:layout_height="30dp"
+                            android:layout_marginHorizontal="2dp"
+                            android:background="@drawable/bg_chip_neo"
+                            android:fontFamily="@font/alyamama"
+                            android:gravity="center"
+                            android:paddingHorizontal="10dp"
+                            android:text="خط"
+                            android:textColor="@color/urwah_thread_dark"
+                            android:textSize="11sp" />
+
+                        <TextView
+                            android:id="@+id/btnEffectScaleUp"
+                            android:layout_width="wrap_content"
+                            android:layout_height="30dp"
+                            android:layout_marginHorizontal="2dp"
+                            android:background="@drawable/bg_chip_neo"
+                            android:fontFamily="@font/alyamama"
+                            android:gravity="center"
+                            android:paddingHorizontal="10dp"
+                            android:text="تكبير"
+                            android:textColor="@color/urwah_thread_dark"
+                            android:textSize="11sp" />
+
+                        <TextView
+                            android:id="@+id/btnEffectScaleDown"
+                            android:layout_width="wrap_content"
+                            android:layout_height="30dp"
+                            android:layout_marginHorizontal="2dp"
+                            android:background="@drawable/bg_chip_neo"
+                            android:fontFamily="@font/alyamama"
+                            android:gravity="center"
+                            android:paddingHorizontal="10dp"
+                            android:text="تصغير"
+                            android:textColor="@color/urwah_thread_dark"
+                            android:textSize="11sp" />
+
+                        <TextView
+                            android:id="@+id/btnEffectDim"
+                            android:layout_width="wrap_content"
+                            android:layout_height="30dp"
+                            android:layout_marginHorizontal="2dp"
+                            android:background="@drawable/bg_chip_neo"
+                            android:fontFamily="@font/alyamama"
+                            android:gravity="center"
+                            android:paddingHorizontal="10dp"
+                            android:text="تعتيم"
+                            android:textColor="@color/urwah_thread_dark"
+                            android:textSize="11sp" />
+
+                        <TextView
+                            android:id="@+id/btnEffectHide"
+                            android:layout_width="wrap_content"
+                            android:layout_height="30dp"
+                            android:layout_marginHorizontal="2dp"
+                            android:background="@drawable/bg_chip_neo"
+                            android:fontFamily="@font/alyamama"
+                            android:gravity="center"
+                            android:paddingHorizontal="10dp"
+                            android:text="إخفاء"
+                            android:textColor="@color/urwah_thread_dark"
+                            android:textSize="11sp" />
+
+                        <TextView
+                            android:id="@+id/btnClearEffects"
+                            android:layout_width="wrap_content"
+                            android:layout_height="30dp"
+                            android:layout_marginHorizontal="2dp"
+                            android:background="@drawable/bg_chip_neo"
+                            android:fontFamily="@font/alyamama"
+                            android:gravity="center"
+                            android:paddingHorizontal="10dp"
+                            android:text="مسح"
+                            android:textColor="@color/urwah_thread_brown"
+                            android:textSize="11sp" />
+                    </LinearLayout>
+                </HorizontalScrollView>
+            </LinearLayout>
+        </FrameLayout>
+
+        <!-- Bottom actions (always visible) -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="56dp"
+            android:background="@color/urwah_surface"
+            android:gravity="center"
+            android:orientation="horizontal"
+            android:paddingHorizontal="16dp">
+
+            <TextView
+                android:id="@+id/btnShare"
+                android:layout_width="0dp"
+                android:layout_height="40dp"
+                android:layout_marginEnd="8dp"
+                android:layout_weight="1"
+                android:background="@drawable/bg_chip_neo"
+                android:fontFamily="@font/alyamama"
+                android:gravity="center"
+                android:text="مشاركة"
+                android:textColor="@color/urwah_thread_dark"
+                android:textSize="14sp" />
+
+            <TextView
+                android:id="@+id/btnSave"
+                android:layout_width="0dp"
+                android:layout_height="40dp"
+                android:layout_marginStart="8dp"
+                android:layout_weight="1"
+                android:background="@drawable/bg_segment_active_reader"
+                android:fontFamily="@font/alyamama_bold"
+                android:gravity="center"
+                android:text="حفظ كصورة"
+                android:textColor="@color/white"
+                android:textSize="14sp" />
+        </LinearLayout>
+    </LinearLayout>
+
+    <!-- ===== Tools panel (slide-up overlay, hidden by default) ===== -->
+    <FrameLayout
+        android:id="@+id/toolsOverlay"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:visibility="gone">
+
+        <View
+            android:id="@+id/toolsScrim"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:background="@color/urwah_overlay_scrim"
+            android:clickable="true"
+            android:focusable="true" />
+
+        <LinearLayout
+            android:id="@+id/toolsPanel"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_gravity="bottom"
+            android:background="@drawable/bg_reader_bottom_panel"
+            android:elevation="12dp"
+            android:orientation="vertical"
+            android:paddingBottom="10dp">
+
+            <!-- Drag handle -->
+            <View
+                android:layout_width="44dp"
+                android:layout_height="4dp"
+                android:layout_gravity="center_horizontal"
+                android:layout_marginTop="8dp"
+                android:background="@drawable/seekbar_thumb" />
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:paddingHorizontal="12dp">
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:fontFamily="@font/alyamama_bold"
+                    android:gravity="center"
+                    android:text="أدوات التنسيق"
+                    android:textColor="@color/urwah_thread_dark"
+                    android:textSize="14sp" />
+
+                <TextView
+                    android:id="@+id/btnCloseTools"
+                    android:layout_width="wrap_content"
+                    android:layout_height="32dp"
+                    android:background="@drawable/bg_chip_neo"
+                    android:fontFamily="@font/alyamama"
+                    android:gravity="center"
+                    android:paddingHorizontal="14dp"
+                    android:text="تم"
+                    android:textColor="@color/urwah_thread_dark"
+                    android:textSize="12sp" />
+            </LinearLayout>
+
+            <androidx.core.widget.NestedScrollView
+                android:id="@+id/toolsScroll"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:clipToPadding="false"
+                android:paddingBottom="6dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:paddingHorizontal="12dp">
+
+                    <!-- Section: المحاذاة -->
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="10dp"
+                        android:fontFamily="@font/alyamama_bold"
+                        android:text="المحاذاة"
+                        android:textColor="@color/urwah_thread_dark"
+                        android:textSize="12sp" />
+
+                    <LinearLayout
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_gravity="center"
+                        android:layout_marginTop="6dp"
+                        android:gravity="center"
+                        android:orientation="horizontal">
+
+                        <TextView
+                            android:id="@+id/btnAlignRight"
+                            android:layout_width="56dp"
+                            android:layout_height="34dp"
+                            android:background="@drawable/bg_segment_inactive_reader"
+                            android:fontFamily="@font/alyamama"
+                            android:gravity="center"
+                            android:text="يمين"
+                            android:textColor="@color/urwah_thread_dark"
+                            android:textSize="11sp" />
+
+                        <TextView
+                            android:id="@+id/btnAlignCenter"
+                            android:layout_width="56dp"
+                            android:layout_height="34dp"
+                            android:layout_marginHorizontal="4dp"
+                            android:background="@drawable/bg_segment_inactive_reader"
+                            android:fontFamily="@font/alyamama"
+                            android:gravity="center"
+                            android:text="وسط"
+                            android:textColor="@color/urwah_thread_dark"
+                            android:textSize="11sp" />
+
+                        <TextView
+                            android:id="@+id/btnAlignLeft"
+                            android:layout_width="56dp"
+                            android:layout_height="34dp"
+                            android:background="@drawable/bg_segment_inactive_reader"
+                            android:fontFamily="@font/alyamama"
+                            android:gravity="center"
+                            android:text="يسار"
+                            android:textColor="@color/urwah_thread_dark"
+                            android:textSize="11sp" />
+
+                        <TextView
+                            android:id="@+id/btnAlignJustify"
+                            android:layout_width="56dp"
+                            android:layout_height="34dp"
+                            android:layout_marginStart="4dp"
+                            android:background="@drawable/bg_segment_inactive_reader"
+                            android:fontFamily="@font/alyamama"
+                            android:gravity="center"
+                            android:text="ضبط"
+                            android:textColor="@color/urwah_thread_dark"
+                            android:textSize="11sp" />
+                    </LinearLayout>
+
+                    <!-- Section: الخط والحجم -->
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="12dp"
+                        android:fontFamily="@font/alyamama_bold"
+                        android:text="الخط والحجم"
+                        android:textColor="@color/urwah_thread_dark"
+                        android:textSize="12sp" />
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:gravity="center"
+                        android:orientation="horizontal"
+                        android:paddingHorizontal="4dp">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:fontFamily="@font/alyamama"
+                            android:text="أ"
+                            android:textColor="@color/urwah_thread_dark"
+                            android:textSize="12sp" />
+
+                        <SeekBar
+                            android:id="@+id/fontSizeSlider"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_marginHorizontal="10dp"
+                            android:layout_weight="1"
+                            android:max="40"
+                            android:progress="18"
+                            android:progressDrawable="@drawable/seekbar_progress"
+                            android:thumb="@drawable/seekbar_thumb" />
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:fontFamily="@font/alyamama"
+                            android:text="أ"
+                            android:textColor="@color/urwah_thread_dark"
+                            android:textSize="18sp" />
+                    </LinearLayout>
+
+                    <!-- Font family chips -->
+                    <HorizontalScrollView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="6dp"
+                        android:scrollbars="none">
+
+                        <LinearLayout
+                            android:id="@+id/fontChips"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:gravity="center"
+                            android:orientation="horizontal" />
+                    </HorizontalScrollView>
+
+                    <!-- Bold all -->
+                    <TextView
+                        android:id="@+id/btnBoldAll"
+                        android:layout_width="wrap_content"
+                        android:layout_height="34dp"
+                        android:layout_gravity="center"
+                        android:layout_marginTop="6dp"
+                        android:background="@drawable/bg_chip_neo"
+                        android:fontFamily="@font/alyamama_bold"
+                        android:gravity="center"
+                        android:paddingHorizontal="18dp"
+                        android:text="عريض"
+                        android:textColor="@color/urwah_thread_dark"
+                        android:textSize="12sp" />
+
+                    <!-- Section: التباعد -->
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="12dp"
+                        android:fontFamily="@font/alyamama_bold"
+                        android:text="التباعد"
+                        android:textColor="@color/urwah_thread_dark"
+                        android:textSize="12sp" />
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="4dp"
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal"
+                        android:paddingHorizontal="4dp">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:fontFamily="@font/alyamama"
+                            android:text="تباعد الأسطر"
+                            android:textColor="@color/urwah_thread_dark"
+                            android:textSize="11sp" />
+
+                        <SeekBar
+                            android:id="@+id/lineSpacingSlider"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_marginHorizontal="10dp"
+                            android:layout_weight="1"
+                            android:max="100"
+                            android:progressDrawable="@drawable/seekbar_progress"
+                            android:thumb="@drawable/seekbar_thumb" />
+
+                        <TextView
+                            android:id="@+id/tvLineSpacingValue"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:fontFamily="@font/alyamama"
+                            android:text="1.6x"
+                            android:textColor="@color/urwah_thread_light"
+                            android:textSize="11sp" />
+                    </LinearLayout>
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal"
+                        android:paddingHorizontal="4dp">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:fontFamily="@font/alyamama"
+                            android:text="تباعد الفقرات"
+                            android:textColor="@color/urwah_thread_dark"
+                            android:textSize="11sp" />
+
+                        <SeekBar
+                            android:id="@+id/paraSpacingSlider"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_marginHorizontal="10dp"
+                            android:layout_weight="1"
+                            android:max="100"
+                            android:progressDrawable="@drawable/seekbar_progress"
+                            android:thumb="@drawable/seekbar_thumb" />
+
+                        <TextView
+                            android:id="@+id/tvParaSpacingValue"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:fontFamily="@font/alyamama"
+                            android:text="1.0x"
+                            android:textColor="@color/urwah_thread_light"
+                            android:textSize="11sp" />
+                    </LinearLayout>
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal"
+                        android:paddingHorizontal="4dp">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:fontFamily="@font/alyamama"
+                            android:text="تباعد الحروف"
+                            android:textColor="@color/urwah_thread_dark"
+                            android:textSize="11sp" />
+
+                        <SeekBar
+                            android:id="@+id/letterSpacingSlider"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_marginHorizontal="10dp"
+                            android:layout_weight="1"
+                            android:max="100"
+                            android:progressDrawable="@drawable/seekbar_progress"
+                            android:thumb="@drawable/seekbar_thumb" />
+
+                        <TextView
+                            android:id="@+id/tvLetterSpacingValue"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:fontFamily="@font/alyamama"
+                            android:text="0"
+                            android:textColor="@color/urwah_thread_light"
+                            android:textSize="11sp" />
+                    </LinearLayout>
+
+                    <!-- Section: العرض -->
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="12dp"
+                        android:fontFamily="@font/alyamama_bold"
+                        android:text="العرض والهامش"
+                        android:textColor="@color/urwah_thread_dark"
+                        android:textSize="12sp" />
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal"
+                        android:paddingHorizontal="4dp">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:fontFamily="@font/alyamama"
+                            android:text="عرض النص"
+                            android:textColor="@color/urwah_thread_dark"
+                            android:textSize="11sp" />
+
+                        <SeekBar
+                            android:id="@+id/textWidthSlider"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_marginHorizontal="10dp"
+                            android:layout_weight="1"
+                            android:max="100"
+                            android:progress="92"
+                            android:progressDrawable="@drawable/seekbar_progress"
+                            android:thumb="@drawable/seekbar_thumb" />
+
+                        <TextView
+                            android:id="@+id/tvTextWidthValue"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:fontFamily="@font/alyamama"
+                            android:text="92%"
+                            android:textColor="@color/urwah_thread_light"
+                            android:textSize="11sp" />
+                    </LinearLayout>
+
+                    <!-- Section: الخلفية -->
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="12dp"
+                        android:fontFamily="@font/alyamama_bold"
+                        android:text="الخلفية"
+                        android:textColor="@color/urwah_thread_dark"
+                        android:textSize="12sp" />
+
+                    <androidx.recyclerview.widget.RecyclerView
+                        android:id="@+id/bgSelector"
+                        android:layout_width="match_parent"
+                        android:layout_height="76dp"
+                        android:layout_marginTop="6dp"
+                        android:clipToPadding="false"
+                        android:nestedScrollingEnabled="false"
+                        android:paddingHorizontal="4dp" />
+                </LinearLayout>
+            </androidx.core.widget.NestedScrollView>
+        </LinearLayout>
+    </FrameLayout>
+</FrameLayout>

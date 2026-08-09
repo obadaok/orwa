@@ -10,7 +10,7 @@ import android.widget.EditText
 import android.widget.ImageButton
 import android.widget.NumberPicker
 import android.widget.TextView
-import android.widget.Toast
+import com.urwah.dhikr.UrwahToast
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.ItemTouchHelper
@@ -104,7 +104,7 @@ class DhikrDetailsActivity : AppCompatActivity() {
                 val pos = viewHolder.adapterPosition
                 val item = adapter?.getItem(pos)
                 if (item == null || item.id < 10000) {
-                    Toast.makeText(this@DhikrDetailsActivity, "لا يمكن حذف الأذكار الافتراضية", Toast.LENGTH_SHORT).show()
+                    UrwahToast.show(this@DhikrDetailsActivity, "لا يمكن حذف الأذكار الافتراضية")
                     return
                 }
                 showDeleteConfirmation(item, pos)
@@ -188,13 +188,13 @@ class DhikrDetailsActivity : AppCompatActivity() {
         dialogView.findViewById<Button>(R.id.btnSaveDhikr).setOnClickListener {
             val text = etText.text.toString().trim()
             if (text.isEmpty()) {
-                Toast.makeText(this, "الرجاء إدخال نص الذكر", Toast.LENGTH_SHORT).show()
+                UrwahToast.show(this, "الرجاء إدخال نص الذكر")
                 return@setOnClickListener
             }
             CustomDhikrManager.add(this, categoryName, text, pickerRepeats.value, etVirtue.text.toString().trim())
             dialog.dismiss()
             loadItems()
-            Toast.makeText(this, "تمت إضافة الذكر", Toast.LENGTH_SHORT).show()
+            UrwahToast.show(this, "تمت إضافة الذكر")
         }
         dialogView.findViewById<Button>(R.id.btnCancelDhikr).setOnClickListener {
             dialog.dismiss()

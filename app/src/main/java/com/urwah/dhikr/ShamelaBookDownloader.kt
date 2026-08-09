@@ -24,31 +24,48 @@ object ShamelaBookDownloader {
         book: ShamelaBook,
         listener: DownloadListener? = null
     ): Boolean = withContext(Dispatchers.IO) {
+        val bookDir = ShamelaBookStorage.getBookDir(context, book.id)
+        val tmpDir = File(bookDir.parentFile, "${book.id}.tmp")
+        val backupDir = File(bookDir.parentFile, "${book.id}.old")
         try {
-            val bookDir = ShamelaBookStorage.getBookDir(context, book.id)
-            if (!bookDir.exists()) bookDir.mkdirs()
+            // التنزيل في مجلد مؤقت أولًا ثم تبديله بالنسخة الجديدة حتى لا يتلف
+            // الكتاب المحلي القديم إذا انقطع الاتصال في منتصف التحديث.
+            if (!tmpDir.exists() && !tmpDir.isDirectory) tmpDir.mkdirs()
 
             // Download book_metadata.json
             listener?.onProgress(0f)
-            downloadFile(book.metadataUrl, File(bookDir, "book_metadata.json"))
+            downloadFile(book.metadataUrl, File(tmpDir, "book_metadata.json"))
             listener?.onProgress(0.1f)
 
             // Download toc.jsonl
-            downloadFile(book.tocUrl, File(bookDir, "toc.jsonl"))
+            downloadFile(book.tocUrl, File(tmpDir, "toc.jsonl"))
             listener?.onProgress(0.2f)
 
             // Download pages.jsonl (large file - stream with progress)
-            downloadFileWithProgress(book.pagesUrl, File(bookDir, "pages.jsonl")) { progress ->
+            downloadFileWithProgress(book.pagesUrl, File(tmpDir, "pages.jsonl")) { progress ->
                 listener?.onProgress(0.2f + progress * 0.8f)
             }
+
+            // تبديل ذرّي: نُنقل النسخة القديمة جانبًا ثم نُدخل الجديدة.
+            if (backupDir.exists()) backupDir.deleteRecursively()
+            val hadOld = bookDir.exists()
+            if (hadOld && !bookDir.renameTo(backupDir)) {
+                throw Exception("تعذّر الاحتفاظ بنسخة الكتاب القديمة")
+            }
+            if (!tmpDir.renameTo(bookDir)) {
+                // استرجاع النسخة القديمة عند الفشل.
+                if (hadOld && backupDir.exists()) backupDir.renameTo(bookDir)
+                throw Exception("تعذّر حفظ الكتاب على الجهاز")
+            }
+            if (backupDir.exists()) backupDir.deleteRecursively()
 
             listener?.onProgress(1f)
             listener?.onComplete(true)
             true
         } catch (e: Exception) {
-            // Cleanup on failure
-            val bookDir = ShamelaBookStorage.getBookDir(context, book.id)
-            if (bookDir.exists()) bookDir.deleteRecursively()
+            // عند الفشل نُبقي النسخة القديمة سليمة ونحذف المؤقت فقط.
+            if (!bookDir.exists() && backupDir.exists()) backupDir.renameTo(bookDir)
+            if (tmpDir.exists()) tmpDir.deleteRecursively()
             listener?.onComplete(false, e.message)
             false
         }

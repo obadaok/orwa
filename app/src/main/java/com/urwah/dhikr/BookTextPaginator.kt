@@ -20,7 +20,9 @@ object BookTextPaginator {
     data class Page(
         val index: Int,
         val text: String,
-        val chapterTitle: String? = null
+        val chapterTitle: String? = null,
+        val originalPageNum: Int? = null,
+        val startOffset: Int = 0
     )
 
     // نفس علامة عنوان الفصل/القسم التي يضعها ShamelaBookReaderActivity.stripHtml()
@@ -113,14 +115,18 @@ object BookTextPaginator {
             val startLine = pageIndex * linesPerPage
             val endLine = minOf(startLine + linesPerPage, totalLines)
 
-            val startOffset = layout.getLineStart(startLine)
+            val lineStart = layout.getLineStart(startLine)
             val endOffset = if (endLine < totalLines) {
                 layout.getLineStart(endLine)
             } else {
                 fullText.length
             }
 
-            var pageText = fullText.substring(startOffset, endOffset).trim()
+            val rawSegment = fullText.substring(lineStart, endOffset)
+            val leadingWs = rawSegment.length - rawSegment.trimStart().length
+            val trimmedStart = lineStart + leadingWs
+
+            var pageText = rawSegment.trim()
             var chapterTitle: String? = null
 
             // إن كانت الصفحة تبدأ فعليًا عند علامة عنوان فصل/قسم، نستخرجها لعرضها
@@ -132,7 +138,12 @@ object BookTextPaginator {
                 pageText = if (newlineIdx >= 0) pageText.substring(newlineIdx + 1).trim() else ""
             }
 
-            pages.add(Page(pageIndex, pageText, chapterTitle))
+            val contentStart = if (chapterTitle != null) {
+                fullText.indexOf(pageText, trimmedStart).takeIf { it >= 0 } ?: trimmedStart
+            } else {
+                trimmedStart
+            }
+            pages.add(Page(pageIndex, pageText, chapterTitle, startOffset = contentStart))
         }
 
         return pages

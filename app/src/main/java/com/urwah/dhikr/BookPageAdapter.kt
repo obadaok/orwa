@@ -11,11 +11,12 @@ import androidx.recyclerview.widget.RecyclerView
 class BookPageAdapter(
     private val pages: List<BookTextPaginator.Page>,
     private val bookTitle: String,
+    private val originalTotalPages: Int,
     private val fontSize: Float = 18f,
     private val lineSpacing: Float = 1.7f,
     private val typeface: Typeface? = null,
     private val onPageScrollState: ((isAtBottom: Boolean) -> Unit)? = null,
-    private val onScrollViewReady: ((NestedScrollView?) -> Unit)? = null
+    private val onScrollViewReady: ((position: Int, NestedScrollView?) -> Unit)? = null
 ) : RecyclerView.Adapter<BookPageAdapter.PageViewHolder>() {
 
     class PageViewHolder(view: View) : RecyclerView.ViewHolder(view) {
@@ -25,7 +26,6 @@ class BookPageAdapter(
         val dividerTop: View = view.findViewById(R.id.dividerTop)
         val tvContent: TextView = view.findViewById(R.id.tvPageContent)
         val tvPageNumber: TextView = view.findViewById(R.id.tvPageNumber)
-        val verticalProgressFill: View = view.findViewById(R.id.verticalProgressFill)
     }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): PageViewHolder {
@@ -55,43 +55,27 @@ class BookPageAdapter(
             holder.tvContent.typeface = typeface
         }
 
-        holder.tvPageNumber.text = "${position + 1} / ${pages.size}"
+        val total = originalTotalPages.coerceAtLeast(1)
+        if (page.originalPageNum != null) {
+            holder.tvPageNumber.text = "${page.originalPageNum} / $total"
+        } else {
+            holder.tvPageNumber.text = "${position + 1} / $total"
+        }
 
         // مؤشر التقدم الرأسي: نستخدم scaleY بدل تعديل layoutParams.height في كل
         // حدث تمرير — تفادٍ لـ requestLayout المتكرر (رخيص جدًا كتحويل بصري فقط).
-        holder.verticalProgressFill.pivotY = 0f
-        holder.verticalProgressFill.scaleY = 0f
-
         holder.scrollView.setOnScrollChangeListener(NestedScrollView.OnScrollChangeListener { _, _, scrollY, _, oldScrollY ->
             if (scrollY == oldScrollY) return@OnScrollChangeListener
             val child = holder.scrollView.getChildAt(0) ?: return@OnScrollChangeListener
             val totalScrollable = child.height - holder.scrollView.height
-            if (totalScrollable <= 0) {
-                holder.verticalProgressFill.scaleY = 1f
-                onPageScrollState?.invoke(true)
-                onScrollViewReady?.invoke(holder.scrollView)
-                return@OnScrollChangeListener
-            }
-            val progress = (scrollY.toFloat() / totalScrollable).coerceIn(0f, 1f)
-            holder.verticalProgressFill.scaleY = progress
-            val atBottom = scrollY >= totalScrollable - 4
+            val atBottom = if (totalScrollable <= 0) true else scrollY >= totalScrollable - 4
             onPageScrollState?.invoke(atBottom)
-            onScrollViewReady?.invoke(holder.scrollView)
+            onScrollViewReady?.invoke(position, holder.scrollView)
         })
 
         holder.scrollView.scrollTo(0, 0)
-        // قياس أولي واحد فقط بعد اكتمال التخطيط (وليس مع كل بكسل تمرير لاحقًا)
-        holder.verticalProgressFill.post {
-            val child = holder.scrollView.getChildAt(0) ?: return@post
-            val totalScrollable = child.height - holder.scrollView.height
-            if (totalScrollable <= 0) {
-                holder.verticalProgressFill.scaleY = 1f
-                onPageScrollState?.invoke(true)
-            } else {
-                holder.verticalProgressFill.scaleY = 0f
-                onPageScrollState?.invoke(false)
-            }
-            onScrollViewReady?.invoke(holder.scrollView)
+        holder.scrollView.post {
+            onScrollViewReady?.invoke(position, holder.scrollView)
         }
     }
 

@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:padding="20dp"
+    android:orientation="vertical">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@drawable/card_book_action_bg"
+        android:orientation="vertical"
+        android:padding="24dp">
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textColor="#5E4B40"
+            android:textSize="17sp"
+            android:textStyle="bold"
+            android:text="تأكيد الحذف" />
+
+        <TextView
+            android:id="@+id/tvDeleteBookName"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textColor="#8B6F5E"
+            android:textSize="15sp"
+            android:layout_marginTop="12dp" />
+
+        <TextView
+            android:id="@+id/tvDeleteBookSize"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textColor="#C4AFA3"
+            android:textSize="13sp"
+            android:layout_marginTop="4dp" />
+
+        <TextView
+            android:id="@+id/tvDeleteNote"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textColor="#8B6F5E"
+            android:textSize="12sp"
+            android:layout_marginTop="8dp"
+            android:lineSpacingExtra="3dp" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="end"
+            android:layout_marginTop="20dp">
+
+            <TextView
+                android:id="@+id/btnDeleteCancel"
+                android:layout_width="wrap_content"
+                android:layout_height="40dp"
+                android:gravity="center"
+                android:paddingStart="20dp"
+                android:paddingEnd="20dp"
+                android:textColor="#C4AFA3"
+                android:textSize="14sp"
+                android:text="إلغاء"
+                android:background="@drawable/action_row_bg"
+                android:clickable="true"
+                android:focusable="true" />
+
+            <TextView
+                android:id="@+id/btnDeleteConfirm"
+                android:layout_width="wrap_content"
+                android:layout_height="40dp"
+                android:gravity="center"
+                android:paddingStart="20dp"
+                android:paddingEnd="20dp"
+                android:textColor="#FFFDFA"
+                android:textSize="14sp"
+                android:text="حذف"
+                android:background="@drawable/btn_delete_bg"
+                android:clickable="true"
+                android:focusable="true"
+                android:layout_marginStart="10dp" />
+
+        </LinearLayout>
+
+    </LinearLayout>
+
+</LinearLayout>

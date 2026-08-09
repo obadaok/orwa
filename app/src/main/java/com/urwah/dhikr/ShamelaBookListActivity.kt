@@ -17,7 +17,9 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class ShamelaBookListActivity : AppCompatActivity() {
 
@@ -105,6 +107,7 @@ class ShamelaBookListActivity : AppCompatActivity() {
             onBookClick = { book -> openBook(book) },
             onDownloadClick = { book -> downloadBook(book) },
             onCancelClick = { book -> cancelDownload(book) },
+            onReadOnlineClick = { book -> openBookOnline(book) },
             onBookLongClick = { book -> showBookManagementDialog(book) }
         )
         rvBooks.adapter = adapter
@@ -163,6 +166,24 @@ class ShamelaBookListActivity : AppCompatActivity() {
         }
     }
 
+    /** يفتح الكتاب مباشرةً من الإنترنت دون تحميل مسبق. */
+    private fun openBookOnline(book: ShamelaBook) {
+        if (ShamelaBookStorage.isBookDownloaded(this, book.id)) {
+            openBook(book)
+            return
+        }
+        if (!ShamelaOnlineReader.isNetworkAvailable(this)) {
+            Toast.makeText(this, "لا يوجد اتصال بالإنترنت لقراءة الكتاب مباشرة، حمّله أولًا", Toast.LENGTH_LONG).show()
+            return
+        }
+        val intent = Intent(this, ShamelaBookReaderActivity::class.java)
+        intent.putExtra("BOOK_ID", book.id)
+        intent.putExtra("BOOK_TITLE", book.title)
+        intent.putExtra("ONLINE_MODE", true)
+        intent.putExtra("BOOK_HF_PATH", book.hfPath)
+        startActivity(intent)
+    }
+
     private fun downloadBook(book: ShamelaBook) {
         adapter.updateDownloadState(book.id, DownloadState(book.id, 0f, DownloadStatus.DOWNLOADING))
 
@@ -219,7 +240,7 @@ class ShamelaBookListActivity : AppCompatActivity() {
             if (pageCount > 0) appendLine("الصفحات: $pageCount")
         }
 
-        val options = arrayOf("فتح الكتاب", "إعادة التحميل", "حذف الكتاب")
+        val options = arrayOf("فتح الكتاب", "التحقق من التحديث", "إعادة التحميل", "حذف الكتاب")
 
         AlertDialog.Builder(this)
             .setTitle(book.title)
@@ -227,13 +248,14 @@ class ShamelaBookListActivity : AppCompatActivity() {
             .setItems(options) { _, which ->
                 when (which) {
                     0 -> openBook(book)
-                    1 -> {
+                    1 -> checkForBookUpdate(book)
+                    2 -> {
                         ShamelaBookStorage.deleteBook(this, book.id)
                         adapter.updateDownloadState(book.id, DownloadState(book.id, 0f, DownloadStatus.NOT_DOWNLOADED))
                         adapter.notifyDataSetChanged()
                         Toast.makeText(this, "جاري إعادة التحميل...", Toast.LENGTH_SHORT).show()
                     }
-                    2 -> {
+                    3 -> {
                         AlertDialog.Builder(this)
                             .setTitle("تأكيد الحذف")
                             .setMessage("هل تريد حذف \"${book.title}\"؟")
@@ -249,5 +271,93 @@ class ShamelaBookListActivity : AppCompatActivity() {
                 }
             }
             .show()
+    }
+
+    /**
+     * التحقق من وجود نسخة أحدث للكتاب المحفوظ محليًا.
+     * لا يعيد التنزيل إلا إذا كان الإصدار البعيد أحدث من المحلي.
+     */
+    private fun checkForBookUpdate(book: ShamelaBook) {
+        if (!ShamelaOnlineReader.isNetworkAvailable(this)) {
+            AlertDialog.Builder(this)
+                .setTitle("التحقق من التحديث")
+                .setMessage("لا يوجد اتصال بالإنترنت. لا يمكن التحقق من وجود نسخة أحدث الآن.")
+                .setPositiveButton("حسناً", null)
+                .show()
+            return
+        }
+        lifecycleScope.launch {
+            val remoteVersion = withContext(Dispatchers.IO) {
+                try {
+                    ShamelaOnlineReader.fetchMetadata(book.hfPath).version
+                } catch (e: Exception) {
+                    null
+                }
+            }
+            if (remoteVersion == null) {
+                AlertDialog.Builder(this@ShamelaBookListActivity)
+                    .setTitle("التحقق من التحديث")
+                    .setMessage("تعذّر الوصول إلى بيانات الكتاب البعيدة للتحقق من التحديث.")
+                    .setPositiveButton("حسناً", null)
+                    .show()
+                return@launch
+            }
+            val localVersion = ShamelaBookStorage.getStoredVersion(this@ShamelaBookListActivity, book.id)
+            if (ShamelaOnlineReader.isUpdateAvailable(localVersion, remoteVersion)) {
+                AlertDialog.Builder(this@ShamelaBookListActivity)
+                    .setTitle("يتوفر تحديث")
+                    .setMessage("توجد نسخة أحدث للكتاب (الإصدار $remoteVersion). هل تريد تحديثه؟\nسيُحافظ على موضع القراءة والعلامات المرجعية.")
+                    .setPositiveButton("تحديث") { _, _ ->
+                        updateBook(book)
+                    }
+                    .setNegativeButton("إلغاء", null)
+                    .show()
+            } else {
+                Toast.makeText(
+                    this@ShamelaBookListActivity,
+                    "الكتاب محدَّث بالفعل (الإصدار ${localVersion ?: "1.0"})",
+                    Toast.LENGTH_SHORT
+                ).show()
+            }
+        }
+    }
+
+    /** يعيد تنزيل الكتاب بآخر إصدار مع الحفاظ على موضع القراءة والعلامات. */
+    private fun updateBook(book: ShamelaBook) {
+        adapter.updateDownloadState(book.id, DownloadState(book.id, 0f, DownloadStatus.DOWNLOADING))
+        lifecycleScope.launch {
+            ShamelaBookDownloader.downloadBook(
+                context = this@ShamelaBookListActivity,
+                book = book,
+                listener = object : ShamelaBookDownloader.DownloadListener {
+                    override fun onProgress(progress: Float) {
+                        runOnUiThread {
+                            adapter.updateDownloadState(
+                                book.id,
+                                DownloadState(book.id, progress, DownloadStatus.DOWNLOADING)
+                            )
+                        }
+                    }
+
+                    override fun onComplete(success: Boolean, error: String?) {
+                        runOnUiThread {
+                            if (success) {
+                                adapter.updateDownloadState(
+                                    book.id,
+                                    DownloadState(book.id, 1f, DownloadStatus.DOWNLOADED)
+                                )
+                                Toast.makeText(this@ShamelaBookListActivity, "تم تحديث ${book.title}", Toast.LENGTH_SHORT).show()
+                            } else {
+                                adapter.updateDownloadState(
+                                    book.id,
+                                    DownloadState(book.id, 0f, DownloadStatus.FAILED, error)
+                                )
+                                Toast.makeText(this@ShamelaBookListActivity, "فشل التحديث: ${error ?: "خطأ غير معروف"}", Toast.LENGTH_SHORT).show()
+                            }
+                        }
+                    }
+                }
+            )
+        }
     }
 }

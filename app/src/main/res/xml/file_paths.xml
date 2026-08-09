@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<paths>
+    <external-files-path
+        name="quotes"
+        path="quotes/" />
+    <cache-path
+        name="quotes_share"
+        path="quotes_share/" />
+</paths>

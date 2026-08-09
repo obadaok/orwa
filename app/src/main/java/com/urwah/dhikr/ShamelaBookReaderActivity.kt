@@ -11,6 +11,7 @@ import android.graphics.Typeface
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.os.SystemClock
 import android.text.Editable
 import android.text.Layout
 import android.text.TextPaint
@@ -35,7 +36,6 @@ import androidx.viewpager2.widget.ViewPager2
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import org.json.JSONObject
 import kotlin.math.ceil
 
 private object PageChromeMetrics {
@@ -51,6 +51,8 @@ private object PageChromeMetrics {
     const val PAGE_NUMBER_TEXT_SIZE_SP = 11f
     const val PAGE_NUMBER_MARGIN_TOP_DP = 8f
     const val TOC_DRAWER_WIDTH_DP = 288f
+    const val MIN_ONLINE_PROGRESS_PAGES = 120
+    const val ONLINE_REFRESH_INTERVAL_MS = 800L
 }
 
 class ShamelaBookReaderActivity : AppCompatActivity() {
@@ -67,8 +69,14 @@ class ShamelaBookReaderActivity : AppCompatActivity() {
     private var bookId = 0
     private var bookTitle = ""
     private var bookContent: ShamelaBookContent? = null
+    private var fullText: String = ""
     private var displayPages: List<BookTextPaginator.Page> = emptyList()
     private var pageAdapter: BookPageAdapter? = null
+
+    private var onlineMode = false
+    private var onlineHfPath = ""
+    private var onlineLoadedPages = mutableListOf<ShamelaPage>()
+    private var onlineFirstShowDone = false
 
     private var fontSize = 18f
     private var lineSpacing = 1.6f
@@ -100,12 +108,35 @@ class ShamelaBookReaderActivity : AppCompatActivity() {
     private var searchResults = mutableListOf<ReaderSearchAdapter.SearchResult>()
     private var currentSearchIndex = -1
 
+    // Single source of truth for current position — updated IMMEDIATELY on any navigation,
+    // never stale. repaginate() uses this instead of viewPager.currentItem.
+    private var lastIntendedPage: Int = 0
+
+    // When true, onPageSelected will NOT overwrite lastIntendedPage
+    // (it's already set to the target by navigateToPage).
+    private var isProgrammaticScroll: Boolean = false
+
+    // All page changes go through this helper to keep lastIntendedPage consistent.
+    private fun navigateToPage(pageIndex: Int, smoothScroll: Boolean = true) {
+        cancelScheduledRepaginate()
+        val idx = pageIndex.coerceIn(0, (displayPages.size - 1).coerceAtLeast(0))
+        lastIntendedPage = idx
+        isProgrammaticScroll = true
+        viewPager.setCurrentItem(idx, smoothScroll)
+        updatePageInfo(idx)
+    }
+
+    private var pendingSearchQuery: String? = null
+    private var pendingSearchMatchPage: Int = -1
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_shamela_book_reader)
 
         bookId = intent.getIntExtra("BOOK_ID", 0)
         bookTitle = intent.getStringExtra("BOOK_TITLE") ?: ""
+        onlineMode = intent.getBooleanExtra("ONLINE_MODE", false)
+        onlineHfPath = intent.getStringExtra("BOOK_HF_PATH") ?: ""
 
         viewPager = findViewById(R.id.viewPager)
         gestureLayout = findViewById(R.id.gestureLayout)
@@ -124,18 +155,26 @@ class ShamelaBookReaderActivity : AppCompatActivity() {
         viewPager.isUserInputEnabled = false
 
         gestureLayout.setup { direction ->
-            val current = viewPager.currentItem
+            val current = lastIntendedPage
             val target = current + direction
             if (target in 0 until (viewPager.adapter?.itemCount ?: 0)) {
-                viewPager.setCurrentItem(target, true)
+                navigateToPage(target)
             }
         }
 
         viewPager.registerOnPageChangeCallback(object : ViewPager2.OnPageChangeCallback() {
             override fun onPageSelected(position: Int) {
+                if (!isProgrammaticScroll) {
+                    lastIntendedPage = position
+                }
                 updatePageInfo(position)
-                updateBookmarkIcon()
                 scheduleScrollSave(position)
+            }
+
+            override fun onPageScrollStateChanged(state: Int) {
+                if (state == ViewPager2.SCROLL_STATE_IDLE) {
+                    isProgrammaticScroll = false
+                }
             }
         })
 
@@ -143,17 +182,19 @@ class ShamelaBookReaderActivity : AppCompatActivity() {
             override fun onGlobalLayout() {
                 val w = viewPager.width
                 val h = viewPager.height
-                if (w <= 0 || h <= 0) return
-                val changed = w != lastKnownViewPagerWidth || h != lastKnownViewPagerHeight
-                val hadPreviousSize = lastKnownViewPagerWidth != 0 && lastKnownViewPagerHeight != 0
+                if (w <= 0 || h <= 0 || bookContent == null) return
+                // Only repaginate on the very first layout (when lastKnown is 0).
+                // After that, TextView auto-reflow handles size changes from panels.
+                // Repagination from settings changes is triggered explicitly.
+                val isFirstLayout = lastKnownViewPagerWidth == 0 && lastKnownViewPagerHeight == 0
+                if (!isFirstLayout) return
                 lastKnownViewPagerWidth = w
                 lastKnownViewPagerHeight = h
-                if (changed && hadPreviousSize && bookContent != null) {
-                    repaginate()
-                }
+                repaginate()
             }
         })
 
+        ShamelaBookmarkManager.migrateFromOldStorage(this)
         setupOverlayManager()
         setupBackHandling()
         loadSettings()
@@ -288,6 +329,12 @@ class ShamelaBookReaderActivity : AppCompatActivity() {
         findViewById<ImageView>(R.id.ivMenu).setOnClickListener {
             overlayManager.open(ReaderOverlayManager.Overlay.CIRCULAR_MENU)
         }
+        findViewById<View>(R.id.ivCloseToc).setOnClickListener {
+            overlayManager.closeCurrent()
+        }
+        findViewById<View>(R.id.tocDimBackground).setOnClickListener {
+            overlayManager.closeCurrent()
+        }
     }
 
     // ------------------------------------------------------------------
@@ -305,15 +352,19 @@ class ShamelaBookReaderActivity : AppCompatActivity() {
     private fun setupCircularMenuItems() {
         circularMenu.clearMenuItems()
 
-        circularMenu.addMenuItem(R.drawable.ic_list, "الفهرس") {
+        circularMenu.addMenuItem(R.drawable.ic_table_of_contents, "الفهرس") {
             overlayManager.open(ReaderOverlayManager.Overlay.TOC)
         }
 
-        circularMenu.addMenuItem(R.drawable.ic_auto_awesome_black_24dp, "إعدادات") {
+        circularMenu.addMenuItem(R.drawable.ic_search, "بحث") {
+            overlayManager.open(ReaderOverlayManager.Overlay.SEARCH_PANEL)
+        }
+
+        circularMenu.addMenuItem(R.drawable.ic_reading_settings, "إعدادات") {
             overlayManager.open(ReaderOverlayManager.Overlay.SETTINGS_PANEL)
         }
 
-        circularMenu.addMenuItem(R.drawable.ic_bookmark_outline, "حفظ") {
+        circularMenu.addMenuItem(R.drawable.ic_bookmark_add, "حفظ") {
             toggleBookmark()
         }
 
@@ -325,17 +376,17 @@ class ShamelaBookReaderActivity : AppCompatActivity() {
             copyCurrentPage()
         }
 
-        circularMenu.addMenuItem(R.drawable.ic_search, "صفحة") {
+        circularMenu.addMenuItem(R.drawable.ic_go_to_page, "صفحة") {
             overlayManager.open(ReaderOverlayManager.Overlay.JUMP_PANEL)
         }
 
-        circularMenu.addMenuItem(R.drawable.ic_book_24dp, "معلومات") {
-            showBookInfo()
+        circularMenu.addMenuItem(R.drawable.ic_save_from_editor, "حفظ كصورة") {
+            openQuoteEditor()
         }
     }
 
     private fun shareCurrentPage() {
-        val pageText = displayPages.getOrNull(viewPager.currentItem)?.text ?: return
+        val pageText = displayPages.getOrNull(lastIntendedPage)?.text ?: return
         val shareText = "$bookTitle\n\n$pageText"
         val shareIntent = Intent(Intent.ACTION_SEND).apply {
             type = "text/plain"
@@ -344,8 +395,27 @@ class ShamelaBookReaderActivity : AppCompatActivity() {
         startActivity(Intent.createChooser(shareIntent, "مشاركة اقتباس"))
     }
 
+    private fun openQuoteEditor() {
+        val page = displayPages.getOrNull(lastIntendedPage) ?: return
+        val content = bookContent ?: return
+        val meta = content.metadata
+        val intent = Intent(this, QuoteEditorActivity::class.java).apply {
+            putExtra("PAGE_TEXT", page.text)
+            putExtra("PAGE_NUMBER", page.originalPageNum ?: (lastIntendedPage + 1))
+            putExtra("BOOK_TITLE", bookTitle)
+            putExtra("AUTHOR", meta.displayAuthor)
+            putExtra("EDITION", "")
+            putExtra("FONT_FILE", fontFile)
+            putExtra("FONT_SIZE", fontSize)
+            putExtra("LINE_SPACING", lineSpacing)
+            putExtra("PARA_SPACING", paraSpacing)
+            putExtra("TEXT_ALIGN", textAlign.ordinal)
+        }
+        startActivity(intent)
+    }
+
     private fun copyCurrentPage() {
-        val pageText = displayPages.getOrNull(viewPager.currentItem)?.text ?: return
+        val pageText = displayPages.getOrNull(lastIntendedPage)?.text ?: return
         val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
         val clip = ClipData.newPlainText("book_page", pageText)
         clipboard.setPrimaryClip(clip)
@@ -661,7 +731,8 @@ class ShamelaBookReaderActivity : AppCompatActivity() {
             ObjectAnimator.ofFloat(panel, "translationY", startY, 0f).setDuration(220).start()
         }
 
-        view.findViewById<TextView>(R.id.tvPageRange).text = "من 1 إلى ${displayPages.size}"
+        val totalOrig = bookContent?.pages?.size?.coerceAtLeast(1) ?: displayPages.size
+        view.findViewById<TextView>(R.id.tvPageRange).text = "من 1 إلى $totalOrig"
         val etPage = view.findViewById<EditText>(R.id.etPageNumber)
         etPage.requestFocus()
         etPage.postDelayed({
@@ -671,9 +742,9 @@ class ShamelaBookReaderActivity : AppCompatActivity() {
 
         view.findViewById<TextView>(R.id.btnJumpGo).setOnClickListener {
             val pageNum = etPage.text.toString().toIntOrNull() ?: return@setOnClickListener
-            val index = (pageNum - 1).coerceIn(0, displayPages.size - 1)
-            viewPager.setCurrentItem(index, true)
-            updatePageInfo(index)
+            val index = displayPages.indexOfFirst { it.originalPageNum == pageNum }
+                .takeIf { it >= 0 } ?: (pageNum - 1).coerceIn(0, displayPages.size - 1)
+            navigateToPage(index)
             val imm = getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
             imm.hideSoftInputFromWindow(etPage.windowToken, 0)
             overlayManager.closeCurrent()
@@ -722,8 +793,9 @@ class ShamelaBookReaderActivity : AppCompatActivity() {
         val tvNoResults = view.findViewById<TextView>(R.id.tvNoResults)
 
         searchAdapter = ReaderSearchAdapter(emptyList()) { pageIndex ->
-            viewPager.setCurrentItem(pageIndex, true)
-            updatePageInfo(pageIndex)
+            navigateToPage(pageIndex)
+            closeSearchPanel()
+            scrollToSearchMatch(pageIndex, etSearch.text.toString())
         }
         rvResults.layoutManager = LinearLayoutManager(this)
         rvResults.adapter = searchAdapter
@@ -756,10 +828,11 @@ class ShamelaBookReaderActivity : AppCompatActivity() {
             currentSearchIndex = (currentSearchIndex - 1 + searchResults.size) % searchResults.size
             searchAdapter.setActivePosition(currentSearchIndex)
             val result = searchResults[currentSearchIndex]
-            viewPager.setCurrentItem(result.pageIndex, true)
-            updatePageInfo(result.pageIndex)
+            navigateToPage(result.pageIndex)
             rvResults.scrollToPosition(currentSearchIndex)
             tvCount.text = "${currentSearchIndex + 1} / ${searchResults.size}"
+            closeSearchPanel()
+            scrollToSearchMatch(result.pageIndex, etSearch.text.toString())
         }
 
         view.findViewById<ImageView>(R.id.ivSearchNext).setOnClickListener {
@@ -767,23 +840,30 @@ class ShamelaBookReaderActivity : AppCompatActivity() {
             currentSearchIndex = (currentSearchIndex + 1) % searchResults.size
             searchAdapter.setActivePosition(currentSearchIndex)
             val result = searchResults[currentSearchIndex]
-            viewPager.setCurrentItem(result.pageIndex, true)
-            updatePageInfo(result.pageIndex)
+            navigateToPage(result.pageIndex)
             rvResults.scrollToPosition(currentSearchIndex)
             tvCount.text = "${currentSearchIndex + 1} / ${searchResults.size}"
+            closeSearchPanel()
+            scrollToSearchMatch(result.pageIndex, etSearch.text.toString())
         }
 
         view.findViewById<TextView>(R.id.btnCloseSearch).setOnClickListener {
-            val imm = getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
-            imm.hideSoftInputFromWindow(etSearch.windowToken, 0)
-            overlayManager.closeCurrent()
+            closeSearchPanel()
         }
 
         dim.setOnClickListener {
-            val imm = getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
-            imm.hideSoftInputFromWindow(etSearch.windowToken, 0)
-            overlayManager.closeCurrent()
+            closeSearchPanel()
         }
+    }
+
+    private fun closeSearchPanel() {
+        val panel = findViewById<FrameLayout>(R.id.searchPanel)
+        val et = panel?.findViewById<EditText>(R.id.etReaderSearch)
+        if (et != null) {
+            val imm = getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
+            imm.hideSoftInputFromWindow(et.windowToken, 0)
+        }
+        overlayManager.closeCurrent()
     }
 
     private fun performReaderSearch(
@@ -803,12 +883,12 @@ class ShamelaBookReaderActivity : AppCompatActivity() {
         }
 
         val normalizedQuery = stripDiacritics(query.trim())
-        if (normalizedQuery.isEmpty()) {
+        if (normalizedQuery.length < 3) {
             searchResults.clear()
             searchAdapter.updateResults(emptyList())
             navRow.visibility = View.GONE
             tvNoResults.visibility = View.VISIBLE
-            tvNoResults.text = "ابدأ الكتابة للبحث..."
+            tvNoResults.text = "اكتب ثلاثة أحرف على الأقل لبدء البحث"
             return
         }
 
@@ -831,10 +911,12 @@ class ShamelaBookReaderActivity : AppCompatActivity() {
                         val localMatchStart = matchIdx - snippetStart + if (snippetStart > 0) 1 else 0
                         val localMatchEnd = localMatchStart + normalizedQuery.length
 
+                    val origNum = page.originalPageNum ?: (index + 1)
+
                         found.add(
                             ReaderSearchAdapter.SearchResult(
                                 pageIndex = index,
-                                pageNumber = index + 1,
+                                pageNumber = origNum,
                                 snippet = snippet,
                                 matchStart = localMatchStart,
                                 matchEnd = localMatchEnd
@@ -862,10 +944,40 @@ class ShamelaBookReaderActivity : AppCompatActivity() {
                 searchAdapter.setActivePosition(0)
                 tvCount.text = "1 / ${results.size}"
                 val firstResult = results[0]
-                viewPager.setCurrentItem(firstResult.pageIndex, true)
-                updatePageInfo(firstResult.pageIndex)
+                navigateToPage(firstResult.pageIndex)
             }
         }
+    }
+
+    private fun scrollToSearchMatch(pageIndex: Int, query: String) {
+        pendingSearchQuery = query
+        pendingSearchMatchPage = pageIndex
+        viewPager.post {
+            performPendingSearchScroll()
+        }
+    }
+
+    private fun performPendingSearchScroll() {
+        val query = pendingSearchQuery ?: return
+        val targetPage = pendingSearchMatchPage
+        if (targetPage < 0) return
+
+        val rv = viewPager.getChildAt(0) as? RecyclerView ?: return
+        val vh = rv.findViewHolderForAdapterPosition(targetPage) as? BookPageAdapter.PageViewHolder ?: return
+
+        val tv = vh.tvContent
+        val layout = tv.layout ?: return
+        val fullText = tv.text.toString()
+        val normalizedQuery = stripDiacritics(query)
+        val normalizedText = stripDiacritics(fullText)
+        val matchIdx = normalizedText.indexOf(normalizedQuery, ignoreCase = true)
+        if (matchIdx < 0) return
+
+        val line = layout.getLineForOffset(matchIdx)
+        val y = layout.getLineTop(line)
+        vh.scrollView.smoothScrollTo(0, y)
+        pendingSearchQuery = null
+        pendingSearchMatchPage = -1
     }
 
     private fun stripDiacritics(text: String): String {
@@ -893,6 +1005,10 @@ class ShamelaBookReaderActivity : AppCompatActivity() {
             }
 
             if (bookContent == null) {
+                if (onlineMode && onlineHfPath.isNotBlank()) {
+                    loadBookContentOnline()
+                    return@launch
+                }
                 Toast.makeText(this@ShamelaBookReaderActivity, "الكتاب غير محمّل", Toast.LENGTH_SHORT).show()
                 finish()
                 return@launch
@@ -900,18 +1016,20 @@ class ShamelaBookReaderActivity : AppCompatActivity() {
 
             ShamelaBookStorage.saveLastReadTime(this@ShamelaBookReaderActivity, bookId)
 
+            fullText = bookContent!!.pages.joinToString("\n\n") { stripHtml(it.body) }
             val pages = withContext(Dispatchers.Default) { paginateBook() }
             displayPages = pages
 
             buildAdapterAndBind()
 
-            val lastPage = ShamelaBookStorage.getLastReadPage(this@ShamelaBookReaderActivity, bookId)
-            val targetPage = if (lastPage in displayPages.indices) lastPage else 0
+            val startFromBeginning = intent.getBooleanExtra("START_FROM_BEGINNING", false)
+            val targetPage = if (startFromBeginning) 0 else restoreReadingPosition()
             if (targetPage > 0) {
-                viewPager.setCurrentItem(targetPage, false)
+                navigateToPage(targetPage, smoothScroll = false)
+            } else {
+                lastIntendedPage = 0
+                updatePageInfo(0)
             }
-            updatePageInfo(targetPage)
-            updateBookmarkIcon()
 
             loadingView.visibility = View.GONE
             viewPager.visibility = View.VISIBLE
@@ -920,17 +1038,131 @@ class ShamelaBookReaderActivity : AppCompatActivity() {
         }
     }
 
+    /**
+     * قراءة مباشرة من الإنترنت دون تحميل مسبق:
+     * يحمّل أولًا البيانات الموجزة (متاح/فهرست) ثم يبثّ الصفحات سطرًا-سطرًا،
+     * ويعرض أول الصفحات بمجرد وصولها قبل اكتمال الجلب.
+     */
+    private fun loadBookContentOnline() {
+        if (!ShamelaOnlineReader.isNetworkAvailable(this)) {
+            Toast.makeText(this, "لا يوجد اتصال بالإنترنت لقراءة الكتاب مباشرة", Toast.LENGTH_LONG).show()
+            finish()
+            return
+        }
+        loadingView.visibility = View.VISIBLE
+        viewPager.visibility = View.GONE
+
+        lifecycleScope.launch {
+            val pendingRequest = withContext(Dispatchers.IO) {
+                try {
+                    val metadata = ShamelaOnlineReader.fetchMetadata(onlineHfPath)
+                    val toc = ShamelaOnlineReader.fetchToc(onlineHfPath)
+                    metadata to toc
+                } catch (e: Exception) {
+                    null
+                }
+            }
+            if (pendingRequest == null) {
+                Toast.makeText(this@ShamelaBookReaderActivity, "تعذّر جلب بيانات الكتاب من المكتبة", Toast.LENGTH_LONG).show()
+                loadingView.visibility = View.GONE
+                finish()
+                return@launch
+            }
+            val (metadata, toc) = pendingRequest
+            onlineLoadedPages = mutableListOf()
+
+            // مقارنة حداثة الإصدار قبل/أثناء القراءة (مهمة #5): تُعرَض فحسب،
+            // فالقراءة المباشرة تعتمد دائمًا على آخر إصدار متاح من المصدر.
+            var lastRefreshAt = 0L
+            val streamError = withContext(Dispatchers.IO) {
+                try {
+                    ShamelaOnlineReader.streamPages(onlineHfPath) { page ->
+                        onlineLoadedPages.add(page)
+                        // تحديث تدريجي محدود: يُعاد الترقيم كلما وصلت دفعة كافية.
+                        val now = SystemClock.elapsedRealtime()
+                        if (onlineLoadedPages.size >= PageChromeMetrics.MIN_ONLINE_PROGRESS_PAGES && now - lastRefreshAt >= PageChromeMetrics.ONLINE_REFRESH_INTERVAL_MS) {
+                            lastRefreshAt = now
+                            applyOnlineSnapshot(metadata, toc)
+                        }
+                    }
+                    null
+                } catch (e: Exception) {
+                    e
+                }
+            }
+
+            // الدفعة النهائية — تُضمن إنهاء الترقيم وتجهيز الفهرس.
+            applyOnlineSnapshot(metadata, toc)
+
+            ShamelaBookStorage.saveLastReadTime(this@ShamelaBookReaderActivity, bookId)
+
+            loadingView.visibility = View.GONE
+            viewPager.visibility = View.VISIBLE
+
+            setupToc()
+
+            if (streamError != null) {
+                Toast.makeText(
+                    this@ShamelaBookReaderActivity,
+                    "انقطع الاتصال أثناء الجلب، عُرضت ${onlineLoadedPages.size} صفحة",
+                    Toast.LENGTH_LONG
+                ).show()
+            }
+        }
+    }
+
+    /** يعيد الترقيم من الدفعة الحالية من الصفحات المرتجعة. */
+    private fun applyOnlineSnapshot(metadata: ShamelaBook, toc: List<ShamelaTocEntry>) {
+        lifecycleScope.launch {
+            val snapshot = onlineLoadedPages.toList()
+            val pendingContent = ShamelaBookContent(metadata, toc, snapshot)
+            val ft = snapshot.joinToString("\n\n") { stripHtml(it.body) }
+
+            val anchorCharOffset = displayPages.getOrNull(lastIntendedPage)?.startOffset
+                ?.takeIf { it >= 0 }
+                ?: findCharOffset(lastIntendedPage)
+            val onlineRendered = displayPages.mapNotNull { it.startOffset }
+            val restoredIndex = onlineRendered.indexOfFirst { it == anchorCharOffset }
+                .let { if (it < 0) -1 else it }
+
+            bookContent = pendingContent
+            fullText = ft
+            val pages = withContext(Dispatchers.Default) { paginateBook() }
+            displayPages = pages
+            buildAdapterAndBind()
+
+            if (!onlineFirstShowDone) {
+                onlineFirstShowDone = true
+                val startFromBeginning = intent.getBooleanExtra("START_FROM_BEGINNING", false)
+                val targetPage = if (startFromBeginning) 0 else restoreReadingPosition()
+                if (targetPage > 0) navigateToPage(targetPage, smoothScroll = false) else {
+                    lastIntendedPage = 0
+                    updatePageInfo(0)
+                }
+            } else if (restoredIndex >= 0 && restoredIndex < displayPages.size) {
+                navigateToPage(restoredIndex, smoothScroll = false)
+            } else {
+                lastIntendedPage = 0
+                updatePageInfo(0)
+            }
+        }
+    }
+
     private fun buildAdapterAndBind() {
         pageAdapter = BookPageAdapter(
             pages = displayPages,
             bookTitle = bookTitle,
+            originalTotalPages = bookContent?.pages?.size ?: displayPages.size,
             fontSize = fontSize,
             lineSpacing = lineSpacing,
             typeface = currentTypeface,
             onPageScrollState = { },
-            onScrollViewReady = { scrollView ->
+            onScrollViewReady = { position, scrollView ->
                 runOnUiThread {
                     gestureLayout.updateScrollState(scrollView)
+                    if (position == pendingSearchMatchPage) {
+                        performPendingSearchScroll()
+                    }
                 }
             }
         )
@@ -939,7 +1171,7 @@ class ShamelaBookReaderActivity : AppCompatActivity() {
 
     private fun paginateBook(): List<BookTextPaginator.Page> {
         val content = bookContent ?: return listOf(BookTextPaginator.Page(0, ""))
-        val fullText = content.pages.joinToString("\n\n") { stripHtml(it.body) }
+        val ft = fullText.ifEmpty { content.pages.joinToString("\n\n") { stripHtml(it.body) } }
 
         val rawWidth = if (viewPager.width > 0) viewPager.width
             else (resources.displayMetrics.widthPixels * readingWidth).toInt()
@@ -967,7 +1199,35 @@ class ShamelaBookReaderActivity : AppCompatActivity() {
         val pageWidth = (rawWidth - horizontalChromePx).toInt().coerceAtLeast(1)
         val pageHeight = (rawHeight - verticalChromePx).toInt().coerceAtLeast(1)
 
-        return BookTextPaginator.paginate(this, fullText, pageWidth, pageHeight, fontSize, lineSpacing, fontFile)
+        val pages = BookTextPaginator.paginate(this, ft, pageWidth, pageHeight, fontSize, lineSpacing, fontFile)
+
+        // Build cumulative text lengths for each original (Shamela) page
+        val origPageEnds = mutableListOf<Int>()
+        var cumulativeLen = 0
+        for ((i, origPage) in content.pages.withIndex()) {
+            cumulativeLen += stripHtml(origPage.body).length
+            if (i < content.pages.lastIndex) cumulativeLen += 2 // "\n\n"
+            origPageEnds.add(cumulativeLen)
+        }
+
+        // Map each display page to its original page number using text position in fullText.
+        // Use a running search position for O(n) performance instead of O(n²).
+        var searchPos = 0
+        return pages.map { dp ->
+            val idx = if (dp.text.isNotEmpty()) {
+                val from = maxOf(searchPos, dp.startOffset)
+                ft.indexOf(dp.text, from).takeIf { it >= 0 }
+                    ?: ft.indexOf(dp.text.take(20), from)
+                    ?: -1
+            } else -1
+            if (idx >= 0) searchPos = idx + 1
+            val origNum = if (idx >= 0) {
+                val origIdx = origPageEnds.indexOfFirst { idx < it }
+                    .let { if (it < 0) content.pages.lastIndex else it }
+                content.pages[origIdx].pageNum
+            } else null
+            dp.copy(originalPageNum = origNum)
+        }
     }
 
     private fun singleLineHeightPx(textSizePx: Float): Float {
@@ -978,12 +1238,21 @@ class ShamelaBookReaderActivity : AppCompatActivity() {
 
     private fun repaginate() {
         if (bookContent == null) return
-        val currentPage = viewPager.currentItem
+        val anchorPage = lastIntendedPage.coerceIn(0, (displayPages.size - 1).coerceAtLeast(0))
+        // مرساة مستقرّة: char offset داخل fullText (لا يتغير عند إعادة الترقيم).
+        val anchorCharOffset = displayPages.getOrNull(anchorPage)?.startOffset
+            ?.takeIf { it >= 0 }
+            ?: findCharOffset(anchorPage)
         lifecycleScope.launch {
             val pages = withContext(Dispatchers.Default) { paginateBook() }
             displayPages = pages
             buildAdapterAndBind()
-            val restoredPos = if (currentPage < displayPages.size) currentPage else 0
+            val restoredPos = (
+                if (anchorCharOffset >= 0) {
+                    findPageByCharOffset(anchorCharOffset).takeIf { it >= 0 }
+                } else null
+                ) ?: anchorPage.coerceIn(0, (displayPages.size - 1).coerceAtLeast(0))
+            lastIntendedPage = restoredPos
             viewPager.setCurrentItem(restoredPos, false)
             updatePageInfo(restoredPos)
         }
@@ -991,9 +1260,12 @@ class ShamelaBookReaderActivity : AppCompatActivity() {
 
     private fun updatePageInfo(position: Int) {
         if (displayPages.isEmpty()) return
-        val total = displayPages.size
-        val current = (position + 1).coerceIn(1, total)
-        tvPageInfo.text = "صفحة $current / $total"
+        // أظهر رقم الصفحة الأصلية بالنسبة لإجمالي الصفحات الأصلية للكتاب
+        // (وليس عدد الصفحات الافتراضية الناتجة عن الترقيم).
+        val page = displayPages.getOrNull(position)
+        val current = page?.originalPageNum ?: (position + 1).coerceIn(1, displayPages.size)
+        val totalOrig = bookContent?.pages?.size?.coerceAtLeast(1) ?: displayPages.size
+        tvPageInfo.text = "صفحة $current / $totalOrig"
     }
 
     private fun setupToc() {
@@ -1003,8 +1275,7 @@ class ShamelaBookReaderActivity : AppCompatActivity() {
         val tocAdapter = ShamelaTocAdapter(content.toc) { entry ->
             val targetPage = findPageForTocEntry(entry)
             if (targetPage >= 0) {
-                viewPager.setCurrentItem(targetPage, true)
-                updatePageInfo(targetPage)
+                navigateToPage(targetPage)
                 overlayManager.closeCurrent()
             }
         }
@@ -1109,44 +1380,118 @@ class ShamelaBookReaderActivity : AppCompatActivity() {
     }
 
     private fun saveReadingProgress() {
-        ShamelaBookStorage.saveLastReadPage(this, bookId, viewPager.currentItem)
+        val page = displayPages.getOrNull(lastIntendedPage)
+        // احفظ الموضع بمعيار مستقر (char offset داخل fullText) بدلاً من فهرس الصفحة
+        // الافتراضية الذي يتغير عند تعديل حجم الخط أو إعادة الترقيم.
+        val charOffset = page?.startOffset?.takeIf { it >= 0 }
+            ?: findCharOffset(lastIntendedPage)
+        if (charOffset >= 0) {
+            ShamelaBookStorage.saveLastReadCharOffset(this, bookId, charOffset)
+        }
+        // ولأغراض العرض في بطاقات المكتبة نحفظ رقم الصفحة الأصلية (وليس الفهرس الافتراضي).
+        val origNum = page?.originalPageNum ?: (lastIntendedPage + 1)
+        ShamelaBookStorage.saveLastReadPage(this, bookId, origNum)
+    }
+
+    /**
+     * يسترجع موضع القراءة المحفوظ معتمدًا على معيار مستقر:
+     * 1) char offset داخل fullText (الأدق — يبقى صحيحًا مهما تغيّر الترقيم).
+     * 2) رقم الصفحة الأصلية (originalPageNum) كاحتياط عند عدم وجود char offset.
+     * 3) الفهرس الافتراضي القديم كآخر خيار للتوافق مع البيانات المحفوظة سابقًا.
+     */
+    private fun restoreReadingPosition(): Int {
+        val savedOffset = ShamelaBookStorage.getLastReadCharOffset(this, bookId)
+        if (savedOffset >= 0) {
+            val byOffset = findPageByCharOffset(savedOffset)
+            if (byOffset >= 0) return byOffset
+        }
+
+        val savedPageNum = ShamelaBookStorage.getLastReadPage(this, bookId)
+        if (savedPageNum > 0) {
+            val byOrigNum = displayPages.indexOfFirst { it.originalPageNum == savedPageNum }
+            if (byOrigNum >= 0) return byOrigNum
+            // البيانات القديمة كانت تحفظ الفهرس الافتراضي مباشرة — نجربها كاحتياط أخير.
+            if (savedPageNum in displayPages.indices) return savedPageNum
+        }
+        return 0
     }
 
     // ------------------------------------------------------------------
     // Bookmarks
     // ------------------------------------------------------------------
 
+    private fun findCharOffset(position: Int): Int {
+        val pageText = displayPages.getOrNull(position)?.text?.trimStart() ?: return -1
+        if (fullText.isEmpty() || pageText.isEmpty()) return -1
+        val idx = fullText.indexOf(pageText)
+        return if (idx >= 0) idx else fullText.indexOf(pageText.take(20))
+    }
+
+    private fun findPageByCharOffset(charOffset: Int): Int {
+        if (charOffset < 0 || fullText.isEmpty() || displayPages.isEmpty()) return -1
+        for (i in displayPages.indices) {
+            val page = displayPages[i]
+            if (page.text.isEmpty()) continue
+            val start = page.startOffset
+            if (start >= 0 && start <= charOffset && charOffset < start + page.text.length) {
+                return i
+            }
+        }
+        return -1
+    }
+
     private fun toggleBookmark() {
-        val currentPage = viewPager.currentItem
-        val prefs = getSharedPreferences("urwah_shamela_bookmarks", Context.MODE_PRIVATE)
-        val key = "bm_${bookId}_${currentPage}"
-        val existing = prefs.getString(key, null)
+        val currentPage = lastIntendedPage
+        val charOffset = findCharOffset(currentPage)
+        val existing = if (charOffset >= 0) {
+            ShamelaBookmarkManager.getAll(this).find {
+                it.bookId == bookId && it.charOffset == charOffset
+            }
+        } else {
+            ShamelaBookmarkManager.getBookmark(this, bookId, currentPage)
+        }
         if (existing != null) {
-            prefs.edit().remove(key).apply()
+            ShamelaBookmarkManager.remove(this, bookId, existing.page)
             Toast.makeText(this, "تم حذف العلامة", Toast.LENGTH_SHORT).show()
         } else {
             val pageText = displayPages.getOrNull(currentPage)?.text?.take(200) ?: ""
-            val json = JSONObject().apply {
-                put("book_title", bookTitle)
-                put("page", currentPage)
-                put("text", pageText)
-                put("time", System.currentTimeMillis())
-            }
-            prefs.edit().putString(key, json.toString()).apply()
+            ShamelaBookmarkManager.add(
+                this,
+                ShamelaBookmark(
+                    bookId = bookId,
+                    page = currentPage,
+                    charOffset = charOffset,
+                    bookTitle = bookTitle,
+                    text = pageText,
+                    time = System.currentTimeMillis()
+                )
+            )
             Toast.makeText(this, "تم حفظ العلامة", Toast.LENGTH_SHORT).show()
         }
     }
 
-    private fun updateBookmarkIcon() {
-        val currentPage = viewPager.currentItem
-        val prefs = getSharedPreferences("urwah_shamela_bookmarks", Context.MODE_PRIVATE)
-        val key = "bm_${bookId}_${currentPage}"
-        val ivMenu = findViewById<ImageView>(R.id.ivMenu)
-        if (prefs.getString(key, null) != null) {
-            ivMenu.setImageResource(R.drawable.ic_bookmark_filled)
-        } else {
-            ivMenu.setImageResource(R.drawable.ic_more_menu)
+    private fun showBookmarksList() {
+        val bookmarks = ShamelaBookmarkManager.getByBookId(this, bookId)
+        if (bookmarks.isEmpty()) {
+            Toast.makeText(this, "لا توجد علامات مرجعية في هذا الكتاب", Toast.LENGTH_SHORT).show()
+            return
         }
+        val items = bookmarks.sortedBy { it.page }.map { bm ->
+            val text = bm.text.take(80).replace("\n", " ")
+            "${bm.page + 1}: $text"
+        }.toTypedArray()
+        androidx.appcompat.app.AlertDialog.Builder(this)
+            .setTitle("العلامات المرجعية")
+            .setItems(items) { _, which ->
+                val target = bookmarks.sortedBy { it.page }[which]
+                val pos = if (target.charOffset >= 0) {
+                    findPageByCharOffset(target.charOffset).takeIf { it >= 0 }
+                } else null
+                navigateToPage(pos ?: target.page)
+                overlayManager.closeCurrent()
+            }
+            .setPositiveButton("إغلاق", null)
+            .show()
     }
 
     override fun onPause() {

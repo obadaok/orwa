@@ -2,6 +2,9 @@ package com.urwah.dhikr
 
 import android.content.Context
 import android.content.SharedPreferences
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -26,8 +29,25 @@ object ReadingTracker {
     private const val KEY_LAST_AYAH = "last_ayah"
     private const val KEY_BOOKMARKS = "bookmarks"
 
+    private val _positionFlow = MutableStateFlow<ReadingPosition?>(null)
+    val positionFlow: StateFlow<ReadingPosition?> = _positionFlow.asStateFlow()
+
+    private var initialized = false
+
     private fun prefs(context: Context): SharedPreferences =
         context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+
+    private fun ensureInitialized(context: Context) {
+        if (!initialized) {
+            initialized = true
+            val surah = prefs(context).getInt(KEY_LAST_SURAH, -1)
+            val ayah = prefs(context).getInt(KEY_LAST_AYAH, -1)
+            if (surah >= 0 && ayah >= 0) {
+                val name = SurahDataProvider.allSurahs.find { it.number == surah }?.name ?: ""
+                _positionFlow.value = ReadingPosition(surah, ayah, name)
+            }
+        }
+    }
 
     fun savePosition(context: Context, surahNumber: Int, ayahNumber: Int) {
         prefs(context).edit().apply {
@@ -35,14 +55,13 @@ object ReadingTracker {
             putInt(KEY_LAST_AYAH, ayahNumber)
             apply()
         }
+        val name = SurahDataProvider.allSurahs.find { it.number == surahNumber }?.name ?: ""
+        _positionFlow.value = ReadingPosition(surahNumber, ayahNumber, name)
     }
 
     fun getPosition(context: Context): ReadingPosition? {
-        val surah = prefs(context).getInt(KEY_LAST_SURAH, -1)
-        val ayah = prefs(context).getInt(KEY_LAST_AYAH, -1)
-        if (surah < 0 || ayah < 0) return null
-        val name = SurahDataProvider.allSurahs.find { it.number == surah }?.name ?: ""
-        return ReadingPosition(surah, ayah, name)
+        ensureInitialized(context)
+        return _positionFlow.value
     }
 
     fun clearPosition(context: Context) {
@@ -51,6 +70,7 @@ object ReadingTracker {
             remove(KEY_LAST_AYAH)
             apply()
         }
+        _positionFlow.value = null
     }
 
     fun toggleBookmark(context: Context, surahNumber: Int, ayahNumber: Int, surahName: String, ayahText: String): Boolean {

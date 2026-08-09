@@ -26,6 +26,23 @@
         android:background="@color/urwah_shadow_faint" />
 
     <ImageView
+        android:id="@+id/btnPlayFromHere"
+        android:layout_width="44dp"
+        android:layout_height="44dp"
+        android:background="?attr/selectableItemBackgroundBorderless"
+        android:contentDescription="تشغيل التلاوة من هذه الآية"
+        android:padding="10dp"
+        android:src="@drawable/ic_play_arrow"
+        android:tint="@color/urwah_topbar_icon" />
+
+    <View
+        android:layout_width="1dp"
+        android:layout_height="32dp"
+        android:layout_gravity="center_vertical"
+        android:layout_marginHorizontal="4dp"
+        android:background="@color/urwah_shadow_faint" />
+
+    <ImageView
         android:id="@+id/btnClearHighlight"
         android:layout_width="44dp"
         android:layout_height="44dp"

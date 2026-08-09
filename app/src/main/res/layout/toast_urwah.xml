@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<TextView
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/tvToastMessage"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:paddingHorizontal="24dp"
+    android:paddingVertical="14dp"
+    android:gravity="center"
+    android:textColor="@color/urwah_thread_dark"
+    android:textSize="15sp"
+    android:fontFamily="@font/alyamama"
+    android:minWidth="200dp" />

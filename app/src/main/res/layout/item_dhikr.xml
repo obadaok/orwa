@@ -115,7 +115,7 @@
                     android:background="@drawable/bg_dhikr_icon_action"
                     android:padding="9dp"
                     android:src="@drawable/ic_favorites"
-                    android:tint="@color/urwah_thread_light"
+                    android:tint="@color/urwah_thread_brown"
                     android:clickable="true"
                     android:focusable="true"
                     android:contentDescription="مفضلة" />
@@ -133,7 +133,7 @@
                     android:background="@drawable/bg_dhikr_icon_action"
                     android:padding="9dp"
                     android:src="@drawable/ic_share"
-                    android:tint="@color/urwah_thread_light"
+                    android:tint="@color/urwah_thread_brown"
                     android:clickable="true"
                     android:focusable="true"
                     android:contentDescription="مشاركة" />
@@ -145,7 +145,7 @@
                     android:background="@drawable/bg_dhikr_icon_action"
                     android:padding="9dp"
                     android:src="@drawable/ic_copy"
-                    android:tint="@color/urwah_thread_light"
+                    android:tint="@color/urwah_thread_brown"
                     android:clickable="true"
                     android:focusable="true"
                     android:contentDescription="نسخ" />

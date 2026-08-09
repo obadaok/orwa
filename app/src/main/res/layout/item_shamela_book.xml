@@ -47,23 +47,26 @@
 
                 <TextView
                     android:id="@+id/tv_category_name"
-                    android:layout_width="wrap_content"
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:fontFamily="@font/alyamama"
                     android:textColor="@color/urwah_thread_dark"
-                    android:textSize="17sp"
+                    android:textSize="18sp"
                     android:textStyle="bold"
-                    android:maxLines="2"
+                    android:lineSpacingExtra="1dp"
+                    android:maxLines="3"
                     android:ellipsize="end" />
 
                 <TextView
                     android:id="@+id/tv_category_count"
-                    android:layout_width="wrap_content"
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="4dp"
                     android:fontFamily="@font/alyamama"
                     android:textColor="@color/urwah_thread_light"
-                    android:textSize="13sp" />
+                    android:textSize="13sp"
+                    android:maxLines="2"
+                    android:ellipsize="end" />
 
                 <TextView
                     android:id="@+id/tvBookType"
@@ -130,30 +133,114 @@
                 </LinearLayout>
             </LinearLayout>
 
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/btnAction"
-                style="@style/Widget.Material3.Button.TonalButton"
+            <LinearLayout
                 android:layout_width="wrap_content"
-                android:layout_height="34dp"
-                android:fontFamily="@font/alyamama"
-                android:textSize="12sp"
-                android:text="تحميل"
-                app:cornerRadius="14dp"
-                app:backgroundTint="@color/urwah_background"
-                android:textColor="@color/urwah_thread_dark"
-                app:strokeColor="@color/urwah_thread_dark"
-                app:strokeWidth="1.5dp"
-                app:icon="@drawable/ic_download"
-                app:iconTint="@color/urwah_thread_dark"
-                app:iconSize="16dp"
-                app:iconPadding="4dp" />
+                android:layout_height="wrap_content"
+                android:layout_marginStart="10dp"
+                android:orientation="vertical">
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnAction"
+                    style="@style/Widget.Material3.Button.TonalButton"
+                    android:layout_width="wrap_content"
+                    android:layout_height="40dp"
+                    android:fontFamily="@font/alyamama"
+                    android:textSize="12sp"
+                    android:text="تحميل"
+                    android:minWidth="64dp"
+                    android:insetTop="0dp"
+                    android:insetBottom="0dp"
+                    app:cornerRadius="14dp"
+                    app:backgroundTint="@color/urwah_background"
+                    android:textColor="@color/urwah_thread_dark"
+                    app:strokeColor="@color/urwah_thread_dark"
+                    app:strokeWidth="1.5dp"
+                    app:icon="@drawable/ic_download"
+                    app:iconTint="@color/urwah_thread_dark"
+                    app:iconSize="16dp"
+                    app:iconPadding="4dp" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnReadOnline"
+                    style="@style/Widget.Material3.Button.TonalButton"
+                    android:layout_width="wrap_content"
+                    android:layout_height="40dp"
+                    android:layout_marginTop="6dp"
+                    android:fontFamily="@font/alyamama"
+                    android:textSize="12sp"
+                    android:text="قراءة"
+                    android:minWidth="64dp"
+                    android:insetTop="0dp"
+                    android:insetBottom="0dp"
+                    app:cornerRadius="14dp"
+                    app:backgroundTint="@color/urwah_background"
+                    android:textColor="@color/urwah_thread_dark"
+                    app:strokeColor="@color/urwah_thread_dark"
+                    app:strokeWidth="1.5dp"
+                    app:icon="@drawable/ic_open_book"
+                    app:iconTint="@color/urwah_thread_dark"
+                    app:iconSize="16dp"
+                    app:iconPadding="4dp"
+                    android:visibility="gone" />
+            </LinearLayout>
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/downloadProgressRow"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:orientation="vertical"
+            android:visibility="gone">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical">
+
+                <TextView
+                    android:id="@+id/tvDownloadState"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:fontFamily="@font/alyamama"
+                    android:textColor="@color/urwah_thread_dark"
+                    android:textSize="12sp"
+                    android:textStyle="bold"
+                    android:text="جاري التحميل..." />
+
+                <View
+                    android:layout_width="0dp"
+                    android:layout_height="0dp"
+                    android:layout_weight="1" />
+
+                <TextView
+                    android:id="@+id/tvDownloadPercent"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:fontFamily="@font/alyamama"
+                    android:textColor="@color/urwah_thread_dark"
+                    android:textSize="12sp"
+                    android:textStyle="bold" />
+            </LinearLayout>
+
+            <com.google.android.material.progressindicator.LinearProgressIndicator
+                android:id="@+id/progressDownload"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:indeterminate="false"
+                app:trackThickness="5dp"
+                app:trackCornerRadius="2dp"
+                app:trackColor="@color/oc_primary_08"
+                app:indicatorColor="@color/oc_primary" />
         </LinearLayout>
 
         <LinearLayout
             android:id="@+id/readingProgressRow"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"
+            android:layout_marginTop="10dp"
             android:orientation="vertical"
             android:visibility="gone">
 
@@ -169,7 +256,7 @@
                     android:layout_height="wrap_content"
                     android:fontFamily="@font/alyamama"
                     android:textColor="@color/urwah_thread_dark"
-                    android:textSize="11sp"
+                    android:textSize="12sp"
                     android:textStyle="bold" />
 
                 <View
@@ -183,7 +270,7 @@
                     android:layout_height="wrap_content"
                     android:fontFamily="@font/alyamama"
                     android:textColor="@color/urwah_thread_light"
-                    android:textSize="11sp" />
+                    android:textSize="12sp" />
             </LinearLayout>
 
             <com.google.android.material.progressindicator.LinearProgressIndicator
@@ -192,22 +279,10 @@
                 android:layout_height="wrap_content"
                 android:layout_marginTop="6dp"
                 android:indeterminate="false"
-                app:trackThickness="4dp"
+                app:trackThickness="5dp"
                 app:trackCornerRadius="2dp"
                 app:trackColor="@color/oc_primary_08"
                 app:indicatorColor="@color/oc_primary" />
         </LinearLayout>
-
-        <com.google.android.material.progressindicator.LinearProgressIndicator
-            android:id="@+id/progressDownload"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"
-            android:indeterminate="false"
-            app:trackThickness="4dp"
-            app:trackCornerRadius="2dp"
-            app:trackColor="@color/oc_primary_08"
-            app:indicatorColor="@color/oc_primary"
-            android:visibility="gone" />
     </LinearLayout>
 </com.google.android.material.card.MaterialCardView>

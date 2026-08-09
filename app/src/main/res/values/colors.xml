@@ -48,6 +48,7 @@
     <color name="urwah_card_bg">#FFFDFA</color>
     <color name="urwah_bg_card">#FFFDFA</color>
     <color name="urwah_card_shadow">#5E4B40</color>
+    <color name="urwah_track_bg">#1A8B6F5E</color>
 
     <!-- Splash screen colors -->
     <color name="splash_background">#F7F5F0</color>
@@ -77,4 +78,70 @@
     <color name="sh_divider_line">#E4D9CF</color>
     <color name="sh_toc_indent_line">#C4AFA3</color>
     <color name="sh_quote_bg">#F1E9E1</color>
+
+    <!-- Murattal theme palettes -->
+    <!-- كلاسيكي -->
+    <color name="murattal_classic_bg">#F7F5F0</color>
+    <color name="murattal_classic_card">#FFFDFA</color>
+    <color name="murattal_classic_shadow">#5E4B40</color>
+    <color name="murattal_classic_text_primary">#5E4B40</color>
+    <color name="murattal_classic_text_secondary">#8B6F5E</color>
+    <color name="murattal_classic_accent">#8B6F5E</color>
+    <color name="murattal_classic_accent_text">#FDFCF8</color>
+    <color name="murattal_classic_divider">#E4D9CF</color>
+    <color name="murattal_classic_highlight">#2A8B6F5E</color>
+    <color name="murattal_classic_quran_frame">#FAF6EF</color>
+    <color name="murattal_classic_dim">#66000000</color>
+
+    <!-- داكن فاخر -->
+    <color name="murattal_dark_bg">#141310</color>
+    <color name="murattal_dark_card">#1D1B17</color>
+    <color name="murattal_dark_shadow">#000000</color>
+    <color name="murattal_dark_text_primary">#F1E9E1</color>
+    <color name="murattal_dark_text_secondary">#C4AFA3</color>
+    <color name="murattal_dark_accent">#D4AF37</color>
+    <color name="murattal_dark_accent_text">#141310</color>
+    <color name="murattal_dark_divider">#3A322A</color>
+    <color name="murattal_dark_highlight">#33D4AF37</color>
+    <color name="murattal_dark_quran_frame">#22201B</color>
+    <color name="murattal_dark_dim">#99110F0D</color>
+
+    <!-- ورقي / مخطوط -->
+    <color name="murattal_paper_bg">#F5EFE3</color>
+    <color name="murattal_paper_card">#FBF6EB</color>
+    <color name="murattal_paper_shadow">#7A5C46</color>
+    <color name="murattal_paper_text_primary">#4A3A28</color>
+    <color name="murattal_paper_text_secondary">#8A6E4E</color>
+    <color name="murattal_paper_accent">#A67C52</color>
+    <color name="murattal_paper_accent_text">#FBF6EB</color>
+    <color name="murattal_paper_divider">#E0D2BA</color>
+    <color name="murattal_paper_highlight">#2AA67C52</color>
+    <color name="murattal_paper_quran_frame">#F7EFDF</color>
+    <color name="murattal_paper_dim">#66000000</color>
+
+    <!-- هادئ وبسيط -->
+    <color name="murattal_calm_bg">#EEF1EC</color>
+    <color name="murattal_calm_card">#F8FAF6</color>
+    <color name="murattal_calm_shadow">#4A5A52</color>
+    <color name="murattal_calm_text_primary">#3E4A44</color>
+    <color name="murattal_calm_text_secondary">#7C8B83</color>
+    <color name="murattal_calm_accent">#5C7366</color>
+    <color name="murattal_calm_accent_text">#F8FAF6</color>
+    <color name="murattal_calm_divider">#DCE4DD</color>
+    <color name="murattal_calm_highlight">#2A5C7366</color>
+    <color name="murattal_calm_quran_frame">#F3F7F2</color>
+    <color name="murattal_calm_dim">#66000000</color>
+
+    <!-- زخرفي قرآني -->
+    <color name="murattal_ornate_bg">#F2EAE0</color>
+    <color name="murattal_ornate_card">#FBF5EC</color>
+    <color name="murattal_ornate_shadow">#6B4A32</color>
+    <color name="murattal_ornate_text_primary">#4A3523</color>
+    <color name="murattal_ornate_text_secondary">#96683f</color>
+    <color name="murattal_ornate_accent">#8F5B2E</color>
+    <color name="murattal_ornate_accent_text">#FBF5EC</color>
+    <color name="murattal_ornate_divider">#E0D2BC</color>
+    <color name="murattal_ornate_highlight">#2A8F5B2E</color>
+    <color name="murattal_ornate_quran_frame">#F6EDDF</color>
+    <color name="murattal_ornate_dim">#66000000</color>
 </resources>

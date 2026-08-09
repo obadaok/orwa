@@ -25,6 +25,7 @@ import com.urwah.dhikr.ShamelaBookListActivity
 import com.urwah.dhikr.ShamelaBookReaderActivity
 import com.urwah.dhikr.ShamelaBookStorage
 import com.urwah.dhikr.ShamelaCatalogReader
+import com.urwah.dhikr.ShamelaOnlineReader
 import com.urwah.dhikr.DownloadState
 import com.urwah.dhikr.DownloadStatus
 import com.urwah.dhikr.ShamelaBookDownloader
@@ -48,6 +49,7 @@ class LibraryFragment : Fragment(), com.urwah.dhikr.CircularMenuProvider {
     private lateinit var authorAdapter: ShamelaAuthorAdapter
     private lateinit var downloadedAdapter: ShamelaBookListAdapter
     private lateinit var recentAdapter: ShamelaBookListAdapter
+    private lateinit var bookmarksAdapter: ShamelaBookListAdapter
 
     private var currentMode = MODE_CATEGORIES
     private var isSearchOpen = false
@@ -58,6 +60,7 @@ class LibraryFragment : Fragment(), com.urwah.dhikr.CircularMenuProvider {
         const val MODE_DOWNLOADED = 2
         const val MODE_RECENT = 3
         const val MODE_FAVORITES = 4
+        const val MODE_BOOKMARKS = 5
         private const val PREFS_NAME = "urwah_library"
         private const val KEY_LAST_MODE = "last_mode"
     }
@@ -104,6 +107,7 @@ class LibraryFragment : Fragment(), com.urwah.dhikr.CircularMenuProvider {
             onBookClick = { book -> openBook(book) },
             onDownloadClick = { book -> downloadBookFromSearch(book) },
             onCancelClick = { book -> cancelDownloadFromSearch(book) },
+            onReadOnlineClick = { book -> openBookOnline(book) },
             onBookLongClick = { book -> showBookManagementDialog(book) }
         )
 
@@ -112,6 +116,16 @@ class LibraryFragment : Fragment(), com.urwah.dhikr.CircularMenuProvider {
             onBookClick = { book -> openBook(book) },
             onDownloadClick = { book -> downloadBookFromSearch(book) },
             onCancelClick = { book -> cancelDownloadFromSearch(book) },
+            onReadOnlineClick = { book -> openBookOnline(book) },
+            onBookLongClick = { book -> showBookManagementDialog(book) }
+        )
+
+        bookmarksAdapter = ShamelaBookListAdapter(
+            books = emptyList(),
+            onBookClick = { book -> openBook(book) },
+            onDownloadClick = { book -> downloadBookFromSearch(book) },
+            onCancelClick = { book -> cancelDownloadFromSearch(book) },
+            onReadOnlineClick = { book -> openBookOnline(book) },
             onBookLongClick = { book -> showBookManagementDialog(book) }
         )
 
@@ -121,6 +135,7 @@ class LibraryFragment : Fragment(), com.urwah.dhikr.CircularMenuProvider {
             onBookClick = { book -> openBook(book) },
             onDownloadClick = { book -> downloadBookFromSearch(book) },
             onCancelClick = { book -> cancelDownloadFromSearch(book) },
+            onReadOnlineClick = { book -> openBookOnline(book) },
             onBookLongClick = { book -> showBookManagementDialog(book) }
         )
         rvSearchResults.adapter = searchAdapter
@@ -245,6 +260,24 @@ class LibraryFragment : Fragment(), com.urwah.dhikr.CircularMenuProvider {
         }
     }
 
+    /** يفتح الكتاب مباشرةً من الإنترنت دون تحميل مسبق. */
+    private fun openBookOnline(book: com.urwah.dhikr.ShamelaBook) {
+        if (ShamelaBookStorage.isBookDownloaded(requireContext(), book.id)) {
+            openBook(book)
+            return
+        }
+        if (!ShamelaOnlineReader.isNetworkAvailable(requireContext())) {
+            Toast.makeText(requireContext(), "لا يوجد اتصال بالإنترنت لقراءة الكتاب مباشرة، حمّله أولًا", Toast.LENGTH_LONG).show()
+            return
+        }
+        val intent = Intent(requireContext(), ShamelaBookReaderActivity::class.java)
+        intent.putExtra("BOOK_ID", book.id)
+        intent.putExtra("BOOK_TITLE", book.title)
+        intent.putExtra("ONLINE_MODE", true)
+        intent.putExtra("BOOK_HF_PATH", book.hfPath)
+        startActivity(intent)
+    }
+
     private fun downloadBookFromSearch(book: com.urwah.dhikr.ShamelaBook) {
         if (ShamelaBookStorage.isBookDownloaded(requireContext(), book.id)) {
             openBook(book)
@@ -295,52 +328,10 @@ class LibraryFragment : Fragment(), com.urwah.dhikr.CircularMenuProvider {
 
     private fun showBookManagementDialog(book: com.urwah.dhikr.ShamelaBook) {
         if (!ShamelaBookStorage.isBookDownloaded(requireContext(), book.id)) return
-
-        val storageBytes = ShamelaBookStorage.getBookDownloadSize(requireContext(), book.id)
-        val storageText = ShamelaBookStorage.formatFileSize(storageBytes)
-        val pageCount = ShamelaBookStorage.getPageCount(requireContext(), book.id)
-
-        val message = buildString {
-            appendLine("الحجم: $storageText")
-            if (pageCount > 0) appendLine("الصفحات: $pageCount")
+        val dialog = com.urwah.dhikr.BookActionDialog(requireContext(), book, "downloaded") {
+            switchMode(currentMode)
         }
-
-        val options = mutableListOf("فتح الكتاب")
-        if (ShamelaBookStorage.isBookDownloaded(requireContext(), book.id)) {
-            options.add("إعادة التحميل")
-            options.add("حذف الكتاب")
-        }
-
-        AlertDialog.Builder(requireContext())
-            .setTitle(book.title)
-            .setMessage(message.trimEnd())
-            .setItems(options.toTypedArray()) { _, which ->
-                when (which) {
-                    0 -> openBook(book)
-                    1 -> {
-                        if (options[1] == "إعادة التحميل") {
-                            ShamelaBookStorage.deleteBook(requireContext(), book.id)
-                            switchMode(currentMode)
-                            Toast.makeText(requireContext(), "جاري إعادة التحميل...", Toast.LENGTH_SHORT).show()
-                        }
-                    }
-                    2 -> {
-                        if (options[2] == "حذف الكتاب") {
-                            AlertDialog.Builder(requireContext())
-                                .setTitle("تأكيد الحذف")
-                                .setMessage("هل تريد حذف \"${book.title}\"؟")
-                                .setPositiveButton("حذف") { _, _ ->
-                                    ShamelaBookStorage.deleteBook(requireContext(), book.id)
-                                    switchMode(currentMode)
-                                    Toast.makeText(requireContext(), "تم حذف الكتاب", Toast.LENGTH_SHORT).show()
-                                }
-                                .setNegativeButton("إلغاء", null)
-                                .show()
-                        }
-                    }
-                }
-            }
-            .show()
+        dialog.show()
     }
 
     fun switchMode(mode: Int) {
@@ -389,6 +380,12 @@ class LibraryFragment : Fragment(), com.urwah.dhikr.CircularMenuProvider {
             MODE_FAVORITES -> {
                 showCurrentMode()
             }
+            MODE_BOOKMARKS -> {
+                val books = ShamelaBookStorage.getBookmarkedBooksWithMeta(requireContext())
+                bookmarksAdapter.updateBooks(books)
+                rvCategories.adapter = bookmarksAdapter
+                showCurrentMode()
+            }
         }
     }
 
@@ -412,19 +409,19 @@ class LibraryFragment : Fragment(), com.urwah.dhikr.CircularMenuProvider {
         menu.addMenuItem(R.drawable.ic_search, "بحث في الكتب") {
             openSearch()
         }
-        menu.addMenuItem(R.drawable.ic_book_24dp, "حسب الأقسام") {
+        menu.addMenuItem(R.drawable.ic_book_categories, "حسب الأقسام") {
             switchMode(MODE_CATEGORIES)
         }
-        menu.addMenuItem(R.drawable.ic_people_gathering_24dp, "حسب المؤلفين") {
+        menu.addMenuItem(R.drawable.ic_authors, "حسب المؤلفين") {
             switchMode(MODE_AUTHORS)
         }
-        menu.addMenuItem(R.drawable.ic_favorites, "المفضلة") {
-            switchMode(MODE_FAVORITES)
+        menu.addMenuItem(R.drawable.ic_bookmarks, "العلامات") {
+            switchMode(MODE_BOOKMARKS)
         }
         menu.addMenuItem(R.drawable.ic_statistics, "آخر قراءة") {
             switchMode(MODE_RECENT)
         }
-        menu.addMenuItem(R.drawable.ic_download, "المحملة") {
+        menu.addMenuItem(R.drawable.ic_downloaded_books, "المحملة") {
             switchMode(MODE_DOWNLOADED)
         }
     }

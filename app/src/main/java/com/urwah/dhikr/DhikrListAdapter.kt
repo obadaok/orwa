@@ -16,7 +16,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.ImageView
 import android.widget.TextView
-import android.widget.Toast
+import com.urwah.dhikr.UrwahToast
 import androidx.core.content.ContextCompat
 import androidx.core.content.res.ResourcesCompat
 import androidx.recyclerview.widget.LinearLayoutManager
@@ -38,12 +38,18 @@ class DhikrListAdapter(
 
     fun setSavedProgress(context: android.content.Context, savedCompleted: Set<Int>) {
         progressPrefs = context.getSharedPreferences("urwah_dhikr_progress", Context.MODE_PRIVATE)
+        val savedCounts = loadSavedCounts(context, categoryName)
         val completedIds = savedCompleted.flatMap { id ->
             currentList.filter { it.id == id }.map { currentList.indexOf(it) }
         }.filter { it >= 0 }
-        for (i in completedIds) {
-            counts[i] = currentList[i].repeats
-            completed[i] = true
+
+        for (i in currentList.indices) {
+            completed[i] = false
+            counts[i] = savedCounts[currentList[i].id] ?: 0
+            if (i in completedIds && counts[i] < currentList[i].repeats) {
+                counts[i] = currentList[i].repeats
+            }
+            if (i in completedIds) completed[i] = true
         }
         notifyDataSetChanged()
     }
@@ -110,10 +116,13 @@ class DhikrListAdapter(
             holder.circularCounter.setProgress(newCount, item.repeats)
 
             HapticUtil.perform(context, holder.card)
+            onProgressChanged?.invoke(categoryName, newCount, item.repeats)
 
             if (newCount >= item.repeats) {
                 completed[position] = true
                 saveItemCompleted(item.id)
+                holder.card.alpha = 0.55f
+                holder.card.isEnabled = false
                 celebrate(holder)
                 if (completed.all { it }) {
                     holder.itemView.postDelayed({
@@ -121,6 +130,8 @@ class DhikrListAdapter(
                     }, 1500)
                 }
             }
+
+            saveItemCount(item.id, newCount)
         }
 
         holder.btnCopy.setOnClickListener {
@@ -128,7 +139,7 @@ class DhikrListAdapter(
             val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
             val clip = ClipData.newPlainText("dhikr", item.arabic)
             clipboard.setPrimaryClip(clip)
-            Toast.makeText(context, "تم نسخ الذكر", Toast.LENGTH_SHORT).show()
+            UrwahToast.show(context, "تم نسخ الذكر")
         }
 
         holder.btnShare.setOnClickListener {
@@ -151,7 +162,7 @@ class DhikrListAdapter(
             val isFav = FavoritesManager.toggle(item.id)
             updateFavoriteIcon(holder.btnFavorite, item.id)
             val msg = if (isFav) "تمت الإضافة إلى المفضلة" else "تمت الإزالة من المفضلة"
-            Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
+            UrwahToast.show(context, msg)
         }
     }
 
@@ -297,7 +308,7 @@ class DhikrListAdapter(
 
         fun resetCategory(context: android.content.Context, category: String) {
             val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-            prefs.edit().remove(category).apply()
+            prefs.edit().remove(category).remove("counts_$category").apply()
         }
 
         fun checkAndResetDaily(context: android.content.Context) {
@@ -323,6 +334,30 @@ class DhikrListAdapter(
         set.add(itemId.toString())
         prefs.edit().putStringSet(categoryName, set).apply()
     }
+
+    private fun saveItemCount(itemId: Int, newCount: Int) {
+        val prefs = progressPrefs ?: return
+        val key = countKey(categoryName)
+        val map = prefs.getStringSet(key, mutableSetOf())?.associate { entry ->
+            val parts = entry.split(":", limit = 2)
+            parts[0] to (parts.getOrNull(1)?.toIntOrNull() ?: 0)
+        }?.toMutableMap() ?: mutableMapOf()
+        map[itemId.toString()] = newCount
+        prefs.edit().putStringSet(key, map.map { "${it.key}:${it.value}" }.toSet()).apply()
+    }
+
+    private fun loadSavedCounts(context: Context, category: String): Map<Int, Int> {
+        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        return prefs.getStringSet(countKey(category), emptySet())
+            ?.mapNotNull { entry ->
+                val parts = entry.split(":", limit = 2)
+                val id = parts.getOrNull(0)?.toIntOrNull() ?: return@mapNotNull null
+                val count = parts.getOrNull(1)?.toIntOrNull() ?: return@mapNotNull null
+                id to count
+            }?.toMap() ?: emptyMap()
+    }
+
+    private fun countKey(category: String): String = "counts_$category"
 
     private fun updateFavoriteIcon(imageView: ImageView, itemId: Int) {
         val isFav = FavoritesManager.isFavorite(itemId)

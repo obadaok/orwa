@@ -9,6 +9,7 @@ import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.text.Layout
 import android.text.SpannableStringBuilder
 import android.text.Spanned
 import android.view.Gravity
@@ -68,6 +69,7 @@ class KhatmaReadingActivity : AppCompatActivity() {
     private var allAyahsFlat: List<AyahData> = emptyList()
     private var khatmaRiwaya: String = "hafs"
     private var singleLineMode = true
+    private var ayahAlignment = 3
     private var isUiHidden = false
     private var savedScrollY = -1
 
@@ -102,6 +104,7 @@ class KhatmaReadingActivity : AppCompatActivity() {
         topToolbar = findViewById(R.id.topToolbar)
         progressContainer = findViewById(R.id.progressContainer)
         singleLineMode = quranPrefs.getBoolean("ayah_single_line", false)
+        ayahAlignment = quranPrefs.getInt("quran_alignment", 3)
 
         // Keep screen on
         applyKeepScreenOnIfEnabled()
@@ -140,7 +143,7 @@ class KhatmaReadingActivity : AppCompatActivity() {
         }
 
         khatmaRiwaya = khatma?.riwaya ?: QuranDataLoader.getQiraat(this)
-        allQuran = if (khatmaRiwaya == "warsh") QuranDataLoader.loadWarsh(this) else QuranDataLoader.loadHafs(this)
+        allQuran = QuranDataLoader.loadWithQiraat(this, khatmaRiwaya)
         allAyahsFlat = allQuran.entries
             .sortedBy { it.key }
             .flatMap { (_, s) -> s.ayahs.sortedBy { it.number } }
@@ -340,7 +343,7 @@ class KhatmaReadingActivity : AppCompatActivity() {
 
     private fun renderKhatma() {
         containerAyahs.removeAllViews()
-        val uthmanicTypeface = ResourcesCompat.getFont(this, if (khatmaRiwaya == "warsh") R.font.uthmanic_warsh else R.font.uthmanic_hafs)
+        val uthmanicTypeface = ResourcesCompat.getFont(this, QuranDataLoader.fontResFor(khatmaRiwaya))
         val ayahColor = if (isDark) Color.parseColor("#e8e0d6") else Color.parseColor("#5E4B40")
         val dividerColor = Color.parseColor("#1A8B6F5E")
 
@@ -370,13 +373,9 @@ class KhatmaReadingActivity : AppCompatActivity() {
                     typeface = uthmanicTypeface
                     textSize = 29f
                     setTextColor(ayahColor)
-                    textDirection = View.TEXT_DIRECTION_RTL
-                    gravity = Gravity.START
+                    applyAyahAlignment(this, ayahAlignment, continuous = false)
                     setLineSpacing(4f, 1f)
                     includeFontPadding = true
-                    if (Build.VERSION.SDK_INT >= 26) {
-                        justificationMode = 1
-                    }
                     text = "${ayah.text} ${toHindiDigits(ayah.number)}"
                     setTextIsSelectable(false)
                     layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
@@ -624,7 +623,7 @@ class KhatmaReadingActivity : AppCompatActivity() {
         val surahName = JuzData.findSurahNameForAyah(surahNumber)
         val displayName = "سورة $surahName"
         val textColor = if (isDark) Color.parseColor("#e8e0d6") else Color.parseColor("#5E4B40")
-        val uthmanicTypeface = ResourcesCompat.getFont(this, if (khatmaRiwaya == "warsh") R.font.uthmanic_warsh else R.font.uthmanic_hafs)
+        val uthmanicTypeface = ResourcesCompat.getFont(this, QuranDataLoader.fontResFor(khatmaRiwaya))
 
         val separator = LayoutInflater.from(this).inflate(R.layout.item_surah_separator, containerAyahs, false)
         separator.findViewById<TextView>(R.id.tvSeparatorName).apply {
@@ -670,13 +669,9 @@ class KhatmaReadingActivity : AppCompatActivity() {
             typeface = uthmanicTypeface
             textSize = 29f
             setTextColor(ayahColor)
-            textDirection = View.TEXT_DIRECTION_RTL
-            gravity = Gravity.START
+            applyAyahAlignment(this, ayahAlignment, continuous = true)
             setLineSpacing(dpToPx(1f).toFloat(), 1f)
             includeFontPadding = true
-            if (Build.VERSION.SDK_INT >= 26) {
-                justificationMode = 1
-            }
             layoutParams = LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT
@@ -947,6 +942,44 @@ class KhatmaReadingActivity : AppCompatActivity() {
     private fun toHindiDigits(number: Int): String {
         val hindiDigits = arrayOf("٠", "١", "٢", "٣", "٤", "٥", "٦", "٧", "٨", "٩")
         return number.toString().map { hindiDigits[it - '0'] }.joinToString("")
+    }
+
+    /**
+     * يطبّق المحاذاة المختارة (يمين/وسط/يسار/ضبط) على TextView من آيات المصحف.
+     * alignment: 0=يمين، 1=وسط، 2=يسار، 3=ضبط.
+     * الضبط يُفعّل في العرض المتواصل فقط حتى لا تظهر فراغات كبيرة عند عرض آية
+     * واحدة في سطر مستقل.
+     */
+    private fun applyAyahAlignment(tv: TextView, alignment: Int, continuous: Boolean) {
+        tv.textDirection = View.TEXT_DIRECTION_RTL
+        when (alignment) {
+            1 -> {
+                tv.gravity = Gravity.CENTER
+                tv.textAlignment = View.TEXT_ALIGNMENT_CENTER
+                if (Build.VERSION.SDK_INT >= 26) tv.justificationMode = Layout.JUSTIFICATION_MODE_NONE
+            }
+            2 -> {
+                tv.gravity = Gravity.END
+                tv.textAlignment = View.TEXT_ALIGNMENT_TEXT_END
+                if (Build.VERSION.SDK_INT >= 26) tv.justificationMode = Layout.JUSTIFICATION_MODE_NONE
+            }
+            3 -> {
+                tv.gravity = Gravity.START
+                tv.textAlignment = View.TEXT_ALIGNMENT_TEXT_START
+                if (Build.VERSION.SDK_INT >= 26) {
+                    tv.justificationMode = if (continuous) {
+                        Layout.JUSTIFICATION_MODE_INTER_WORD
+                    } else {
+                        Layout.JUSTIFICATION_MODE_NONE
+                    }
+                }
+            }
+            else -> {
+                tv.gravity = Gravity.START
+                tv.textAlignment = View.TEXT_ALIGNMENT_TEXT_START
+                if (Build.VERSION.SDK_INT >= 26) tv.justificationMode = Layout.JUSTIFICATION_MODE_NONE
+            }
+        }
     }
 
     private fun dpToPx(dp: Float): Int =

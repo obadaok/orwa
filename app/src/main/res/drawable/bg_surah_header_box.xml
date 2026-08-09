@@ -1,4 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+    لم يُغيَّر: هذا هو المثال الصحيح لهوية Neo-Brutalism في ملفاتك (ظل صلب
+    Offset + حدّ سميك 3dp)، واستُخدم كنموذج لإصلاح bg_focused_ayah_card أعلاه.
+-->
 <layer-list xmlns:android="http://schemas.android.com/apk/res/android">
 
     <item

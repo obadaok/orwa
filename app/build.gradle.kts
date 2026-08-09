@@ -3,6 +3,8 @@ plugins {
     alias(libs.plugins.kotlin.android)
 }
 
+import java.util.Properties
+
 android {
     namespace = "com.urwah.dhikr"
     compileSdk = 34
@@ -11,18 +13,24 @@ android {
         applicationId = "com.urwah.dhikr"
         minSdk = 24
         targetSdk = 34
-        versionCode = 3
-        versionName = "1.2.0"
+        versionCode = 5
+        versionName = "2.1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
+    val keystorePropsFile = rootProject.file("release/keystore.properties")
+    val keystoreProps = Properties()
+    if (keystorePropsFile.exists()) {
+        keystoreProps.load(keystorePropsFile.inputStream())
+    }
+
     signingConfigs {
         create("release") {
-            storeFile = rootProject.file("release/keystore/app-release-key.jks")
-            storePassword = "855620ba56beda21a164ba999887a658"
-            keyAlias = "urwah"
-            keyPassword = "855620ba56beda21a164ba999887a658"
+            storeFile = rootProject.file(keystoreProps.getProperty("storeFile", "release/keystore/app-release-key.jks"))
+            storePassword = keystoreProps.getProperty("storePassword", "")
+            keyAlias = keystoreProps.getProperty("keyAlias", "urwah")
+            keyPassword = keystoreProps.getProperty("keyPassword", "")
         }
     }
 
@@ -61,6 +69,8 @@ dependencies {
     implementation(libs.androidx.navigation.ui.ktx)
     implementation(libs.kotlinx.coroutines.android)
     implementation(libs.androidx.viewpager2)
+    implementation(libs.androidx.media3.exoplayer)
+    implementation(libs.androidx.media3.session)
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)

@@ -92,29 +92,5 @@
                     android:layout_marginTop="8dp" />
             </LinearLayout>
         </androidx.core.widget.NestedScrollView>
-
-        <!--
-            مؤشر التقدم الرأسي: كان track وfill عنصرين متجاورين أفقيًا داخل
-            LinearLayout (بعرض 3dp + 3dp)، أي أنهما يظهران جنبًا إلى جنب بدل أن
-            يتراكب أحدهما فوق الآخر. تم لفّهما هنا داخل FrameLayout بعرض 3dp واحد
-            فقط ليتراكبا فعليًا (المسار الخلفي + التعبئة العلوية فوقه).
-        -->
-        <FrameLayout
-            android:layout_width="3dp"
-            android:layout_height="match_parent">
-
-            <View
-                android:id="@+id/verticalProgress"
-                android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:background="@color/oc_primary_08" />
-
-            <View
-                android:id="@+id/verticalProgressFill"
-                android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:layout_gravity="top"
-                android:background="@color/oc_primary" />
-        </FrameLayout>
     </LinearLayout>
 </FrameLayout>

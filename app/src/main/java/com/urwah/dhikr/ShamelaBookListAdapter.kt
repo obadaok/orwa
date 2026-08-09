@@ -19,6 +19,7 @@ class ShamelaBookListAdapter(
     private val onBookClick: (ShamelaBook) -> Unit,
     private val onDownloadClick: (ShamelaBook) -> Unit,
     private val onCancelClick: (ShamelaBook) -> Unit,
+    private val onReadOnlineClick: (ShamelaBook) -> Unit,
     private val onBookLongClick: ((ShamelaBook) -> Unit)? = null
 ) : RecyclerView.Adapter<ShamelaBookListAdapter.ViewHolder>() {
 
@@ -43,6 +44,10 @@ class ShamelaBookListAdapter(
         val author: TextView = view.findViewById(R.id.tv_category_count)
         val type: TextView = view.findViewById(R.id.tvBookType)
         val btnAction: MaterialButton = view.findViewById(R.id.btnAction)
+        val btnReadOnline: MaterialButton = view.findViewById(R.id.btnReadOnline)
+        val downloadProgressRow: LinearLayout = view.findViewById(R.id.downloadProgressRow)
+        val tvDownloadState: TextView = view.findViewById(R.id.tvDownloadState)
+        val tvDownloadPercent: TextView = view.findViewById(R.id.tvDownloadPercent)
         val progressDownload: LinearProgressIndicator = view.findViewById(R.id.progressDownload)
         val statsRow: LinearLayout = view.findViewById(R.id.statsRow)
         val tvPageCount: TextView = view.findViewById(R.id.tvPageCount)
@@ -84,7 +89,10 @@ class ShamelaBookListAdapter(
                 holder.btnAction.text = "إلغاء"
                 holder.btnAction.setIconResource(R.drawable.ic_close_circle)
                 holder.btnAction.isEnabled = true
-                holder.progressDownload.visibility = View.VISIBLE
+                holder.btnReadOnline.visibility = View.GONE
+                holder.downloadProgressRow.visibility = View.VISIBLE
+                holder.tvDownloadState.text = "جاري التحميل..."
+                holder.tvDownloadPercent.text = "${(state.progress * 100).toInt()}%"
                 holder.progressDownload.progress = (state.progress * 100).toInt()
                 holder.readingProgressRow.visibility = View.GONE
                 holder.btnAction.setOnClickListener { onCancelClick(book) }
@@ -93,14 +101,17 @@ class ShamelaBookListAdapter(
                 holder.btnAction.text = "فتح"
                 holder.btnAction.setIconResource(R.drawable.ic_open_book)
                 holder.btnAction.isEnabled = true
-                holder.progressDownload.visibility = View.GONE
+                holder.btnReadOnline.visibility = View.GONE
+                holder.downloadProgressRow.visibility = View.GONE
                 holder.btnAction.setOnClickListener { onBookClick(book) }
             }
             state?.status == DownloadStatus.FAILED -> {
                 holder.btnAction.text = "إعادة المحاولة"
                 holder.btnAction.setIconResource(R.drawable.ic_download)
                 holder.btnAction.isEnabled = true
-                holder.progressDownload.visibility = View.GONE
+                holder.btnReadOnline.visibility = View.VISIBLE
+                holder.btnReadOnline.setOnClickListener { onReadOnlineClick(book) }
+                holder.downloadProgressRow.visibility = View.GONE
                 holder.readingProgressRow.visibility = View.GONE
                 holder.btnAction.setOnClickListener { onDownloadClick(book) }
             }
@@ -108,7 +119,9 @@ class ShamelaBookListAdapter(
                 holder.btnAction.text = "تحميل"
                 holder.btnAction.setIconResource(R.drawable.ic_download)
                 holder.btnAction.isEnabled = true
-                holder.progressDownload.visibility = View.GONE
+                holder.btnReadOnline.visibility = View.VISIBLE
+                holder.btnReadOnline.setOnClickListener { onReadOnlineClick(book) }
+                holder.downloadProgressRow.visibility = View.GONE
                 holder.readingProgressRow.visibility = View.GONE
                 holder.btnAction.setOnClickListener { onDownloadClick(book) }
             }
@@ -146,7 +159,7 @@ class ShamelaBookListAdapter(
         val lastReadTime = ShamelaBookStorage.getLastReadTime(context, book.id)
         if (lastReadTime > 0L) {
             val elapsed = formatElapsedTime(context, lastReadTime)
-            holder.tvLastRead.text = elapsed
+            holder.tvLastRead.text = "آخر قراءة: $elapsed"
             holder.tvLastRead.visibility = View.VISIBLE
             holder.ivTimeIcon.visibility = View.VISIBLE
             holder.tvStatsSeparator.visibility = View.VISIBLE
@@ -170,7 +183,7 @@ class ShamelaBookListAdapter(
         if (pageCount > 0 && lastPage > 0) {
             holder.readingProgressRow.visibility = View.VISIBLE
             val progress = ((lastPage.toFloat() / pageCount) * 100).toInt().coerceIn(0, 100)
-            holder.tvReadingProgress.text = "$progress%"
+            holder.tvReadingProgress.text = "قرأت $progress%"
             holder.tvProgressPage.text = "صفحة $lastPage من $pageCount"
             holder.progressReading.progress = progress
         } else {

@@ -1,0 +1,124 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:background="@drawable/bg_reciter_card"
+    android:clickable="true"
+    android:focusable="true"
+    android:foreground="?attr/selectableItemBackground"
+    android:gravity="center_vertical"
+    android:minHeight="76dp"
+    android:orientation="horizontal"
+    android:paddingHorizontal="14dp"
+    android:paddingVertical="12dp">
+
+    <TextView
+        android:id="@+id/tvReciterAvatar"
+        android:layout_width="48dp"
+        android:layout_height="48dp"
+        android:background="@drawable/bg_reciter_avatar"
+        android:fontFamily="@font/alyamama"
+        android:gravity="center"
+        android:textColor="@color/urwah_surface"
+        android:textSize="20sp"
+        android:textStyle="bold"
+        tools:text="م" />
+
+    <LinearLayout
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="12dp"
+        android:layout_weight="1"
+        android:orientation="vertical">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <TextView
+                android:id="@+id/tvReciterName"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:fontFamily="@font/alyamama"
+                android:maxLines="1"
+                android:ellipsize="end"
+                android:textColor="@color/urwah_thread_dark"
+                android:textSize="15sp"
+                android:textStyle="bold"
+                tools:text="مشاري راشد العفاسي" />
+
+            <TextView
+                android:id="@+id/tvReciterLastUsed"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="4dp"
+                android:background="@drawable/bg_chip_neo"
+                android:fontFamily="@font/alyamama"
+                android:paddingHorizontal="8dp"
+                android:paddingVertical="2dp"
+                android:text="آخر مستخدم"
+                android:textColor="@color/urwah_thread_dark"
+                android:textSize="10sp"
+                android:visibility="gone"
+                tools:visibility="visible" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <TextView
+                android:id="@+id/tvReciterSub"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:fontFamily="@font/alyamama"
+                android:maxLines="1"
+                android:ellipsize="end"
+                android:textColor="@color/urwah_thread_light"
+                android:textSize="11sp"
+                tools:text="حفص عن عاصم • 128kbps" />
+
+            <TextView
+                android:id="@+id/tvReciterQuality"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:background="@drawable/bg_chip_neo"
+                android:fontFamily="@font/alyamama"
+                android:paddingHorizontal="8dp"
+                android:paddingVertical="2dp"
+                android:textColor="@color/urwah_thread_brown"
+                android:textSize="10sp"
+                tools:text="بث مباشر" />
+        </LinearLayout>
+    </LinearLayout>
+
+    <ImageView
+        android:id="@+id/ivReciterFavorite"
+        android:layout_width="32dp"
+        android:layout_height="32dp"
+        android:background="?attr/selectableItemBackgroundBorderless"
+        android:contentDescription="المفضلة"
+        android:padding="6dp"
+        android:src="@drawable/ic_favorite_border_24dp"
+        android:tint="@color/urwah_thread_light" />
+
+    <ImageView
+        android:id="@+id/ivReciterSelected"
+        android:layout_width="22dp"
+        android:layout_height="22dp"
+        android:layout_marginStart="2dp"
+        android:contentDescription="القارئ الحالي"
+        android:src="@drawable/ic_play_arrow"
+        android:tint="@color/urwah_thread_brown"
+        android:visibility="gone"
+        tools:visibility="visible" />
+
+</LinearLayout>

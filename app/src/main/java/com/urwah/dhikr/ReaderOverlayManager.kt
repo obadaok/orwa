@@ -42,8 +42,8 @@ class ReaderOverlayManager {
     val isActive: Boolean get() = _current != Overlay.NONE
 
     fun open(overlay: Overlay, closeAnimated: Boolean = true, onFullyOpened: (() -> Unit)? = null) {
-        if (isTransitioning) return
         if (overlay == _current) return
+        isTransitioning = false
 
         val previous = _current
         if (previous == Overlay.NONE) {
@@ -64,8 +64,8 @@ class ReaderOverlayManager {
     }
 
     fun closeCurrent(closeAnimated: Boolean = true, onFullyClosed: (() -> Unit)? = null) {
-        if (isTransitioning) return
         if (_current == Overlay.NONE) {
+            isTransitioning = false
             onFullyClosed?.invoke()
             return
         }
@@ -94,6 +94,12 @@ class ReaderOverlayManager {
             Overlay.FONT_PICKER -> onFontPickerHide?.invoke()
             else -> {}
         }
+    }
+
+    fun forceReset() {
+        isTransitioning = false
+        _current = Overlay.NONE
+        onOverlayActiveChanged?.invoke(false)
     }
 
     private fun notifyShow(overlay: Overlay) {

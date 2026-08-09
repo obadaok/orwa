@@ -1,0 +1,206 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/audioPlayerBar"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_gravity="bottom"
+    android:background="@drawable/bg_audio_player"
+    android:elevation="8dp"
+    android:orientation="vertical"
+    android:paddingHorizontal="16dp"
+    android:paddingTop="12dp"
+    android:paddingBottom="12dp"
+    android:visibility="gone"
+    tools:visibility="visible">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center_vertical"
+        android:orientation="horizontal">
+
+        <TextView
+            android:id="@+id/tvPlayerAvatar"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:background="@drawable/bg_reciter_avatar"
+            android:fontFamily="@font/alyamama"
+            android:gravity="center"
+            android:textColor="@color/urwah_surface"
+            android:textSize="17sp"
+            android:textStyle="bold"
+            tools:text="م" />
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="10dp"
+            android:layout_weight="1"
+            android:orientation="vertical">
+
+            <TextView
+                android:id="@+id/tvPlayerTitle"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:fontFamily="@font/alyamama"
+                android:maxLines="1"
+                android:ellipsize="end"
+                android:textColor="@color/urwah_thread_dark"
+                android:textSize="16sp"
+                android:textStyle="bold"
+                tools:text="سورة الفاتحة" />
+
+            <TextView
+                android:id="@+id/tvPlayerMeta"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="2dp"
+                android:fontFamily="@font/alyamama"
+                android:maxLines="1"
+                android:ellipsize="end"
+                android:textColor="@color/urwah_thread_brown"
+                android:textSize="12sp"
+                tools:text="الآية ٣ من ٧ • مشاري العفاسي" />
+        </LinearLayout>
+
+        <ImageButton
+            android:id="@+id/btnPlayerClose"
+            android:layout_width="36dp"
+            android:layout_height="36dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="إغلاق المشغل"
+            android:padding="7dp"
+            android:src="@drawable/ic_close_black_24dp"
+            android:tint="@color/urwah_thread_light" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="6dp"
+        android:gravity="center_vertical"
+        android:orientation="horizontal">
+
+        <TextView
+            android:id="@+id/tvPlayerCurrentTime"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginEnd="8dp"
+            android:fontFamily="@font/alyamama"
+            android:gravity="center"
+            android:minWidth="34dp"
+            android:textColor="@color/urwah_thread_light"
+            android:textSize="11sp"
+            tools:text="00:12" />
+
+        <SeekBar
+            android:id="@+id/playerSeekBar"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:max="1000"
+            android:progressDrawable="@drawable/seekbar_progress"
+            android:splitTrack="false"
+            android:thumb="@drawable/seekbar_thumb" />
+
+        <TextView
+            android:id="@+id/tvPlayerRemainingTime"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="8dp"
+            android:fontFamily="@font/alyamama"
+            android:gravity="center"
+            android:minWidth="34dp"
+            android:textColor="@color/urwah_thread_light"
+            android:textSize="11sp"
+            tools:text="-00:45" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="2dp"
+        android:gravity="center_vertical"
+        android:orientation="horizontal">
+
+        <ImageButton
+            android:id="@+id/btnPlayerPrevious"
+            android:layout_width="44dp"
+            android:layout_height="44dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="الآية السابقة"
+            android:padding="10dp"
+            android:src="@drawable/ic_media_previous"
+            android:tint="@color/urwah_thread_dark" />
+
+        <ImageButton
+            android:id="@+id/btnPlayerPlayPause"
+            android:layout_width="58dp"
+            android:layout_height="58dp"
+            android:layout_marginHorizontal="10dp"
+            android:background="@drawable/bg_player_play_button"
+            android:contentDescription="تشغيل"
+            android:elevation="3dp"
+            android:padding="16dp"
+            android:src="@drawable/ic_play_arrow"
+            android:tint="@color/urwah_surface" />
+
+        <ImageButton
+            android:id="@+id/btnPlayerNext"
+            android:layout_width="44dp"
+            android:layout_height="44dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="الآية التالية"
+            android:padding="10dp"
+            android:src="@drawable/ic_media_next"
+            android:tint="@color/urwah_thread_dark" />
+
+        <View
+            android:layout_width="0dp"
+            android:layout_height="1dp"
+            android:layout_weight="1" />
+
+        <ImageButton
+            android:id="@+id/btnPlayerRepeat"
+            android:layout_width="42dp"
+            android:layout_height="42dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="التكرار"
+            android:padding="9dp"
+            android:src="@drawable/ic_media_repeat"
+            android:tint="@color/urwah_thread_brown" />
+
+        <ImageButton
+            android:id="@+id/btnPlayerSpeed"
+            android:layout_width="42dp"
+            android:layout_height="42dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="سرعة التشغيل"
+            android:padding="9dp"
+            android:src="@drawable/ic_media_speed"
+            android:tint="@color/urwah_thread_brown" />
+
+        <TextView
+            android:id="@+id/tvPlayerSpeed"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:fontFamily="@font/alyamama"
+            android:minWidth="34dp"
+            android:gravity="center"
+            android:textColor="@color/urwah_thread_brown"
+            android:textSize="12sp"
+            tools:text="1x" />
+
+        <ImageButton
+            android:id="@+id/btnPlayerReciters"
+            android:layout_width="42dp"
+            android:layout_height="42dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="اختيار القارئ"
+            android:padding="9dp"
+            android:src="@drawable/ic_book_quran_24dp"
+            android:tint="@color/urwah_thread_brown" />
+    </LinearLayout>
+
+</LinearLayout>

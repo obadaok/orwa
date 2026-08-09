@@ -47,7 +47,8 @@ data class ShamelaBook(
     val version: String,
     val hasMultiPart: Boolean,
     val bookType: String,
-    val hfPath: String = ""
+    val hfPath: String = "",
+    val lastReadAt: Long = 0L
 ) {
     val coverUrl: String
         get() = "https://huggingface.co/datasets/AuthenticIlm/Shamela4_Full_DB/resolve/main/$hfPath/book_metadata.json"

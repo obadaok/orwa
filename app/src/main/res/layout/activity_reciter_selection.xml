@@ -1,0 +1,148 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/urwah_carousel_bg"
+    android:orientation="vertical">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:paddingHorizontal="16dp"
+        android:paddingTop="14dp"
+        android:paddingBottom="6dp">
+
+        <ImageButton
+            android:id="@+id/btnReciterBack"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="رجوع"
+            android:padding="8dp"
+            android:src="@drawable/ic_back_arrow_rtl"
+            android:tint="@color/urwah_thread_dark" />
+
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="6dp"
+            android:layout_weight="1"
+            android:fontFamily="@font/alyamama"
+            android:text="اختر القارئ"
+            android:textColor="@color/urwah_thread_dark"
+            android:textSize="20sp"
+            android:textStyle="bold" />
+
+        <ImageButton
+            android:id="@+id/btnReciterSort"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="ترتيب"
+            android:padding="8dp"
+            android:src="@drawable/ic_sort"
+            android:tint="@color/urwah_thread_light" />
+
+        <ImageButton
+            android:id="@+id/btnReciterFilterFav"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="المفضلة فقط"
+            android:padding="8dp"
+            android:src="@drawable/ic_favorite_24dp"
+            android:tint="@color/urwah_thread_light" />
+    </LinearLayout>
+
+    <HorizontalScrollView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginHorizontal="16dp"
+        android:layout_marginTop="8dp"
+        android:clipToPadding="false"
+        android:overScrollMode="never"
+        android:scrollbars="none">
+
+        <LinearLayout
+            android:id="@+id/riwayaChipsRow"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal" />
+    </HorizontalScrollView>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginHorizontal="16dp"
+        android:layout_marginTop="6dp"
+        android:background="@drawable/bg_reciter_search"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:paddingHorizontal="12dp">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:fontFamily="@font/alyamama"
+            android:text="🔍"
+            android:textSize="14sp" />
+
+        <EditText
+            android:id="@+id/etReciterSearch"
+            android:layout_width="0dp"
+            android:layout_height="48dp"
+            android:layout_marginStart="8dp"
+            android:layout_weight="1"
+            android:background="@null"
+            android:fontFamily="@font/alyamama"
+            android:hint="ابحث عن قارئ..."
+            android:imeOptions="actionSearch"
+            android:importantForAutofill="no"
+            android:inputType="text"
+            android:maxLines="1"
+            android:textColor="@color/urwah_search_text"
+            android:textColorHint="@color/urwah_search_hint"
+            android:textSize="14sp" />
+
+        <ImageButton
+            android:id="@+id/btnReciterClearSearch"
+            android:layout_width="36dp"
+            android:layout_height="36dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="مسح البحث"
+            android:padding="8dp"
+            android:src="@drawable/ic_close_circle"
+            android:tint="@color/urwah_thread_light"
+            android:visibility="gone"
+            tools:visibility="visible" />
+    </LinearLayout>
+
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/rvReciterGrid"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:clipToPadding="false"
+        android:overScrollMode="never"
+        android:paddingHorizontal="16dp"
+        android:paddingTop="10dp"
+        android:paddingBottom="20dp"
+        tools:listitem="@layout/item_reciter_card" />
+
+    <TextView
+        android:id="@+id/tvReciterEmpty"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:fontFamily="@font/alyamama"
+        android:gravity="center"
+        android:text="لا توجد نتائج"
+        android:textColor="@color/urwah_thread_light"
+        android:textSize="15sp"
+        android:visibility="gone"
+        tools:visibility="visible" />
+
+</LinearLayout>

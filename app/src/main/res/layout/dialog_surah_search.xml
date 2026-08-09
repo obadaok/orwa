@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:background="@drawable/bg_surah_header_box"
+    android:orientation="vertical"
+    android:padding="20dp">
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center"
+        android:fontFamily="@font/alyamama"
+        android:text="بحث في السورة"
+        android:textColor="@color/urwah_thread_dark"
+        android:textSize="18sp"
+        android:textStyle="bold" />
+
+    <View
+        android:layout_width="48dp"
+        android:layout_height="2dp"
+        android:layout_gravity="center"
+        android:layout_marginVertical="10dp"
+        android:background="@color/urwah_thread_brown" />
+
+    <EditText
+        android:id="@+id/etSurahSearch"
+        android:layout_width="match_parent"
+        android:layout_height="48dp"
+        android:background="@drawable/bg_search"
+        android:fontFamily="@font/alyamama"
+        android:hint="ابحث عن كلمة أو آية"
+        android:inputType="text"
+        android:maxLines="1"
+        android:paddingHorizontal="12dp"
+        android:textColor="@color/urwah_search_text"
+        android:textColorHint="@color/urwah_search_hint"
+        android:textSize="15sp" />
+
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/rvSurahSearchResults"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="10dp"
+        android:maxHeight="320dp"
+        android:overScrollMode="never" />
+
+    <TextView
+        android:id="@+id/tvSurahSearchEmpty"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:fontFamily="@font/alyamama"
+        android:gravity="center"
+        android:paddingVertical="24dp"
+        android:text="لا توجد نتائج"
+        android:textColor="@color/urwah_thread_brown"
+        android:textSize="14sp"
+        android:visibility="gone" />
+
+    <Button
+        android:id="@+id/btnSurahSearchClose"
+        android:layout_width="match_parent"
+        android:layout_height="44dp"
+        android:layout_marginTop="10dp"
+        android:background="@drawable/bg_secondary_button"
+        android:fontFamily="@font/alyamama"
+        android:text="إغلاق"
+        android:textColor="@color/urwah_thread_dark"
+        android:textSize="14sp" />
+
+</LinearLayout>

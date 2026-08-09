@@ -1,7 +1,6 @@
 package com.urwah.dhikr
 
 import android.content.Context
-import org.json.JSONArray
 import org.json.JSONObject
 import java.io.BufferedReader
 import java.io.InputStreamReader
@@ -14,17 +13,158 @@ data class QuranSurah(
     val revelationPlace: String
 )
 
+data class RiwayatInfo(
+    val id: String,
+    val arabicName: String,
+    val qiraaName: String,
+    val fileName: String?,
+    val fontResId: Int,
+    val available: Boolean,
+    val description: String,
+    val basmala: String
+)
+
 object QuranDataLoader {
 
     private const val PREFS_NAME = "urwah_quran"
     private const val KEY_QIRAAT = "qiraat"
+    private const val DEFAULT_QIRAAT = "hafs"
 
-    private var hafsCache: Map<Int, QuranSurah>? = null
-    private var warshCache: Map<Int, QuranSurah>? = null
+    private const val HAFS_BASMALA = "بِسۡمِ ٱللَّهِ ٱلرَّحۡمَٰنِ ٱلرَّحِيمِ"
+    private const val WARSH_BASMALA = "بِسْمِ اِ۬للَّهِ اِ۬لرَّحْمَٰنِ اِ۬لرَّحِيمِ"
+
+    private val caches = mutableMapOf<String, Map<Int, QuranSurah>>()
+
+    val riwayat: List<RiwayatInfo> = listOf(
+        RiwayatInfo(
+            "hafs", "حفص عن عاصم", "قراءة عاصم",
+            "quran_uthmani.json", R.font.uthmanic_hafs, true,
+            "الرواية الأكثر انتشاراً في العالم الإسلامي", HAFS_BASMALA
+        ),
+        RiwayatInfo(
+            "shouba", "شعبة عن عاصم", "قراءة عاصم",
+            "quran_shouba.json", R.font.uthmanic_shouba, true,
+            "رواية شعبة عن عاصم، وتتميز بوقف حمزة وهشام", HAFS_BASMALA
+        ),
+        RiwayatInfo(
+            "warsh", "ورش عن نافع", "قراءة نافع",
+            "quran_warsh.json", R.font.uthmanic_warsh, true,
+            "رواية أهل المغرب العربي والأندلس", WARSH_BASMALA
+        ),
+        RiwayatInfo(
+            "qaloon", "قالون عن نافع", "قراءة نافع",
+            "quran_qaloon.json", R.font.uthmanic_qaloon, true,
+            "رواية أهل ليبيا وتونس وإفريقية", WARSH_BASMALA
+        ),
+        RiwayatInfo(
+            "doori", "الدوري عن أبي عمرو", "قراءة أبي عمرو",
+            "quran_doori.json", R.font.uthmanic_doori, true,
+            "رواية أهل السودان والصومال وشرق إفريقيا", WARSH_BASMALA
+        ),
+        RiwayatInfo(
+            "soosi", "السوسي عن أبي عمرو", "قراءة أبي عمرو",
+            "quran_soosi.json", R.font.uthmanic_soosi, true,
+            "الرواية الثانية عن أبي عمرو البصري", WARSH_BASMALA
+        ),
+        RiwayatInfo(
+            "bazzi", "البزي عن ابن كثير", "قراءة ابن كثير",
+            "quran_bazzi.json", R.font.uthmanic_bazzi, true,
+            "رواية أهل مكة المكرمة", HAFS_BASMALA
+        ),
+        RiwayatInfo(
+            "qumbul", "قنبل عن ابن كثير", "قراءة ابن كثير",
+            "quran_qumbul.json", R.font.uthmanic_qumbul, true,
+            "الرواية الثانية عن ابن كثير المكي", HAFS_BASMALA
+        ),
+        RiwayatInfo(
+            "hisham", "هشام عن ابن عامر", "قراءة ابن عامر",
+            null, R.font.uthmanic_hafs, false, "قريباً", HAFS_BASMALA
+        ),
+        RiwayatInfo(
+            "dhakwan", "ابن ذكوان عن ابن عامر", "قراءة ابن عامر",
+            null, R.font.uthmanic_hafs, false, "قريباً", HAFS_BASMALA
+        ),
+        RiwayatInfo(
+            "khalaf", "خلف عن حمزة", "قراءة حمزة",
+            null, R.font.uthmanic_hafs, false, "قريباً", HAFS_BASMALA
+        ),
+        RiwayatInfo(
+            "khallad", "خلاد عن حمزة", "قراءة حمزة",
+            null, R.font.uthmanic_hafs, false, "قريباً", HAFS_BASMALA
+        ),
+        RiwayatInfo(
+            "alharith", "أبو الحارث عن الكسائي", "قراءة الكسائي",
+            null, R.font.uthmanic_hafs, false, "قريباً", HAFS_BASMALA
+        ),
+        RiwayatInfo(
+            "duri_kisai", "الدوري عن الكسائي", "قراءة الكسائي",
+            null, R.font.uthmanic_hafs, false, "قريباً", HAFS_BASMALA
+        ),
+        RiwayatInfo(
+            "ibnwardan", "ابن وردان عن أبي جعفر", "قراءة أبي جعفر",
+            null, R.font.uthmanic_hafs, false, "قريباً", HAFS_BASMALA
+        ),
+        RiwayatInfo(
+            "ibnjammaz", "ابن جماز عن أبي جعفر", "قراءة أبي جعفر",
+            null, R.font.uthmanic_hafs, false, "قريباً", HAFS_BASMALA
+        ),
+        RiwayatInfo(
+            "ruways", "رويس عن يعقوب", "قراءة يعقوب",
+            null, R.font.uthmanic_hafs, false, "قريباً", HAFS_BASMALA
+        ),
+        RiwayatInfo(
+            "ruh", "روح عن يعقوب", "قراءة يعقوب",
+            null, R.font.uthmanic_hafs, false, "قريباً", HAFS_BASMALA
+        ),
+        RiwayatInfo(
+            "ishaak", "إسحاق عن خلف", "قراءة خلف العاشر",
+            null, R.font.uthmanic_hafs, false, "قريباً", HAFS_BASMALA
+        ),
+        RiwayatInfo(
+            "idris", "إدريس عن خلف", "قراءة خلف العاشر",
+            null, R.font.uthmanic_hafs, false, "قريباً", HAFS_BASMALA
+        )
+    )
+
+    private val riwayatById = riwayat.associateBy { it.id }
+
+    private val qiraaOrder = listOf(
+        "قراءة نافع",
+        "قراءة ابن كثير",
+        "قراءة أبي عمرو",
+        "قراءة ابن عامر",
+        "قراءة عاصم",
+        "قراءة حمزة",
+        "قراءة الكسائي",
+        "قراءة أبي جعفر",
+        "قراءة يعقوب",
+        "قراءة خلف العاشر"
+    )
+
+    val availableRiwayat: List<RiwayatInfo>
+        get() = riwayat.filter { it.available }
+
+    val qiraaGroups: List<Pair<String, List<RiwayatInfo>>>
+        get() {
+            val grouped = riwayat.groupBy { it.qiraaName }
+            return qiraaOrder.mapNotNull { name -> grouped[name]?.let { name to it } }
+        }
+
+    fun getRiwayatInfo(id: String?): RiwayatInfo {
+        return riwayatById[id] ?: riwayatById.getValue(DEFAULT_QIRAAT)
+    }
+
+    fun isAvailable(id: String): Boolean = getRiwayatInfo(id).available
+
+    fun riwayatIdForArabicName(arabicName: String?): String? {
+        if (arabicName.isNullOrBlank()) return null
+        return riwayatById.entries.firstOrNull { it.value.arabicName == arabicName }?.key
+    }
 
     fun getQiraat(context: Context): String {
-        return context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-            .getString(KEY_QIRAAT, "hafs") ?: "hafs"
+        val current = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            .getString(KEY_QIRAAT, DEFAULT_QIRAAT) ?: DEFAULT_QIRAAT
+        return if (isAvailable(current)) current else DEFAULT_QIRAAT
     }
 
     fun setQiraat(context: Context, qiraat: String) {
@@ -33,8 +173,7 @@ object QuranDataLoader {
     }
 
     fun load(context: Context): Map<Int, QuranSurah> {
-        val qiraat = getQiraat(context)
-        return loadWithQiraat(context, qiraat)
+        return loadWithQiraat(context, getQiraat(context))
     }
 
     fun loadHafs(context: Context): Map<Int, QuranSurah> {
@@ -45,15 +184,14 @@ object QuranDataLoader {
         return loadWithQiraat(context, "warsh")
     }
 
-    private fun loadWithQiraat(context: Context, qiraat: String): Map<Int, QuranSurah> {
-        if (qiraat == "warsh") {
-            warshCache?.let { return it }
-        } else {
-            hafsCache?.let { return it }
+    fun loadWithQiraat(context: Context, qiraat: String?): Map<Int, QuranSurah> {
+        val info = getRiwayatInfo(qiraat)
+        if (!info.available || info.fileName == null) {
+            return loadWithQiraat(context, DEFAULT_QIRAAT)
         }
+        caches[info.id]?.let { return it }
 
-        val fileName = if (qiraat == "warsh") "quran_warsh.json" else "quran_uthmani.json"
-        val jsonString = readJsonFromAssets(context, fileName)
+        val jsonString = readJsonFromAssets(context, info.fileName)
         val root = JSONObject(jsonString)
 
         val result = mutableMapOf<Int, QuranSurah>()
@@ -77,11 +215,7 @@ object QuranDataLoader {
             result[surahNum] = QuranSurah(surahNum, name, ayahs, loc)
         }
 
-        if (qiraat == "warsh") {
-            warshCache = result
-        } else {
-            hafsCache = result
-        }
+        caches[info.id] = result
         return result
     }
 
@@ -94,12 +228,15 @@ object QuranDataLoader {
     }
 
     fun invalidateCache() {
-        hafsCache = null
-        warshCache = null
+        caches.clear()
     }
 
     fun getUthmanicFontRes(context: Context): Int {
-        return if (getQiraat(context) == "warsh") R.font.uthmanic_warsh else R.font.uthmanic_hafs
+        return getRiwayatInfo(getQiraat(context)).fontResId
+    }
+
+    fun fontResFor(qiraat: String?): Int {
+        return getRiwayatInfo(qiraat).fontResId
     }
 
     private fun normalizeText(text: String): String {
