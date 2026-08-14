@@ -41,6 +41,7 @@ import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import androidx.viewpager2.widget.ViewPager2
 import com.urwah.dhikr.audio.AudioPlaybackState
 import com.urwah.dhikr.audio.AudioPlayerService
 import com.urwah.dhikr.audio.Reciter
@@ -106,11 +107,23 @@ class SurahDetailActivity : AppCompatActivity() {
     private var allAyahsGlobal: List<AyahData> = emptyList()
     private var juzAyahIndexes: Map<Int, Int> = emptyMap()
 
+    // ===== وضع الصفحات =====
+    private var pagesModeActive = false
+    private var pagesOverlayVisible = true
+    private var pagesLastPosition = 1
+    private var pagesViewPager: ViewPager2? = null
+    private var pagesPagerAdapter: MushafPagerAdapter? = null
+    private var pagesTypeface: android.graphics.Typeface? = null
+    private var pagesUiReady = false
+
     companion object {
         private const val PLAYER_AUTO_HIDE_DELAY = 3000L
         private const val FOCUSED_AUTO_HIDE_DELAY = 10000L
         private const val REQUEST_RECITER_SELECT = 4101
         private const val REQUEST_MURATTAL_THEME = 4102
+        private const val KEY_QURAN_DISPLAY_MODE = "quran_display_mode"
+        private const val MODE_PAGES = "pages"
+        private const val MODE_SURAH = "surah"
         private val ENGLISH_NAMES = mapOf(
             1 to "Al-Fatiha", 2 to "Al-Baqarah", 3 to "Aal-e-Imran", 4 to "An-Nisa'",
             5 to "Al-Ma'idah", 6 to "Al-An'am", 7 to "Al-A'raf", 8 to "Al-Anfal",
@@ -190,6 +203,12 @@ class SurahDetailActivity : AppCompatActivity() {
             val circularMenu = findViewById<UrwahCircularMenu>(R.id.circularMenu)
             if (circularMenu.visibility == View.VISIBLE) {
                 circularMenu.hide()
+            } else if (pagesModeActive) {
+                if (!pagesOverlayVisible) {
+                    showPagesOverlay(true)
+                } else {
+                    exitPagesModeToSurah()
+                }
             } else {
                 isEnabled = false
                 onBackPressedDispatcher.onBackPressed()
@@ -197,6 +216,13 @@ class SurahDetailActivity : AppCompatActivity() {
         }
 
         setupCircularMenu()
+
+        // إذا كان المستخدم في وضع الصفحات عند آخر جلسة، نعيد فتحه فوراً
+        if (quranPrefs.getString(KEY_QURAN_DISPLAY_MODE, MODE_SURAH) == MODE_PAGES) {
+            setupPagesMode {
+                enterPagesMode(initialPage = findPageForCurrentPosition())
+            }
+        }
 
         // findViewById<ImageButton>(R.id.btnViewMode).setOnClickListener {
         //     toggleViewMode()
@@ -1011,7 +1037,205 @@ class SurahDetailActivity : AppCompatActivity() {
         circularMenu.addMenuItem(R.drawable.ic_book_quran_24dp, getString(R.string.focused_mode_short)) {
             enterFocusedMode()
         }
+
+        circularMenu.addMenuItem(R.drawable.ic_pages_14dp, "وضع الصفحات") {
+            togglePagesMode()
+        }
     }
+
+    // ===================== وضع الصفحات =====================
+
+    private fun findPageForCurrentPosition(): Int {
+        val targetSurah = surahNumber
+        val targetAyah = when {
+            highlightedAyahs.isNotEmpty() -> highlightedAyahs.first()
+            lastAyahForPages > 0 -> lastAyahForPages
+            else -> ReadingTracker.getPosition(this)?.takeIf { it.surahNumber == targetSurah }?.ayahNumber ?: 1
+        }
+        return QuranPageIndex.pageFor(this, targetSurah, targetAyah)
+    }
+
+    private var lastAyahForPages: Int = -1
+
+    private fun setupPagesMode(onReady: () -> Unit) {
+        if (pagesUiReady) {
+            onReady()
+            return
+        }
+        val pager = findViewById<ViewPager2>(R.id.pagesViewPager)
+        pagesViewPager = pager
+
+        pagesTypeface = ResourcesCompat.getFont(this, QuranDataLoader.getUthmanicFontRes(this))
+        val tf = pagesTypeface ?: return
+
+        findViewById<ImageButton>(R.id.pagesBtnBack).setOnClickListener {
+            exitPagesModeToSurah()
+        }
+        findViewById<ImageButton>(R.id.pagesBtnMenu).setOnClickListener {
+            val circularMenu = findViewById<UrwahCircularMenu>(R.id.circularMenu)
+            if (circularMenu.visibility == View.VISIBLE) {
+                circularMenu.hide()
+            } else {
+                setupCircularMenuItems()
+                circularMenu.visibility = View.VISIBLE
+                circularMenu.bringToFront()
+                circularMenu.show()
+            }
+        }
+        findViewById<View>(R.id.pagesOverlayBar).setOnClickListener {
+            // لا شيء: منع تسريب اللمس للصفحة
+        }
+
+        pager.offscreenPageLimit = 1
+        pager.setPageTransformer(MushafPageFadeTransformer())
+
+        lifecycleScope.launch {
+            QuranPageLayouts.ensureLoaded(this@SurahDetailActivity)
+            QuranPageIndex.ensureLoaded(this@SurahDetailActivity)
+
+            val pagesMap = QuranPageLayouts.cached() ?: return@launch
+            if (!pagesMap.containsKey(1) || !pagesMap.containsKey(604)) return@launch
+
+            val isDark = isDarkMode()
+            val ink = if (isDark) Color.parseColor("#E8E0D6") else Color.parseColor("#5E4B40")
+            val accent = if (isDark) Color.parseColor("#B9A58C") else Color.parseColor("#8B6F5E")
+
+            val adapter = MushafPagerAdapter(
+                pageCount = QuranPageLayouts.PAGE_COUNT,
+                typeface = tf,
+                inkColor = ink,
+                accentColor = accent,
+                surahNameProvider = { s ->
+                    SurahDataProvider.allSurahs.firstOrNull { it.number == s }?.name ?: ""
+                },
+                pagesProvider = { p -> pagesMap[p] ?: pagesMap[1]!! },
+                onPageTap = { _ -> togglePagesOverlay() },
+                onPageLongPress = { page -> jumpToAyahFromPage(page) },
+            )
+            pagesPagerAdapter = adapter
+            pager.adapter = adapter
+
+            pager.registerOnPageChangeCallback(object : ViewPager2.OnPageChangeCallback() {
+                override fun onPageSelected(position: Int) {
+                    pagesLastPosition = position + 1
+                    updatePagesOverlayInfo(pagesLastPosition)
+                    syncCurrentPositionFromPage(pagesLastPosition)
+                }
+            })
+
+            pagesUiReady = true
+            onReady()
+        }
+    }
+
+    private fun enterPagesMode(initialPage: Int) {
+        if (!pagesUiReady) {
+            setupPagesMode { enterPagesMode(initialPage) }
+            return
+        }
+        pagesModeActive = true
+        quranPrefs.edit().putString(KEY_QURAN_DISPLAY_MODE, MODE_PAGES).apply()
+
+        val container = findViewById<View>(R.id.pagesModeContainer)
+        container.visibility = View.INVISIBLE
+        container.bringToFront()
+        findViewById<View>(R.id.surahContentRoot).visibility = View.GONE
+
+        val idx = (initialPage - 1).coerceIn(0, QuranPageLayouts.PAGE_COUNT - 1)
+        pagesLastPosition = idx + 1
+        updatePagesOverlayInfo(pagesLastPosition)
+        syncCurrentPositionFromPage(pagesLastPosition)
+
+        // إظهار الكونتينر وتثبيت الصفحة داخل نفس خطوة layout: لو أُظهِر أولاً
+        // ثم ضُبطت الصفحة لاحقاً، تُرسم الصفحة المعروضة فارغة حتى أول تمرير
+        // (لأن قياسها الأول استقر على عرض صفر قبل ضبط الموضع). بعد اكتمال
+        // القياس تُثبَّت الصفحة المطلوبة بلا انزلاق فتظهر بحجمها الصحيح فوراً.
+        container.post {
+            container.visibility = View.VISIBLE
+            showPagesOverlay(false)
+            updatePagesOverlayInfo(idx + 1)
+            pagesViewPager?.setCurrentItem(idx, false)
+            pagesViewPager?.requestLayout()
+            pagesViewPager?.invalidate()
+        }
+    }
+
+    private fun exitPagesModeToSurah() {
+        pagesModeActive = false
+        quranPrefs.edit().putString(KEY_QURAN_DISPLAY_MODE, MODE_SURAH).apply()
+
+        // حفظ الموضع في الصفحة الحالية كآية
+        savePositionFromCurrentPage()
+
+        findViewById<View>(R.id.pagesModeContainer).visibility = View.GONE
+        findViewById<View>(R.id.surahContentRoot).visibility = View.VISIBLE
+
+        // العودة لآية موضع الصفحة الحالية
+        val range = QuranPageIndex.rangeOfPage(this, pagesLastPosition)
+        if (range != null && range.first.first == surahNumber) {
+            scrollView.post {
+                scrollToAyah(range.first.second)
+            }
+        }
+    }
+
+    private fun togglePagesMode() {
+        if (pagesModeActive) {
+            exitPagesModeToSurah()
+        } else {
+            enterPagesMode(findPageForCurrentPosition())
+        }
+    }
+
+    private fun togglePagesOverlay() {
+        if (pagesOverlayVisible) hidePagesOverlay() else showPagesOverlay(true)
+    }
+
+    private fun showPagesOverlay(animated: Boolean) {
+        pagesOverlayVisible = true
+        val bar = findViewById<View>(R.id.pagesOverlayBar) ?: return
+        if (animated) {
+            bar.animate().alpha(1f).setDuration(180).withEndAction { bar.visibility = View.VISIBLE }
+        } else {
+            bar.alpha = 1f
+            bar.visibility = View.VISIBLE
+        }
+    }
+
+    private fun hidePagesOverlay() {
+        pagesOverlayVisible = false
+        val bar = findViewById<View>(R.id.pagesOverlayBar) ?: return
+        bar.animate().alpha(0f).setDuration(180).withEndAction { bar.visibility = View.GONE }
+    }
+
+    private fun updatePagesOverlayInfo(page: Int) {
+        val surah = QuranPageIndex.firstSurahOfPage(this, page)
+        val name = SurahDataProvider.allSurahs.firstOrNull { it.number == surah }?.name ?: ""
+        findViewById<TextView>(R.id.pagesTvName)?.text = "سُورَةُ $name"
+        findViewById<TextView>(R.id.pagesTvNumber)?.text = toHindiDigits(page)
+    }
+
+    private fun syncCurrentPositionFromPage(page: Int) {
+        val range = QuranPageIndex.rangeOfPage(this, page) ?: return
+        val (surah, ayah) = range.first
+        if (surah == surahNumber) {
+            lastAyahForPages = ayah
+        }
+    }
+
+    private fun savePositionFromCurrentPage() {
+        val range = QuranPageIndex.rangeOfPage(this, pagesLastPosition) ?: return
+        val (surah, ayah) = range.first
+        ReadingTracker.savePosition(this, surah, ayah)
+    }
+
+    private fun jumpToAyahFromPage(page: Int) {
+        val range = QuranPageIndex.rangeOfPage(this, page) ?: return
+        val (surah, ayah) = range.first
+        UrwahToast.show(this, "صفحة ${toHindiDigits(page)} • الآية ${toHindiDigits(ayah)}")
+    }
+
+    // ===================== وضع الصفحات =====================
 
     private fun showSurahSearchDialog() {
         val view = LayoutInflater.from(this).inflate(R.layout.dialog_surah_search, null)
