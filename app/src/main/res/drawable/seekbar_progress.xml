@@ -20,7 +20,12 @@
         </shape>
     </item>
     <item android:id="@android:id/progress">
-        <clip android:gravity="start">
+        <!--
+            gravity="left" + ClipDrawable يعكس تلقائيًا في تخطيط RTL فينمو
+            الملء من اليمين. gravity="start" أو "right" تسبب انعكاسًا مزدوجًا
+            فيبقى الشريط فارغًا/معكوسًا في الواجهات العربية.
+        -->
+        <clip android:gravity="left">
             <shape>
                 <solid android:color="@color/urwah_thread_brown" />
                 <corners android:radius="4dp" />

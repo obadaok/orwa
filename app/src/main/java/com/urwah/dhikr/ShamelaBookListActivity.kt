@@ -3,6 +3,8 @@ package com.urwah.dhikr
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.text.Editable
 import android.text.TextWatcher
 import android.view.View
@@ -38,6 +40,10 @@ class ShamelaBookListActivity : AppCompatActivity() {
     private var authorName = ""
     private var allBooks: List<ShamelaBook> = emptyList()
     private var isSearchOpen = false
+
+    private val searchHandler = Handler(Looper.getMainLooper())
+    private var searchVersion = 0
+    private val filterDebounce = Runnable { doFilter() }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -83,9 +89,11 @@ class ShamelaBookListActivity : AppCompatActivity() {
             override fun afterTextChanged(s: Editable?) {
                 val query = s?.toString() ?: ""
                 ivClearSearch.visibility = if (query.isNotEmpty()) View.VISIBLE else View.GONE
+                searchHandler.removeCallbacks(filterDebounce)
                 if (query.length >= 1) {
-                    filterBooks(query)
+                    searchHandler.postDelayed(filterDebounce, 180L)
                 } else {
+                    searchVersion++
                     showAllBooks()
                 }
             }
@@ -122,11 +130,14 @@ class ShamelaBookListActivity : AppCompatActivity() {
         imm.showSoftInput(etSearch, InputMethodManager.SHOW_IMPLICIT)
     }
 
-    private fun filterBooks(query: String) {
+    private fun doFilter() {
+        val query = etSearch.text?.toString() ?: ""
+        val version = ++searchVersion
         val results = allBooks.filter { book ->
             book.title.contains(query, ignoreCase = true) ||
             book.author.contains(query, ignoreCase = true)
         }
+        if (version != searchVersion) return // نتيجة قديمة بعد أحدث استعلام
         adapter.updateBooks(results)
         tvBookCount.text = "${results.size} كتاب"
         if (results.isEmpty()) {

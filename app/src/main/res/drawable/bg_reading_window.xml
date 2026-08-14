@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    بطاقة القراءة المباشرة (الآيات الطويلة): مسطّحة بحدود ناعمة وشفافية خفيفة
+    لتظل متناسقة مع الهوية دون ازدحام بصري. تُستبدل ألوانها وقت التشغيل
+    من MurattalThemeManager في applyMurattalTheme.
+-->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <solid android:color="#1A8B6F5E" />
+    <stroke
+        android:width="1.5dp"
+        android:color="@color/murattal_classic_accent" />
+    <corners android:radius="14dp" />
+</shape>

@@ -1,6 +1,6 @@
 package com.urwah.dhikr
 
-import android.graphics.Color
+import android.graphics.drawable.GradientDrawable
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -15,7 +15,7 @@ class QuoteBackgroundAdapter(
     private var selected = 0
 
     class VH(view: View) : RecyclerView.ViewHolder(view) {
-        val swatch: View = view.findViewById(R.id.bgSwatch)
+        val swatchFill: View = view.findViewById(R.id.bgSwatchFill)
         val label: TextView = view.findViewById(R.id.bgLabel)
         val indicator: View = view.findViewById(R.id.bgIndicator)
     }
@@ -27,10 +27,18 @@ class QuoteBackgroundAdapter(
 
     override fun onBindViewHolder(holder: VH, position: Int) {
         val item = items[position]
-        holder.swatch.setBackgroundColor(item.bgColor)
+
+        // نلوّن نسخة خاصة من الدرابل بدل استبداله بالكامل، فيبقى بردر الكارت ظاهرًا
+        // لكل الخلفيات (كانت setBackgroundColor سابقًا تمحو البردر تمامًا).
+        val fill = (holder.swatchFill.background?.mutate() as? GradientDrawable)
+        fill?.setColor(item.bgColor)
+
+        // لون ثابت للتسمية بدل لون نص الخلفية نفسها، لأن التسمية تظهر فوق خلفية
+        // المنتقي وليس فوق السواتش — كانت الخلفيات الداكنة تصبح شبه غير مقروءة.
         holder.label.text = item.displayName
-        holder.label.setTextColor(item.textColor)
+
         holder.indicator.visibility = if (position == selected) View.VISIBLE else View.INVISIBLE
+        holder.itemView.contentDescription = item.displayName
         holder.itemView.setOnClickListener {
             val pos = holder.adapterPosition
             if (pos == RecyclerView.NO_POSITION) return@setOnClickListener
@@ -40,6 +48,15 @@ class QuoteBackgroundAdapter(
             notifyItemChanged(pos)
             onSelect(items[pos])
         }
+    }
+
+    fun setSelected(bg: QuoteBackground) {
+        val pos = items.indexOf(bg)
+        if (pos == selected || pos < 0) return
+        val old = selected
+        selected = pos
+        notifyItemChanged(old)
+        notifyItemChanged(pos)
     }
 
     override fun getItemCount() = items.size

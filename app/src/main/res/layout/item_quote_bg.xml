@@ -3,27 +3,37 @@
     android:layout_width="wrap_content"
     android:layout_height="wrap_content"
     android:gravity="center"
+    android:minWidth="56dp"
     android:orientation="vertical"
     android:paddingHorizontal="6dp"
-    android:paddingVertical="4dp">
+    android:paddingVertical="6dp">
 
+    <!-- الإطار الخارجي (بردر Neo-Brutalism ثابت) + لون الخلفية الفعلي داخله -->
     <FrameLayout
-        android:layout_width="44dp"
-        android:layout_height="44dp">
+        android:layout_width="48dp"
+        android:layout_height="48dp">
 
         <View
             android:id="@+id/bgSwatch"
-            android:layout_width="44dp"
-            android:layout_height="44dp"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
             android:background="@drawable/bg_neo_card" />
+
+        <!-- تُلوَّن هذه فقط بلون الخلفية برمجيًا (GradientDrawable.setColor)
+             حتى لا يُفقد بردر/ظل الكارت الخارجي كما كان يحدث سابقًا مع setBackgroundColor -->
+        <View
+            android:id="@+id/bgSwatchFill"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:layout_margin="4dp"
+            android:background="@drawable/bg_color_swatch" />
 
         <View
             android:id="@+id/bgIndicator"
-            android:layout_width="10dp"
-            android:layout_height="10dp"
+            android:layout_width="12dp"
+            android:layout_height="12dp"
             android:layout_gravity="bottom|end"
-            android:layout_marginEnd="2dp"
-            android:layout_marginBottom="2dp"
+            android:layout_margin="2dp"
             android:background="@drawable/bg_segment_active_reader"
             android:visibility="invisible" />
     </FrameLayout>
@@ -32,8 +42,11 @@
         android:id="@+id/bgLabel"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginTop="3dp"
+        android:layout_marginTop="4dp"
         android:fontFamily="@font/alyamama"
+        android:gravity="center"
+        android:maxWidth="60dp"
+        android:maxLines="1"
         android:textColor="@color/urwah_thread_dark"
         android:textSize="10sp" />
 </LinearLayout>

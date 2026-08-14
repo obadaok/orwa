@@ -19,6 +19,9 @@ object ShamelaBookStorage {
     private const val KEY_MARGIN_SIZE = "margin_size"
     private const val KEY_READING_WIDTH = "reading_width"
     private const val KEY_FONT_FILE = "reader_font_file"
+    private const val KEY_PAGE_COUNT = "page_count_%d"
+
+    private val pageCountCache = java.util.concurrent.ConcurrentHashMap<Int, Int>()
 
     private fun getBooksDir(context: Context): File {
         val dir = File(context.filesDir, "shamela_books")
@@ -63,6 +66,14 @@ object ShamelaBookStorage {
     fun saveBookContent(context: Context, bookId: Int, pages: List<ShamelaPage>, toc: List<ShamelaTocEntry>) {
         val dir = getBookDir(context, bookId)
         if (!dir.exists()) dir.mkdirs()
+
+        // Page count is written at save time so the library list never needs to
+        // scan the whole pages.jsonl on the main thread to display stats.
+        if (pages.isNotEmpty()) {
+            val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            prefs.edit().putInt(String.format(KEY_PAGE_COUNT, bookId), pages.size).apply()
+            pageCountCache[bookId] = pages.size
+        }
 
         // Save pages as JSONL
         File(dir, "pages.jsonl").bufferedWriter().use { writer ->
@@ -175,6 +186,9 @@ object ShamelaBookStorage {
         val dir = getBookDir(context, bookId)
         if (dir.exists()) {
             dir.deleteRecursively()
+            invalidatePageCount(bookId)
+            context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+                .edit().remove(String.format(KEY_PAGE_COUNT, bookId)).apply()
             return true
         }
         return false
@@ -202,11 +216,48 @@ object ShamelaBookStorage {
         }
     }
 
+    /**
+     * عدد صفحات الكتاب. سريع:
+     * - كاش ذاكرتي فوري خلال الجلسة.
+     * - قيمة محفوظة تُكتب عند اكتمال التحميل (أو تُحسب أول مرة وتُحفظ).
+     * - إن لزم الحساب يُمرَّر السطر تلو السطر دون بناء قائمة في الذاكرة.
+     */
     fun getPageCount(context: Context, bookId: Int): Int {
-        val dir = getBookDir(context, bookId)
-        val pagesFile = File(dir, "pages.jsonl")
+        pageCountCache[bookId]?.let { return it }
+        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        val stored = prefs.getInt(String.format(KEY_PAGE_COUNT, bookId), -1)
+        if (stored > -1) {
+            pageCountCache[bookId] = stored
+            return stored
+        }
+        val pagesFile = File(getBookDir(context, bookId), "pages.jsonl")
         if (!pagesFile.exists()) return 0
-        return pagesFile.readLines().count { it.isNotBlank() }
+        var count = 0
+        pagesFile.forEachLine { if (it.isNotBlank()) count++ }
+        prefs.edit().putInt(String.format(KEY_PAGE_COUNT, bookId), count).apply()
+        pageCountCache[bookId] = count
+        return count
+    }
+
+    /** بُسطات قراءة كتاب محفوظ تُعرض في قوائم المكتبة (تمنع تكرار الحساب). */
+    data class BookListStats(
+        val pageCount: Int,
+        val lastPage: Int,
+        val lastReadTime: Long
+    )
+
+    fun getBookListStats(context: Context, bookId: Int): BookListStats {
+        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        return BookListStats(
+            pageCount = getPageCount(context, bookId),
+            lastPage = prefs.getInt(String.format(KEY_LAST_PAGE, bookId), 0),
+            lastReadTime = prefs.getLong(String.format(KEY_LAST_READ, bookId), 0L)
+        )
+    }
+
+    /** يُصفّر الكاش الحسابي (بعد حذف كتاب أو إعادة تحميله). */
+    fun invalidatePageCount(bookId: Int) {
+        pageCountCache.remove(bookId)
     }
 
     fun getBookSizeBytes(context: Context, bookId: Int): Long {

@@ -80,7 +80,7 @@
 
                 <LinearLayout
                     android:id="@+id/statsRow"
-                    android:layout_width="wrap_content"
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="6dp"
                     android:orientation="horizontal"
@@ -123,12 +123,17 @@
 
                     <TextView
                         android:id="@+id/tvLastRead"
-                        android:layout_width="wrap_content"
+                        android:layout_width="0dp"
                         android:layout_height="wrap_content"
+                        android:layout_weight="1"
                         android:layout_marginStart="4dp"
                         android:fontFamily="@font/alyamama"
                         android:textColor="@color/urwah_thread_light"
                         android:textSize="12sp"
+                        android:maxLines="2"
+                        android:ellipsize="end"
+                        android:breakStrategy="simple"
+                        android:hyphenationFrequency="none"
                         android:visibility="gone" />
                 </LinearLayout>
             </LinearLayout>

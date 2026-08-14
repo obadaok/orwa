@@ -243,16 +243,10 @@ object MurattalThemeManager {
             cornerRadius = dpToPx(context, 3f)
             setColor(palette.progressFill)
         }
-        val clipGravity = if (
-            context.resources.configuration.layoutDirection ==
-            android.view.View.LAYOUT_DIRECTION_RTL
-        ) {
-            android.view.Gravity.RIGHT
-        } else {
-            android.view.Gravity.LEFT
-        }
+        // gravity=LEFT ثابت: ClipDrawable نفسه يعكس اتجاه القص في تخطيط RTL،
+        // فتنمو الحشوة من اليمين دون انعكاس مزدوج (الضبط اليدوي بالاتجاه سبب عطل).
         val clipDrawable = android.graphics.drawable.ClipDrawable(
-            clip, clipGravity, android.graphics.drawable.ClipDrawable.HORIZONTAL
+            clip, android.view.Gravity.LEFT, android.graphics.drawable.ClipDrawable.HORIZONTAL
         )
         val layers = arrayOfNulls<android.graphics.drawable.Drawable>(2).apply {
             set(0, track)
@@ -279,4 +273,21 @@ object MurattalThemeManager {
             cornerRadius = dpToPx(context, 50f)
             setColor(fill)
         }
+
+    /** بطاقة مسطّحة بحدود ناعمة (بلا ظل 3D) — من ألوان اللوحة. */
+    fun flatCardDrawable(
+        context: Context,
+        palette: MurattalPalette,
+        radiusDp: Float = 14f,
+        strokeDp: Float = 1.5f,
+        fill: Int? = null,
+        stroke: Int? = null
+    ): GradientDrawable {
+        val radius = dpToPx(context, radiusDp)
+        return GradientDrawable().apply {
+            cornerRadius = radius
+            setColor(fill ?: palette.surface)
+            setStroke(dpToPx(context, strokeDp).toInt(), stroke ?: palette.surfaceBorder)
+        }
+    }
 }

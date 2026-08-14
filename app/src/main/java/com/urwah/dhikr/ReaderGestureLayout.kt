@@ -46,21 +46,30 @@ class ReaderGestureLayout @JvmOverloads constructor(
     /** يُستخدم لتعطيل التقليب كليًا أثناء حالات معينة (مثل فتح شريط البحث) */
     private var swipeEnabled = true
 
+    /** أثناء اختيار النص: لا نعترض اللمس أبدًا ونمنع ViewPager2 من التقليب */
+    private var selectionActive = false
+
     private val touchSlop = ViewConfiguration.get(context).scaledTouchSlop
     private val minSwipeDistance: Int
 
-    // هامش تحيّز يمنع تصنيف الاتجاه (أفقي/رأسي) بفارق بكسل واحد فقط عند الزوايا الملتبسة
-    private val directionBias = 1.4f
+    // هامش تحيّز يمنع تصنيف الاتجاه (أفقي/رأسي) بفارق بكسل واحد فقط عند الزوايا الملتبسة.
+    // 1.05: أي سحبة أفقية في الغالب (حتى لو بزاوية طفيفة) تُعدّ تقليبًا للصفحة.
+    private val directionBias = 1.05f
+
+    // سحبة أفقية "قوية": تُقلّب الصفحة حتى لو لم نكن في أعلى/أسفل الصفحة
+    // (أقوى من مجرد السحب المائل أثناء القراءة).
+    private val strongHorizontalBias = 2.2f
 
     private var downX = 0f
     private var downY = 0f
     private var downTime = 0L
     private var gestureDecided = false
     private var isHorizontalGesture = false
+    private var isStrongHorizontal = false
 
     init {
         val density = resources.displayMetrics.density
-        minSwipeDistance = (80 * density).toInt()
+        minSwipeDistance = (50 * density).toInt()
     }
 
     fun setup(onPageChange: (direction: Int) -> Unit) {
@@ -73,6 +82,7 @@ class ReaderGestureLayout @JvmOverloads constructor(
         if (!enabled) {
             gestureDecided = false
             isHorizontalGesture = false
+            isStrongHorizontal = false
         }
     }
 
@@ -87,6 +97,19 @@ class ReaderGestureLayout @JvmOverloads constructor(
         }
     }
 
+    /**
+     * عند اختيار نص: لا اعتراض للفتات على الإطلاق، ويمنَع ViewPager2 الداخلي
+     * من محاولة التقليب أثناء سحب مقابض التحديد.
+     */
+    fun setSelectionActive(active: Boolean) {
+        selectionActive = active
+        if (active) {
+            preventViewPagerIntercept()
+            gestureDecided = false
+            isHorizontalGesture = false
+        }
+    }
+
     // الشرط منفصل الآن لكل اتجاه: التقدّم للصفحة التالية يشترط الوصول لأسفل الصفحة
     // الحالية، بينما الرجوع للصفحة السابقة يشترط الوجود في أعلى الصفحة الحالية فقط.
     private fun canSwipeToNext(): Boolean = !isPageScrollable || isAtBottom
@@ -96,7 +119,7 @@ class ReaderGestureLayout @JvmOverloads constructor(
         // لا نسمح لأي ابن (NestedScrollView) بمنع اعتراضنا للفتة طالما لم نحسم
         // اتجاهها بعد. بدون هذا الشرط، يستطيع الابن "قفل" اللمس لنفسه من أول
         // اهتزاز رأسي بسيط، قبل أن نكتشف أن اللفتة أفقية فعليًا.
-        if (disallow && !gestureDecided) {
+        if (disallow && !gestureDecided && !selectionActive) {
             return
         }
         super.requestDisallowInterceptTouchEvent(disallow)
@@ -104,6 +127,10 @@ class ReaderGestureLayout @JvmOverloads constructor(
 
     override fun onInterceptTouchEvent(ev: MotionEvent): Boolean {
         if (!swipeEnabled || isBouncing) return false
+        if (selectionActive) {
+            preventViewPagerIntercept()
+            return false
+        }
 
         when (ev.actionMasked) {
             MotionEvent.ACTION_DOWN -> {
@@ -112,6 +139,7 @@ class ReaderGestureLayout @JvmOverloads constructor(
                 downTime = System.currentTimeMillis()
                 gestureDecided = false
                 isHorizontalGesture = false
+                isStrongHorizontal = false
                 return false
             }
             MotionEvent.ACTION_MOVE -> {
@@ -121,6 +149,7 @@ class ReaderGestureLayout @JvmOverloads constructor(
                     if (dx > touchSlop || dy > touchSlop) {
                         gestureDecided = true
                         isHorizontalGesture = dx > dy * directionBias
+                        isStrongHorizontal = dx > dy * strongHorizontalBias
                         if (!isHorizontalGesture) {
                             preventViewPagerIntercept()
                         }
@@ -148,7 +177,7 @@ class ReaderGestureLayout @JvmOverloads constructor(
     }
 
     override fun onTouchEvent(ev: MotionEvent): Boolean {
-        if (!swipeEnabled) return false
+        if (!swipeEnabled || selectionActive) return false
 
         when (ev.actionMasked) {
             MotionEvent.ACTION_MOVE -> {
@@ -174,20 +203,26 @@ class ReaderGestureLayout @JvmOverloads constructor(
                 val distance = abs(dx)
                 val velocity = distance / (elapsed.coerceAtLeast(1)).toFloat() * 1000f
 
-                val isFastSwipe = velocity > 600f
+                val isFastSwipe = velocity > 450f
                 val isFarEnough = distance > minSwipeDistance
                 val wantsSwipe = isHorizontalGesture && (isFastSwipe || isFarEnough)
 
                 if (wantsSwipe) {
-                    if (dx > 0 && canSwipeToNext()) {
-                        onPageChangeRequested?.invoke(1)
-                    } else if (dx < 0 && canSwipeToPrevious()) {
-                        onPageChangeRequested?.invoke(-1)
+                    val goNext = dx > 0
+                    // السحبة الأفقية الواضحة تقلب الصفحة حتى لو لم نكن في حافة
+                    // التمرير (الأخرى عالقة في شروط أعلى/أسفل الصفحة).
+                    val allowed = isStrongHorizontal ||
+                        (if (goNext) canSwipeToNext() else canSwipeToPrevious())
+                    if (allowed) {
+                        onPageChangeRequested?.invoke(if (goNext) 1 else -1)
+                    } else {
+                        showBounce(dx)
                     }
                 }
 
                 gestureDecided = false
                 isHorizontalGesture = false
+                isStrongHorizontal = false
             }
         }
         return true

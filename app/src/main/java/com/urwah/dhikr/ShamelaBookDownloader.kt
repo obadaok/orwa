@@ -112,6 +112,8 @@ object ShamelaBookDownloader {
 
             val totalSize = conn.contentLength.toLong()
             var downloadedSize = 0L
+            var lastReportedProgress = -1f
+            var lastReportedAt = 0L
 
             conn.inputStream.use { input ->
                 outputFile.outputStream().use { output ->
@@ -121,7 +123,17 @@ object ShamelaBookDownloader {
                         output.write(buffer, 0, bytesRead)
                         downloadedSize += bytesRead
                         if (totalSize > 0) {
-                            onProgress(downloadedSize.toFloat() / totalSize)
+                            val progress = downloadedSize.toFloat() / totalSize
+                            val now = System.currentTimeMillis()
+                            // تحديث الـ UI بتردد محدود (≈120ms أو فرق ≥1%) حتى لا
+                            // يغرق السطر بإشعارات إعادة ربط أثناء التمرير.
+                            if (progress - lastReportedProgress >= 0.01f ||
+                                (now - lastReportedAt >= 120 && progress != lastReportedProgress)
+                            ) {
+                                lastReportedProgress = progress
+                                lastReportedAt = now
+                                onProgress(progress)
+                            }
                         }
                     }
                 }

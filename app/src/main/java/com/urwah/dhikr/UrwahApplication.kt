@@ -10,6 +10,9 @@ class UrwahApplication : Application() {
         super.onCreate()
         applyNightMode()
         ReadingTimeTracker.registerLifecycleCallbacks(this)
+        // تدفئة فهرس المكتبة (8589 كتابًا) في الخلفية فور الإقلاع حتى لا يُحلَّل
+        // على الـ main thread عند أول دخول إلى «المكتبة».
+        ShamelaCatalogReader.warmCache(this)
     }
 
     private fun applyNightMode() {

@@ -18,6 +18,7 @@ import android.util.TypedValue
 import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
+import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
 
@@ -113,22 +114,36 @@ object ImageExporter {
         root.addView(divider)
 
         val metaText = buildString {
-            append(config.bookTitle)
-            if (config.author.isNotBlank()) append("\n${config.author}")
-            if (config.edition.isNotBlank()) append("\n${config.edition}")
+            val parts = mutableListOf<String>()
+            if (config.bookTitle.isNotBlank()) parts += config.bookTitle
+            if (config.author.isNotBlank()) parts += config.author
+            if (config.edition.isNotBlank()) parts += config.edition
+            parts += "عبر تطبيق عروة"
+            append(parts.joinToString(" · "))
         }
+        val footer = LinearLayout(context).apply {
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply {
+                topMargin = dp(12f)
+            }
+            orientation = LinearLayout.HORIZONTAL
+            layoutDirection = View.LAYOUT_DIRECTION_RTL
+            gravity = Gravity.CENTER_VERTICAL
+        }
+        footer.addView(ImageView(context).apply {
+            layoutParams = LinearLayout.LayoutParams(dp(22f), dp(22f))
+            setImageResource(R.drawable.ic_splash_logo)
+            scaleType = ImageView.ScaleType.FIT_CENTER
+            alpha = 0.85f
+        })
         val tvMeta = createMetaTextView(context, metaText, contentWidthPx, bg.metaColor, config.typeface, dp, config.fontSizeSp)
-        tvMeta.layoutParams = (tvMeta.layoutParams as LinearLayout.LayoutParams).apply {
-            topMargin = dp(12f)
+        tvMeta.layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f).apply {
+            rightMargin = dp(6f)
         }
-        root.addView(tvMeta)
-
-        val tvWatermark = createMetaTextView(context, "عبر تطبيق عروة", contentWidthPx, bg.metaColor, config.typeface, dp, config.fontSizeSp)
-        tvWatermark.alpha = 0.6f
-        tvWatermark.layoutParams = (tvWatermark.layoutParams as LinearLayout.LayoutParams).apply {
-            topMargin = dp(12f)
-        }
-        root.addView(tvWatermark)
+        footer.addView(tvMeta)
+        root.addView(footer)
 
         return root
     }

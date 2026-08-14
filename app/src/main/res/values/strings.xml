@@ -49,4 +49,7 @@
     <string name="oc_hadith_title">حديث اليوم</string>
     <string name="oc_scholars_title">مأثورات العلماء</string>
     <string name="oc_read_more">عرض كامل</string>
+    <string name="oc_today">اليوم</string>
+    <string name="oc_prev_month">الشهر السابق</string>
+    <string name="oc_next_month">الشهر التالي</string>
 </resources>

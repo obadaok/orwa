@@ -3,6 +3,8 @@ package com.urwah.dhikr.fragments
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.text.Editable
 import android.text.TextWatcher
 import android.view.LayoutInflater
@@ -53,6 +55,12 @@ class LibraryFragment : Fragment(), com.urwah.dhikr.CircularMenuProvider {
 
     private var currentMode = MODE_CATEGORIES
     private var isSearchOpen = false
+
+    // Debounce + توليد رقم لكل عملية بحث: تُطبَّق نتيجة أحدث استعلام فقط ولا
+    // تصل نتيجة قديمة بعد جديدة (منع عرض نتائج خاطئة أثناء الكتابة السريعة).
+    private val searchHandler = Handler(Looper.getMainLooper())
+    private var searchVersion = 0
+    private val searchDebounce = Runnable { runSearch() }
 
     companion object {
         const val MODE_CATEGORIES = 0
@@ -163,9 +171,11 @@ class LibraryFragment : Fragment(), com.urwah.dhikr.CircularMenuProvider {
             override fun afterTextChanged(s: Editable?) {
                 val query = s?.toString() ?: ""
                 ivClearSearch.visibility = if (query.isNotEmpty()) View.VISIBLE else View.GONE
+                searchHandler.removeCallbacks(searchDebounce)
                 if (query.length >= 1) {
-                    performSearch(query)
+                    searchHandler.postDelayed(searchDebounce, 180L)
                 } else {
+                    searchVersion++
                     clearSearchResults()
                 }
             }
@@ -190,7 +200,7 @@ class LibraryFragment : Fragment(), com.urwah.dhikr.CircularMenuProvider {
         showKeyboard()
         val query = etSearch.text?.toString() ?: ""
         if (query.length >= 1) {
-            performSearch(query)
+            runSearch()
         } else {
             rvCategories.visibility = View.GONE
             rvSearchResults.visibility = View.VISIBLE
@@ -201,6 +211,8 @@ class LibraryFragment : Fragment(), com.urwah.dhikr.CircularMenuProvider {
 
     private fun closeSearch() {
         isSearchOpen = false
+        searchHandler.removeCallbacks(searchDebounce)
+        searchVersion++
         searchBar.visibility = View.GONE
         rvSearchResults.visibility = View.GONE
         emptySearchView.visibility = View.GONE
@@ -209,11 +221,19 @@ class LibraryFragment : Fragment(), com.urwah.dhikr.CircularMenuProvider {
         showCurrentMode()
     }
 
-    private fun performSearch(query: String) {
+    private fun runSearch() {
+        val query = etSearch.text?.toString() ?: ""
+        if (query.length < 1) {
+            searchVersion++
+            clearSearchResults()
+            return
+        }
+        val version = ++searchVersion
         when (currentMode) {
             MODE_AUTHORS -> {
                 val authors = ShamelaCatalogReader.getAllAuthors(requireContext())
                     .filter { it.name.contains(query, ignoreCase = true) }
+                if (version != searchVersion) return // نتيجة قديمة بعد أحدث استعلام
                 if (authors.isNotEmpty()) {
                     authorAdapter.updateAuthors(authors)
                     rvCategories.adapter = authorAdapter
@@ -228,6 +248,7 @@ class LibraryFragment : Fragment(), com.urwah.dhikr.CircularMenuProvider {
             }
             else -> {
                 val results = ShamelaCatalogReader.searchBooks(requireContext(), query)
+                if (version != searchVersion) return
                 searchAdapter.updateBooks(results)
                 if (results.isEmpty()) {
                     emptySearchView.visibility = View.VISIBLE
@@ -342,7 +363,7 @@ class LibraryFragment : Fragment(), com.urwah.dhikr.CircularMenuProvider {
         if (isSearchOpen) {
             val query = etSearch.text?.toString() ?: ""
             if (query.length >= 1) {
-                performSearch(query)
+                runSearch()
             }
             return
         }

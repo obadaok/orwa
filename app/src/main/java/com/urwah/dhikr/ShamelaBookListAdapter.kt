@@ -12,6 +12,8 @@ import com.google.android.material.progressindicator.LinearProgressIndicator
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import java.util.concurrent.ExecutorService
+import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 
 class ShamelaBookListAdapter(
@@ -24,6 +26,11 @@ class ShamelaBookListAdapter(
 ) : RecyclerView.Adapter<ShamelaBookListAdapter.ViewHolder>() {
 
     private val downloadStates = mutableMapOf<Int, DownloadState>()
+
+    // قراءة إحصائيات الكتب المحفوظة خارج الـ main thread حتى لا يتأخر التمرير
+    // بقراءة ملفات صفحات كبيرة داخل onBindViewHolder.
+    private val statsExecutor: ExecutorService =
+        Executors.newFixedThreadPool(2) { r -> Thread(r, "book-stats").apply { priority = Thread.NORM_PRIORITY } }
 
     fun updateDownloadState(bookId: Int, state: DownloadState) {
         downloadStates[bookId] = state
@@ -81,11 +88,11 @@ class ShamelaBookListAdapter(
             holder.type.visibility = View.GONE
         }
 
-        bindStats(holder, context, book)
-        bindReadingProgress(holder, context, book)
+        bindDownloadedStats(holder, context, book)
 
         when {
             state?.status == DownloadStatus.DOWNLOADING -> {
+                holder.btnAction.visibility = View.VISIBLE
                 holder.btnAction.text = "إلغاء"
                 holder.btnAction.setIconResource(R.drawable.ic_close_circle)
                 holder.btnAction.isEnabled = true
@@ -98,14 +105,14 @@ class ShamelaBookListAdapter(
                 holder.btnAction.setOnClickListener { onCancelClick(book) }
             }
             state?.status == DownloadStatus.DOWNLOADED || ShamelaBookStorage.isBookDownloaded(context, book.id) -> {
-                holder.btnAction.text = "فتح"
-                holder.btnAction.setIconResource(R.drawable.ic_open_book)
-                holder.btnAction.isEnabled = true
+                // البطاقة نفسها قابلة للضغط وتدخل الكتاب، فلا حاجة لزر «فتح» إضافي.
+                holder.btnAction.visibility = View.GONE
                 holder.btnReadOnline.visibility = View.GONE
                 holder.downloadProgressRow.visibility = View.GONE
-                holder.btnAction.setOnClickListener { onBookClick(book) }
+                holder.readingProgressRow.visibility = View.GONE
             }
             state?.status == DownloadStatus.FAILED -> {
+                holder.btnAction.visibility = View.VISIBLE
                 holder.btnAction.text = "إعادة المحاولة"
                 holder.btnAction.setIconResource(R.drawable.ic_download)
                 holder.btnAction.isEnabled = true
@@ -116,6 +123,7 @@ class ShamelaBookListAdapter(
                 holder.btnAction.setOnClickListener { onDownloadClick(book) }
             }
             else -> {
+                holder.btnAction.visibility = View.VISIBLE
                 holder.btnAction.text = "تحميل"
                 holder.btnAction.setIconResource(R.drawable.ic_download)
                 holder.btnAction.isEnabled = true
@@ -140,23 +148,46 @@ class ShamelaBookListAdapter(
         }
     }
 
-    private fun bindStats(holder: ViewHolder, context: android.content.Context, book: ShamelaBook) {
+    /**
+     * يعرض «صفحات / آخر قراءة / تقدم القراءة» للكتاب المحفوظ. القراءة تُنفَّذ
+     * خارج الـ main thread (قراءة ملف مرة واحدة) وتُطبَّق فقط إذا لم يُعاد
+     * استخدام الـ ViewHolder لعنصر آخر في أثناء انتظار النتيجة.
+     */
+    private fun bindDownloadedStats(holder: ViewHolder, context: android.content.Context, book: ShamelaBook) {
         val isDownloaded = ShamelaBookStorage.isBookDownloaded(context, book.id)
         if (!isDownloaded) {
             holder.statsRow.visibility = View.GONE
+            holder.readingProgressRow.visibility = View.GONE
             return
         }
-
         holder.statsRow.visibility = View.VISIBLE
-        val pageCount = ShamelaBookStorage.getPageCount(context, book.id)
-        if (pageCount > 0) {
-            holder.tvPageCount.text = "$pageCount صفحة"
+        holder.tvPageCount.visibility = View.GONE
+        holder.readingProgressRow.visibility = View.GONE
+        val bindPos = holder.adapterPosition
+
+        statsExecutor.execute {
+            val stats = ShamelaBookStorage.getBookListStats(context, book.id)
+            holder.itemView.post {
+                // الـ holder يُعاد استخدامه: لا نطبّق النتيجة على عنصر مختلف.
+                if (holder.adapterPosition != bindPos || bindPos == RecyclerView.NO_POSITION) return@post
+                applyStats(holder, context, stats)
+            }
+        }
+    }
+
+    private fun applyStats(
+        holder: ViewHolder,
+        context: android.content.Context,
+        stats: ShamelaBookStorage.BookListStats
+    ) {
+        if (stats.pageCount > 0) {
+            holder.tvPageCount.text = "${stats.pageCount} صفحة"
             holder.tvPageCount.visibility = View.VISIBLE
         } else {
             holder.tvPageCount.visibility = View.GONE
         }
 
-        val lastReadTime = ShamelaBookStorage.getLastReadTime(context, book.id)
+        val lastReadTime = stats.lastReadTime
         if (lastReadTime > 0L) {
             val elapsed = formatElapsedTime(context, lastReadTime)
             holder.tvLastRead.text = "آخر قراءة: $elapsed"
@@ -168,23 +199,13 @@ class ShamelaBookListAdapter(
             holder.ivTimeIcon.visibility = View.GONE
             holder.tvStatsSeparator.visibility = View.GONE
         }
-    }
 
-    private fun bindReadingProgress(holder: ViewHolder, context: android.content.Context, book: ShamelaBook) {
-        val isDownloaded = ShamelaBookStorage.isBookDownloaded(context, book.id)
-        if (!isDownloaded) {
-            holder.readingProgressRow.visibility = View.GONE
-            return
-        }
-
-        val pageCount = ShamelaBookStorage.getPageCount(context, book.id)
-        val lastPage = ShamelaBookStorage.getLastReadPage(context, book.id)
-
-        if (pageCount > 0 && lastPage > 0) {
+        val lastPage = stats.lastPage
+        if (stats.pageCount > 0 && lastPage > 0) {
             holder.readingProgressRow.visibility = View.VISIBLE
-            val progress = ((lastPage.toFloat() / pageCount) * 100).toInt().coerceIn(0, 100)
+            val progress = ((lastPage.toFloat() / stats.pageCount) * 100).toInt().coerceIn(0, 100)
             holder.tvReadingProgress.text = "قرأت $progress%"
-            holder.tvProgressPage.text = "صفحة $lastPage من $pageCount"
+            holder.tvProgressPage.text = "صفحة $lastPage من ${stats.pageCount}"
             holder.progressReading.progress = progress
         } else {
             holder.readingProgressRow.visibility = View.GONE

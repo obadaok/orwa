@@ -14,16 +14,23 @@ import android.os.Looper
 import android.os.SystemClock
 import android.text.Editable
 import android.text.Layout
+import android.text.SpannableStringBuilder
+import android.text.Spanned
 import android.text.TextPaint
 import android.text.TextWatcher
+import android.text.style.BackgroundColorSpan
 import android.util.TypedValue
 import android.view.LayoutInflater
+import android.view.MotionEvent
 import android.view.View
+import android.view.ViewConfiguration
 import android.view.ViewTreeObserver
 import android.view.inputmethod.InputMethodManager
 import android.widget.EditText
 import android.widget.FrameLayout
 import android.widget.ImageView
+import android.widget.LinearLayout
+import android.widget.ProgressBar
 import android.widget.SeekBar
 import android.widget.TextView
 import android.widget.Toast
@@ -34,9 +41,15 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import androidx.viewpager2.widget.ViewPager2
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlin.coroutines.coroutineContext
+import kotlin.math.abs
 import kotlin.math.ceil
+import org.json.JSONArray
+import org.json.JSONObject
 
 private object PageChromeMetrics {
     const val CARD_MARGIN_HORIZONTAL_DP = 10f
@@ -108,6 +121,20 @@ class ShamelaBookReaderActivity : AppCompatActivity() {
     private var searchResults = mutableListOf<ReaderSearchAdapter.SearchResult>()
     private var currentSearchIndex = -1
 
+    // إلغاء وإصدارة لأي بحث قديم: تصل نتيجة أحدث استعلام فقط، ولا تُطبَّق
+    // نتيجة قديمة بعد كتابة أحدث (منع قفزات الصفحات الخاطئة).
+    private var searchJob: Job? = null
+    private var searchGeneration = 0
+
+    // إلغاء إعادة الترقيم السابقة إذا بدأت أخرى أثناء تنفيذها.
+    private var repaginateJob: Job? = null
+
+    /** نص مطبَّع (بلا تشكيل) مع خريطة موضع: normalized[i] -> original index. */
+    private data class NormalizedSearchText(
+        val text: String,
+        val offsetMap: IntArray
+    )
+
     // Single source of truth for current position — updated IMMEDIATELY on any navigation,
     // never stale. repaginate() uses this instead of viewPager.currentItem.
     private var lastIntendedPage: Int = 0
@@ -152,7 +179,6 @@ class ShamelaBookReaderActivity : AppCompatActivity() {
 
         viewPager.setPageTransformer(BookPageTransformer())
         viewPager.offscreenPageLimit = 3
-        viewPager.isUserInputEnabled = false
 
         gestureLayout.setup { direction ->
             val current = lastIntendedPage
@@ -161,6 +187,9 @@ class ShamelaBookReaderActivity : AppCompatActivity() {
                 navigateToPage(target)
             }
         }
+        // التقليب أصبح أصليًا عبر ViewPager2 (ناعم ومستجيب دائمًا)؛
+        // هذه الطبقة اليدوية معطّلة نهائيًا حتى لا تعترض اللمس.
+        gestureLayout.setSwipeEnabled(false)
 
         viewPager.registerOnPageChangeCallback(object : ViewPager2.OnPageChangeCallback() {
             override fun onPageSelected(position: Int) {
@@ -197,6 +226,7 @@ class ShamelaBookReaderActivity : AppCompatActivity() {
         ShamelaBookmarkManager.migrateFromOldStorage(this)
         setupOverlayManager()
         setupBackHandling()
+        setupRetryButton()
         loadSettings()
         loadBookContent()
         setupToolbar()
@@ -273,8 +303,8 @@ class ShamelaBookReaderActivity : AppCompatActivity() {
             circularMenu.visibility = View.GONE
         }
 
-        overlayManager.onOverlayActiveChanged = { isActive ->
-            gestureLayout.setSwipeEnabled(!isActive)
+        overlayManager.onOverlayActiveChanged = { _ ->
+            gestureLayout.setSwipeEnabled(false)
         }
     }
 
@@ -396,12 +426,29 @@ class ShamelaBookReaderActivity : AppCompatActivity() {
     }
 
     private fun openQuoteEditor() {
-        val page = displayPages.getOrNull(lastIntendedPage) ?: return
+        if (displayPages.isEmpty()) return
+        val cur = lastIntendedPage.coerceIn(0, displayPages.lastIndex)
         val content = bookContent ?: return
         val meta = content.metadata
+
+        val winStart = (cur - PAGE_CONTEXT_HALF).coerceAtLeast(0)
+        val winEnd = (cur + PAGE_CONTEXT_HALF).coerceAtMost(displayPages.lastIndex)
+        val window = displayPages.subList(winStart, winEnd + 1)
+
+        // نص متصل للنوافذ المجاورة: يعطي المحرر سياقًا للاختيار عبر الصفحات،
+        // مع علامات فاصلة «≪ صفحة N ≫» تُفهم من المحرر وتُحذف عند التصدير.
+        val sb = StringBuilder()
+        window.forEachIndexed { i, p ->
+            val pn = p.originalPageNum ?: (winStart + i + 1)
+            sb.append("≪ صفحة $pn ≫\n")
+            sb.append(p.text)
+            sb.append("\n")
+        }
+
         val intent = Intent(this, QuoteEditorActivity::class.java).apply {
-            putExtra("PAGE_TEXT", page.text)
-            putExtra("PAGE_NUMBER", page.originalPageNum ?: (lastIntendedPage + 1))
+            putExtra("PAGE_TEXT", displayPages[cur].text)
+            putExtra("WINDOW_TEXT", sb.toString())
+            putExtra("PAGE_NUMBER", displayPages[cur].originalPageNum ?: (cur + 1))
             putExtra("BOOK_TITLE", bookTitle)
             putExtra("AUTHOR", meta.displayAuthor)
             putExtra("EDITION", "")
@@ -791,6 +838,8 @@ class ShamelaBookReaderActivity : AppCompatActivity() {
         val tvCount = view.findViewById<TextView>(R.id.tvSearchResultCount)
         val rvResults = view.findViewById<RecyclerView>(R.id.rvSearchResults)
         val tvNoResults = view.findViewById<TextView>(R.id.tvNoResults)
+        val stateArea = view.findViewById<View>(R.id.searchStateArea)
+        val progress = view.findViewById<ProgressBar>(R.id.searchProgress)
 
         searchAdapter = ReaderSearchAdapter(emptyList()) { pageIndex ->
             navigateToPage(pageIndex)
@@ -802,6 +851,11 @@ class ShamelaBookReaderActivity : AppCompatActivity() {
 
         searchResults.clear()
         currentSearchIndex = -1
+        searchJob?.cancel()
+        searchGeneration++
+        navRow.visibility = View.GONE
+        rvResults.visibility = View.GONE
+        showSearchState(stateArea, progress, tvNoResults, message = "ابدأ الكتابة للبحث...", loading = false)
 
         etSearch.requestFocus()
         etSearch.postDelayed({
@@ -816,7 +870,9 @@ class ShamelaBookReaderActivity : AppCompatActivity() {
                 val query = s?.toString() ?: ""
                 ivClear.visibility = if (query.isNotEmpty()) View.VISIBLE else View.GONE
                 searchDebounceRunnable?.let { searchDebounceHandler?.removeCallbacks(it) }
-                searchDebounceRunnable = Runnable { performReaderSearch(query, rvResults, navRow, tvCount, tvNoResults) }
+                searchDebounceRunnable = Runnable {
+                    performReaderSearch(query, rvResults, navRow, tvCount, tvNoResults, stateArea, progress)
+                }
                 searchDebounceHandler?.postDelayed(searchDebounceRunnable!!, 250L)
             }
         })
@@ -847,7 +903,7 @@ class ShamelaBookReaderActivity : AppCompatActivity() {
             scrollToSearchMatch(result.pageIndex, etSearch.text.toString())
         }
 
-        view.findViewById<TextView>(R.id.btnCloseSearch).setOnClickListener {
+        view.findViewById<View>(R.id.btnCloseSearch).setOnClickListener {
             closeSearchPanel()
         }
 
@@ -866,52 +922,104 @@ class ShamelaBookReaderActivity : AppCompatActivity() {
         overlayManager.closeCurrent()
     }
 
+    /**
+     * يعرض منطقة الحالة (تحميل/رسالة) في لوحة البحث.
+     * أثناء LOADING يُعرض مؤشر واضح ولا تظهر «لا توجد نتائج».
+     */
+    private fun showSearchState(
+        stateArea: View,
+        progress: View,
+        tvNoResults: TextView,
+        message: String? = null,
+        loading: Boolean = false
+    ) {
+        stateArea.visibility = View.VISIBLE
+        if (loading) {
+            progress.visibility = View.VISIBLE
+            tvNoResults.visibility = View.GONE
+        } else {
+            progress.visibility = View.GONE
+            tvNoResults.visibility = View.VISIBLE
+            tvNoResults.text = message ?: ""
+        }
+    }
+
+    private fun hideSearchState(stateArea: View, progress: View, tvNoResults: TextView) {
+        stateArea.visibility = View.GONE
+        progress.visibility = View.GONE
+        tvNoResults.visibility = View.GONE
+    }
+
     private fun performReaderSearch(
         query: String,
         rvResults: RecyclerView,
         navRow: View,
         tvCount: TextView,
-        tvNoResults: TextView
+        tvNoResults: TextView,
+        stateArea: View,
+        progress: View
     ) {
+        searchJob?.cancel()
+        val generation = ++searchGeneration
+
         if (query.isBlank() || displayPages.isEmpty()) {
             searchResults.clear()
             searchAdapter.updateResults(emptyList())
             navRow.visibility = View.GONE
-            tvNoResults.visibility = View.VISIBLE
-            tvNoResults.text = "ابدأ الكتابة للبحث..."
+            rvResults.visibility = View.GONE
+            showSearchState(stateArea, progress, tvNoResults, message = "ابدأ الكتابة للبحث...")
             return
         }
 
-        val normalizedQuery = stripDiacritics(query.trim())
-        if (normalizedQuery.length < 3) {
+        val normalizedQuery = normalizeSearchQuery(query.trim())
+        // البحث عن أرقام الأحاديث قصير جدًا (12/25/40/101) فلا يُمنع بالحد النصي؛
+        // أما الاستعلام النصي العادي فيبقى مطبقًا عليه حد الثلاثة أحرف.
+        val isNumericQuery = normalizedQuery.isNotEmpty() && normalizedQuery.all { it.isDigit() }
+        if (!isNumericQuery && normalizedQuery.length < 3) {
             searchResults.clear()
             searchAdapter.updateResults(emptyList())
             navRow.visibility = View.GONE
-            tvNoResults.visibility = View.VISIBLE
-            tvNoResults.text = "اكتب ثلاثة أحرف على الأقل لبدء البحث"
+            rvResults.visibility = View.GONE
+            showSearchState(stateArea, progress, tvNoResults, message = "اكتب ثلاثة أحرف على الأقل لبدء البحث")
             return
         }
 
-        lifecycleScope.launch {
+        // LOADING: مؤشر واضح أثناء المسح، ولا «لا توجد نتائج» قبل اكتماله.
+        rvResults.visibility = View.GONE
+        navRow.visibility = View.GONE
+        showSearchState(stateArea, progress, tvNoResults, loading = true)
+
+        searchJob = lifecycleScope.launch {
             val results = withContext(Dispatchers.Default) {
                 val found = mutableListOf<ReaderSearchAdapter.SearchResult>()
                 for ((index, page) in displayPages.withIndex()) {
-                    val normalizedPage = stripDiacritics(page.text)
+                    coroutineContext.ensureActive()
+                    val normalized = buildNormalizedSearchText(page.text)
                     var searchFrom = 0
                     while (true) {
-                        val matchIdx = normalizedPage.indexOf(normalizedQuery, searchFrom, ignoreCase = true)
+                        val matchIdx = normalized.text.indexOf(normalizedQuery, searchFrom, ignoreCase = true)
                         if (matchIdx < 0) break
 
-                        val snippetStart = (matchIdx - 40).coerceAtLeast(0)
-                        val snippetEnd = (matchIdx + normalizedQuery.length + 40).coerceAtMost(page.text.length)
+                        // المطابقة تُمثَّل على النص المطبَّع لكن المواضع تُعاد إلى
+                        // النص الأصلي عبر خريطة المواضع — فيُبنى المعاينة حول
+                        // MATCH_START..MATCH_END الحقيقي ويقع الـ highlight على
+                        // الكلمة التي بحث عنها المستخدم فعلاً (إصلاح P0).
+                        val origStart = normalized.offsetMap[matchIdx]
+                        val origEnd = normalized.offsetMap[matchIdx + normalizedQuery.length - 1] + 1
+
+                        val snippetStart = (origStart - 40).coerceAtLeast(0)
+                        val snippetEnd = (origEnd + 40).coerceAtMost(page.text.length)
                         var snippet = page.text.substring(snippetStart, snippetEnd)
-                        if (snippetStart > 0) snippet = "…$snippet"
+                        var prefixOffset = 0
+                        if (snippetStart > 0) {
+                            snippet = "…$snippet"
+                            prefixOffset = 1
+                        }
                         if (snippetEnd < page.text.length) snippet = "$snippet…"
 
-                        val localMatchStart = matchIdx - snippetStart + if (snippetStart > 0) 1 else 0
-                        val localMatchEnd = localMatchStart + normalizedQuery.length
-
-                    val origNum = page.originalPageNum ?: (index + 1)
+                        val localMatchStart = origStart - snippetStart + prefixOffset
+                        val localMatchEnd = origEnd - snippetStart + prefixOffset
+                        val origNum = page.originalPageNum ?: (index + 1)
 
                         found.add(
                             ReaderSearchAdapter.SearchResult(
@@ -927,6 +1035,7 @@ class ShamelaBookReaderActivity : AppCompatActivity() {
                 }
                 found
             }
+            if (generation != searchGeneration) return@launch // نتيجة قديمة بعد أحدث استعلام
 
             searchResults.clear()
             searchResults.addAll(results)
@@ -935,16 +1044,17 @@ class ShamelaBookReaderActivity : AppCompatActivity() {
 
             if (results.isEmpty()) {
                 navRow.visibility = View.GONE
-                tvNoResults.visibility = View.VISIBLE
-                tvNoResults.text = "لا توجد نتائج"
+                rvResults.visibility = View.GONE
+                showSearchState(stateArea, progress, tvNoResults, message = "لا توجد نتائج")
             } else {
                 navRow.visibility = View.VISIBLE
-                tvNoResults.visibility = View.GONE
+                rvResults.visibility = View.VISIBLE
+                hideSearchState(stateArea, progress, tvNoResults)
                 currentSearchIndex = 0
                 searchAdapter.setActivePosition(0)
                 tvCount.text = "1 / ${results.size}"
-                val firstResult = results[0]
-                navigateToPage(firstResult.pageIndex)
+                // لا نقلب الصفحات تلقائيًا أثناء الكتابة؛ ينتقل المستخدم عند
+                // الضغط على نتيجة أو عبر التالي/السابق.
             }
         }
     }
@@ -968,20 +1078,69 @@ class ShamelaBookReaderActivity : AppCompatActivity() {
         val tv = vh.tvContent
         val layout = tv.layout ?: return
         val fullText = tv.text.toString()
-        val normalizedQuery = stripDiacritics(query)
-        val normalizedText = stripDiacritics(fullText)
-        val matchIdx = normalizedText.indexOf(normalizedQuery, ignoreCase = true)
+        val normalizedQuery = normalizeSearchQuery(query)
+        val normalized = buildNormalizedSearchText(fullText)
+        val matchIdx = normalized.text.indexOf(normalizedQuery, ignoreCase = true)
         if (matchIdx < 0) return
+        val origOffset = normalized.offsetMap[matchIdx]
 
-        val line = layout.getLineForOffset(matchIdx)
+        val line = layout.getLineForOffset(origOffset)
         val y = layout.getLineTop(line)
         vh.scrollView.smoothScrollTo(0, y)
         pendingSearchQuery = null
         pendingSearchMatchPage = -1
     }
 
+    /** يزيل التشكيل من استعلام البحث (لا يشترط الخريطة — الاستعلام مُدخل مستخدم). */
     private fun stripDiacritics(text: String): String {
         return text.replace(Regex("[\u064B-\u065F\u0670\u06D6-\u06ED]"), "")
+    }
+
+    /** يطبع استعلام البحث: بلا تشكيل، همزات موحّدة (آ/أ/إ/ٱ→ا، ؤ→و، ئ→ي، ى→ي، ة→ه)،
+     *  وأرقام عربية-هندية/فارسية موحّدة إلى أرقام ASCII ليُطابق «12» نص «١٢». */
+    private fun normalizeSearchQuery(text: String): String {
+        val sb = StringBuilder(text.length)
+        for (c in text) {
+            val code = c.code
+            sb.append(when {
+                code in 0x064B..0x065F || code == 0x0670 || code in 0x06D6..0x06ED -> ""
+                c == '\u0622' || c == '\u0623' || c == '\u0625' || c == '\u0671' || c == '\u0621' -> '\u0627'
+                c == '\u0624' -> '\u0648'
+                c == '\u0626' -> '\u064A'
+                c == '\u0649' -> '\u064A'
+                c == '\u0629' -> '\u0647'
+                code in 0x0660..0x0669 -> ('0'.code + code - 0x0660).toChar()
+                code in 0x06F0..0x06F9 -> ('0'.code + code - 0x06F0).toChar()
+                else -> c
+            })
+        }
+        return sb.toString()
+    }
+
+    /**
+     * نبني النص المطبَّع للصفحة مع خريطة مواضع (normalized index -> original
+     * index) حتى تُحسب المعاينة والـ highlight على النص الأصلي مباشرة.
+     */
+    private fun buildNormalizedSearchText(text: String): NormalizedSearchText {
+        val sb = StringBuilder(text.length)
+        val map = IntArray(text.length)
+        var originalIdx = 0
+        for (c in text) {
+            val code = c.code
+            val keep = !(code in 0x064B..0x065F || code == 0x0670 ||
+                code in 0x06D6..0x06ED || code in 0x08F0..0x08FF)
+            if (keep) {
+                map[sb.length] = originalIdx
+                val mapped = when {
+                    code in 0x0660..0x0669 -> ('0'.code + code - 0x0660).toChar()
+                    code in 0x06F0..0x06F9 -> ('0'.code + code - 0x06F0).toChar()
+                    else -> c
+                }
+                sb.append(mapped)
+            }
+            originalIdx++
+        }
+        return NormalizedSearchText(sb.toString(), IntArray(sb.length) { map[it] })
     }
 
     // ------------------------------------------------------------------
@@ -998,29 +1157,52 @@ class ShamelaBookReaderActivity : AppCompatActivity() {
     private fun loadBookContent() {
         loadingView.visibility = View.VISIBLE
         viewPager.visibility = View.GONE
+        findViewById<View>(R.id.errorState)?.visibility = View.GONE
 
         lifecycleScope.launch {
-            bookContent = withContext(Dispatchers.IO) {
-                ShamelaBookStorage.loadBookContent(this@ShamelaBookReaderActivity, bookId)
+            val content = try {
+                withContext(Dispatchers.IO) {
+                    ShamelaBookStorage.loadBookContent(this@ShamelaBookReaderActivity, bookId)
+                }
+            } catch (e: Exception) {
+                showLoadError("تعذّر قراءة بيانات الكتاب", e.message)
+                return@launch
             }
 
-            if (bookContent == null) {
+            if (content == null) {
                 if (onlineMode && onlineHfPath.isNotBlank()) {
                     loadBookContentOnline()
                     return@launch
                 }
-                Toast.makeText(this@ShamelaBookReaderActivity, "الكتاب غير محمّل", Toast.LENGTH_SHORT).show()
-                finish()
+                showLoadError(
+                    "الكتاب غير محمّل على هذا الجهاز",
+                    "حمّله من المكتبة أولاً ثم أعد المحاولة"
+                )
                 return@launch
             }
-
+            bookContent = content
             ShamelaBookStorage.saveLastReadTime(this@ShamelaBookReaderActivity, bookId)
 
-            fullText = bookContent!!.pages.joinToString("\n\n") { stripHtml(it.body) }
-            val pages = withContext(Dispatchers.Default) { paginateBook() }
+            // كل المعالجة الثقيلة (نزع وسوم HTML + تجميع النص الكامل + الترقيم)
+            // خارج الـ main thread — كان تجميع النص يجري على واجهة المستخدم
+            // ويُجمّد التطبيق قبل فتح الكتاب الضخم.
+            val pages = try {
+                withContext(Dispatchers.Default) {
+                    fullText = content.pages.joinToString("\n\n") { stripHtml(it.body) }
+                    paginateBook()
+                }
+            } catch (e: Exception) {
+                showLoadError("تعذّر تجهيز صفحات الكتاب", e.message)
+                return@launch
+            }
             displayPages = pages
 
-            buildAdapterAndBind()
+            try {
+                buildAdapterAndBind()
+            } catch (e: Exception) {
+                showLoadError("تعذّر عرض صفحات الكتاب", e.message)
+                return@launch
+            }
 
             val startFromBeginning = intent.getBooleanExtra("START_FROM_BEGINNING", false)
             val targetPage = if (startFromBeginning) 0 else restoreReadingPosition()
@@ -1035,6 +1217,27 @@ class ShamelaBookReaderActivity : AppCompatActivity() {
             viewPager.visibility = View.VISIBLE
 
             setupToc()
+        }
+    }
+
+    /**
+     * خطأ محلي في صفحة القراءة (لا يخرج المستخدم من الكتاب): يعرض رسالة
+     * مع زر «إعادة المحاولة» مع بقاء بيانات الكتاب الحالية كما هي.
+     */
+    private fun showLoadError(title: String, detail: String?) {
+        if (!isFinishing && !isDestroyed) {
+            loadingView.visibility = View.GONE
+            viewPager.visibility = View.GONE
+            findViewById<View>(R.id.errorState)?.visibility = View.VISIBLE
+            findViewById<TextView>(R.id.tvErrorMessage)?.text = title
+            findViewById<TextView>(R.id.tvErrorDetail)?.text = detail ?: ""
+        }
+    }
+
+    private fun setupRetryButton() {
+        findViewById<View>(R.id.btnRetryLoad)?.setOnClickListener {
+            findViewById<View>(R.id.errorState)?.visibility = View.GONE
+            loadBookContent()
         }
     }
 
@@ -1164,7 +1367,8 @@ class ShamelaBookReaderActivity : AppCompatActivity() {
                         performPendingSearchScroll()
                     }
                 }
-            }
+            },
+            pageLayoutRes = R.layout.item_book_page_tf
         )
         viewPager.adapter = pageAdapter
     }
@@ -1238,13 +1442,21 @@ class ShamelaBookReaderActivity : AppCompatActivity() {
 
     private fun repaginate() {
         if (bookContent == null) return
+        repaginateJob?.cancel()
         val anchorPage = lastIntendedPage.coerceIn(0, (displayPages.size - 1).coerceAtLeast(0))
         // مرساة مستقرّة: char offset داخل fullText (لا يتغير عند إعادة الترقيم).
         val anchorCharOffset = displayPages.getOrNull(anchorPage)?.startOffset
             ?.takeIf { it >= 0 }
             ?: findCharOffset(anchorPage)
-        lifecycleScope.launch {
-            val pages = withContext(Dispatchers.Default) { paginateBook() }
+        repaginateJob = lifecycleScope.launch {
+            val pages = try {
+                withContext(Dispatchers.Default) { paginateBook() }
+            } catch (e: Exception) {
+                // فشل إعادة الترقيم لا يطرد المستخدم من الكتاب: نُبقي الصفحات
+                // الحالية سليمة ونخطر فحسب.
+                Toast.makeText(this@ShamelaBookReaderActivity, "تعذّر تحديث التخطيط", Toast.LENGTH_SHORT).show()
+                return@launch
+            }
             displayPages = pages
             buildAdapterAndBind()
             val restoredPos = (
@@ -1501,9 +1713,15 @@ class ShamelaBookReaderActivity : AppCompatActivity() {
 
     override fun onDestroy() {
         super.onDestroy()
+        searchJob?.cancel()
+        repaginateJob?.cancel()
         scrollSaveHandler?.removeCallbacksAndMessages(null)
         repaginateHandler?.removeCallbacksAndMessages(null)
         searchDebounceHandler?.removeCallbacksAndMessages(null)
         saveReadingProgress()
+    }
+
+    companion object {
+        const val PAGE_CONTEXT_HALF = 2
     }
 }

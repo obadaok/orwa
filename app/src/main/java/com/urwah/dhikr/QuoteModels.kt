@@ -51,4 +51,4 @@ data class QuoteSpanStyle(
     var isDimmed: Boolean = false,
     var isHidden: Boolean = false,
     var scaleFactor: Float = 1f
-)
+) : java.io.Serializable

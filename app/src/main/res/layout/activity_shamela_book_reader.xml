@@ -113,6 +113,62 @@
                 android:textSize="14sp" />
         </LinearLayout>
 
+        <!-- Error state: لا يُخرج المستخدم من الكتاب عند فشل التحميل، بل يُعرض
+             خطأ محلي مع إعادة محاولة مع الحفاظ على بيانات الكتاب الحالية -->
+        <LinearLayout
+            android:id="@+id/errorState"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:layout_gravity="center"
+            android:background="@color/urwah_background"
+            android:gravity="center"
+            android:orientation="vertical"
+            android:padding="32dp"
+            android:visibility="gone">
+
+            <ImageView
+                android:layout_width="56dp"
+                android:layout_height="56dp"
+                android:contentDescription="@null"
+                android:src="@drawable/ic_close_circle"
+                android:tint="@color/urwah_thread_light" />
+
+            <TextView
+                android:id="@+id/tvErrorMessage"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:fontFamily="@font/alyamama_bold"
+                android:gravity="center"
+                android:text="تعذّر فتح الكتاب"
+                android:textColor="@color/urwah_thread_dark"
+                android:textSize="16sp" />
+
+            <TextView
+                android:id="@+id/tvErrorDetail"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:fontFamily="@font/alyamama"
+                android:gravity="center"
+                android:maxLines="4"
+                android:textColor="@color/urwah_thread_light"
+                android:textSize="13sp" />
+
+            <TextView
+                android:id="@+id/btnRetryLoad"
+                android:layout_width="wrap_content"
+                android:layout_height="44dp"
+                android:layout_marginTop="20dp"
+                android:background="@drawable/bg_secondary_button"
+                android:fontFamily="@font/alyamama_bold"
+                android:gravity="center"
+                android:paddingHorizontal="32dp"
+                android:text="إعادة المحاولة"
+                android:textColor="@color/urwah_thread_dark"
+                android:textSize="14sp" />
+        </LinearLayout>
+
         <!-- TOC Drawer -->
         <View
             android:id="@+id/tocDimBackground"
@@ -224,7 +280,7 @@
         <FrameLayout
             android:id="@+id/searchPanel"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
+            android:layout_height="match_parent"
             android:layout_gravity="bottom"
             android:visibility="gone" />
 

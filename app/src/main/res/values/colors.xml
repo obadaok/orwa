@@ -70,6 +70,13 @@
     <color name="oc_text_secondary_40">#66C4AFA3</color>
     <color name="oc_card_stroke">#1A8B6F5E</color>
     <color name="oc_ripple">#298B6F5E</color>
+    <color name="oc_primary_deep">#5C4637</color>
+    <color name="oc_primary_60">#998B6F5E</color>
+
+    <!-- Quote editor colors -->
+    <color name="urwah_selection">#668B6F5E</color>
+    <color name="urwah_gold">#D4AF37</color>
+    <color name="urwah_gold_soft">#3DD4AF37</color>
 
     <!-- Neo-Brutalism / Shamela library colors -->
     <color name="sh_shadow_dark">#5E4B40</color>

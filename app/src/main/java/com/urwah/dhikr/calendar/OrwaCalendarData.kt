@@ -20,7 +20,22 @@ object OrwaCalendarData {
             return cachedState!!
         }
 
-        val hijri = gregorianToHijri(today)
+        val state = buildContentFor(
+            context,
+            today.get(Calendar.DAY_OF_MONTH),
+            today.get(Calendar.MONTH) + 1,
+            today.get(Calendar.YEAR)
+        )
+
+        cachedState = state
+        cachedDayOfYear = dayOfYear
+        return state
+    }
+
+    fun buildContentFor(context: Context, gregDay: Int, gregMonth: Int, gregYear: Int): OrwaCalendarUiState {
+        val gc = GregorianCalendar(gregYear, gregMonth - 1, gregDay)
+        val dayOfYear = gc.get(Calendar.DAY_OF_YEAR)
+        val hijri = gregorianToHijri(gc)
         val data = loadCalendarData(context)
         val dailyIndex = dayOfYear % minOf(
             data.ayahs.length(),
@@ -34,10 +49,10 @@ object OrwaCalendarData {
         val quote = data.scholarQuotes.getJSONObject(dailyIndex)
         val name = data.namesOfAllah.getJSONObject(dailyIndex)
 
-        val state = OrwaCalendarUiState(
-            dayName = arabicDayName(today.get(Calendar.DAY_OF_WEEK)),
+        return OrwaCalendarUiState(
+            dayName = arabicDayName(gc.get(Calendar.DAY_OF_WEEK)),
             hijriDate = formatHijriDate(hijri),
-            gregorianDate = formatGregorianDate(today),
+            gregorianDate = formatGregorianDate(gc),
             daysUntilRamadan = daysUntilRamadan(hijri),
             asmaHusnaName = name.getString("name"),
             asmaHusnaExplanation = name.getString("explanation"),
@@ -51,10 +66,6 @@ object OrwaCalendarData {
             benefitOfTheDay = quote.getString("text"),
             scholarName = quote.getString("author")
         )
-
-        cachedState = state
-        cachedDayOfYear = dayOfYear
-        return state
     }
 
     private data class CalendarData(
@@ -118,6 +129,92 @@ object OrwaCalendarData {
                 floor((h.month - 1.0) / 2.0).toInt() + h.day + 1948440 - 385
     }
 
+    private fun julianDayToGregorian(jd: Int): Triple<Int, Int, Int> {
+        val a = jd + 32044
+        val b = floor((4.0 * a + 3.0) / 146097.0).toInt()
+        val c = a - floor((146097.0 * b) / 4.0).toInt()
+        val d = floor((4.0 * c + 3.0) / 1461.0).toInt()
+        val e = c - floor((1461.0 * d) / 4.0).toInt()
+        val m = floor((5.0 * e + 2.0) / 153.0).toInt()
+        val day = e - floor((153.0 * m + 2.0) / 5.0).toInt() + 1
+        val month = m + 3 - 12 * floor(m / 10.0).toInt()
+        val year = 100 * b + d - 4800 + floor(m / 10.0).toInt()
+        return Triple(year, month, day)
+    }
+
+    private fun dayOfWeekIndex(gYear: Int, gMonth: Int, gDay: Int): Int {
+        val gc = GregorianCalendar(gYear, gMonth - 1, gDay)
+        return gc.get(Calendar.DAY_OF_WEEK) - 1
+    }
+
+    // ──────────────────────────────────────────────
+    //  Month grid (public API for the calendar UI)
+    // ──────────────────────────────────────────────
+
+    fun todayHijriMonth(): Pair<Int, Int> {
+        val h = gregorianToHijri(GregorianCalendar())
+        return Pair(h.year, h.month)
+    }
+
+    fun hijriMonthLength(year: Int, month: Int): Int {
+        val cur = hijriToJulianDay(HijriDate(year, month, 1))
+        val nxt = if (month == 12) hijriToJulianDay(HijriDate(year + 1, 1, 1))
+        else hijriToJulianDay(HijriDate(year, month + 1, 1))
+        return nxt - cur
+    }
+
+    fun hijriToGregorian(year: Int, month: Int, day: Int): Triple<Int, Int, Int> {
+        return julianDayToGregorian(hijriToJulianDay(HijriDate(year, month, day)))
+    }
+
+    fun hijriDayFor(gregDay: Int, gregMonth: Int, gregYear: Int): Int {
+        return gregorianToHijri(GregorianCalendar(gregYear, gregMonth - 1, gregDay)).day
+    }
+
+    fun buildMonthGrid(hijriYear: Int, hijriMonth: Int): OrwaMonthGrid {
+        val dayOneJd = hijriToJulianDay(HijriDate(hijriYear, hijriMonth, 1))
+        val nextMonthJd = hijriToJulianDay(
+            if (hijriMonth == 12) HijriDate(hijriYear + 1, 1, 1)
+            else HijriDate(hijriYear, hijriMonth + 1, 1)
+        )
+        val monthLen = nextMonthJd - dayOneJd
+
+        val todayHijri = gregorianToHijri(GregorianCalendar())
+        val todayInMonth = if (todayHijri.year == hijriYear && todayHijri.month == hijriMonth) {
+            todayHijri.day
+        } else {
+            0
+        }
+
+        var leadingBlanks = 0
+        val cells = ArrayList<HijriDayCell>(monthLen)
+        for (d in 1..monthLen) {
+            val jd = dayOneJd + d - 1
+            val (gY, gM, gD) = julianDayToGregorian(jd)
+            val dow = dayOfWeekIndex(gY, gM, gD)
+            if (d == 1) leadingBlanks = dow
+            cells.add(HijriDayCell(d, gD, gM, gY, dow, dow == 5, dow == 6))
+        }
+
+        val (_, fM, _) = julianDayToGregorian(dayOneJd)
+        val (lYear, lM, _) = julianDayToGregorian(dayOneJd + monthLen - 1)
+        val gregLabel = if (fM == lM) {
+            "${gregorianMonths[fM]} ${toArabicNum(lYear)} م"
+        } else {
+            "${gregorianMonths[fM]} — ${gregorianMonths[lM]} ${toArabicNum(lYear)} م"
+        }
+
+        return OrwaMonthGrid(
+            hijriYear = hijriYear,
+            hijriMonth = hijriMonth,
+            hijriMonthName = hijriMonths[hijriMonth],
+            gregorianLabel = gregLabel,
+            leadingBlanks = leadingBlanks,
+            cells = cells,
+            todayHijriDay = todayInMonth
+        )
+    }
+
     // ──────────────────────────────────────────────
     //  Formatting
     // ──────────────────────────────────────────────
@@ -144,7 +241,7 @@ object OrwaCalendarData {
         return "$d ${gregorianMonths[m]} $y م"
     }
 
-    private fun toArabicNum(n: Int): String {
+    fun toArabicNum(n: Int): String {
         val arabicDigits = charArrayOf('٠', '١', '٢', '٣', '٤', '٥', '٦', '٧', '٨', '٩')
         return n.toString().map { arabicDigits[it - '0'] }.joinToString("")
     }

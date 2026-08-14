@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    زخرفة شريطية هندسية إسلامية: صفّ من نجوم ثمانية (khatam) تفصلها معيّنات صغيرة.
+    تُصبغ وقت التشغيل بلون مظهر المرتّل (accent) عبر setColorFilter.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="240dp"
+    android:height="24dp"
+    android:viewportWidth="240"
+    android:viewportHeight="24"
+    android:autoMirrored="true">
+
+    <path
+        android:fillColor="#FF000000"
+        android:pathData="M14,1 L18.2,7.8 L25,12 L18.2,16.2 L14,23 L9.8,16.2 L3,12 L9.8,7.8 Z
+        M62,1 L66.2,7.8 L73,12 L66.2,16.2 L62,23 L57.8,16.2 L51,12 L57.8,7.8 Z
+        M110,1 L114.2,7.8 L121,12 L114.2,16.2 L110,23 L105.8,16.2 L99,12 L105.8,7.8 Z
+        M158,1 L162.2,7.8 L169,12 L162.2,16.2 L158,23 L153.8,16.2 L147,12 L153.8,7.8 Z
+        M206,1 L210.2,7.8 L217,12 L210.2,16.2 L206,23 L201.8,16.2 L195,12 L201.8,7.8 Z
+        M38,9.5 L41.5,12 L38,14.5 L34.5,12 Z
+        M86,9.5 L89.5,12 L86,14.5 L82.5,12 Z
+        M134,9.5 L137.5,12 L134,14.5 L130.5,12 Z
+        M182,9.5 L185.5,12 L182,14.5 L178.5,12 Z
+        M230,9.5 L233.5,12 L230,14.5 L226.5,12 Z" />
+</vector>

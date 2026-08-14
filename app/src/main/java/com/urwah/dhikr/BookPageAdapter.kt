@@ -2,6 +2,7 @@ package com.urwah.dhikr
 
 import android.graphics.Typeface
 import android.view.LayoutInflater
+import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
 import android.widget.TextView
@@ -16,8 +17,14 @@ class BookPageAdapter(
     private val lineSpacing: Float = 1.7f,
     private val typeface: Typeface? = null,
     private val onPageScrollState: ((isAtBottom: Boolean) -> Unit)? = null,
-    private val onScrollViewReady: ((position: Int, NestedScrollView?) -> Unit)? = null
+    private val onScrollViewReady: ((position: Int, NestedScrollView?) -> Unit)? = null,
+    private val pageTouchListener: PageTouchListener? = null,
+    private val pageLayoutRes: Int = R.layout.item_book_page
 ) : RecyclerView.Adapter<BookPageAdapter.PageViewHolder>() {
+
+    fun interface PageTouchListener {
+        fun onTouch(holder: PageViewHolder, position: Int, view: View, event: MotionEvent): Boolean
+    }
 
     class PageViewHolder(view: View) : RecyclerView.ViewHolder(view) {
         val scrollView: NestedScrollView = view.findViewById(R.id.scrollView)
@@ -30,7 +37,7 @@ class BookPageAdapter(
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): PageViewHolder {
         val view = LayoutInflater.from(parent.context)
-            .inflate(R.layout.item_book_page, parent, false)
+            .inflate(pageLayoutRes, parent, false)
         return PageViewHolder(view)
     }
 
@@ -53,6 +60,13 @@ class BookPageAdapter(
         holder.tvContent.setLineSpacing(0f, lineSpacing)
         if (typeface != null) {
             holder.tvContent.typeface = typeface
+        }
+        if (pageTouchListener != null) {
+            holder.tvContent.setOnTouchListener { v, event ->
+                pageTouchListener.onTouch(holder, position, v, event)
+            }
+        } else {
+            holder.tvContent.setOnTouchListener(null)
         }
 
         val total = originalTotalPages.coerceAtLeast(1)

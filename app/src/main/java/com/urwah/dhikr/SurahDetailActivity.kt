@@ -100,6 +100,9 @@ class SurahDetailActivity : AppCompatActivity() {
     private var userSeeking = false
     private var isFocusedMode = false
     private var lastFocusedAyah = -1
+    private val ayahWordTrackers = HashMap<Int, com.urwah.dhikr.align.WordAlignmentTracker>()
+    private val ayahWordDurations = HashMap<Int, Long>()
+    private var readingWindowKey: String? = null
     private var allAyahsGlobal: List<AyahData> = emptyList()
     private var juzAyahIndexes: Map<Int, Int> = emptyMap()
 
@@ -831,6 +834,9 @@ class SurahDetailActivity : AppCompatActivity() {
     private fun dpToPx(dp: Float): Int =
         (dp * resources.displayMetrics.density).toInt()
 
+    private fun withAlphaOf(color: Int, alpha: Int): Int =
+        Color.argb(alpha, Color.red(color), Color.green(color), Color.blue(color))
+
     private fun showAutoScrollDialog() {
         val view = LayoutInflater.from(this).inflate(R.layout.dialog_auto_scroll, null)
         val slider = view.findViewById<SeekBar>(R.id.scrollSpeedSlider)
@@ -1018,14 +1024,26 @@ class SurahDetailActivity : AppCompatActivity() {
             .create()
         dialog.window?.setBackgroundDrawableResource(android.R.color.transparent)
 
-        fun applySearch() {
-            val q = etSearch.text.toString().trim()
+        // فهرس مطابقة يُبنى مرة واحدة بفتح النافذة: النص العربي مُطبَّع (بلا
+        // تشكيل/تنوين/تطويل/همزات/ألف مقصورة/تاء مربوطة) في طبقة البحث فقط
+        // دون تغيير النص القرآني المعروض. هذا يحل أن «الحرف الثاني يُفقد
+        // النتائج» لأن البحث الجديد لم يعد يعتمد على تطابق سلسلة مع تشكيل.
+        val indexed = ayahs.map { it to normalizeArabicForSearch(it.text) }
+
+        // Debounce على مدخل المستخدم: كل Kern-Knockback ينفّذ بحثًا واحدًا بأحدث
+        // قيمة كاملة للنص، ولا توجد نتيجة سابقة تصل متأخرة (بحث متزامن على فهرس
+        // السورة) فلا Race Condition بين الطلبات.
+        val searchHandler = Handler(Looper.getMainLooper())
+        val debounce = Runnable {
+            val query = etSearch.text?.toString() ?: return@Runnable
+            val q = normalizeArabicForSearch(query.trim())
             val results = if (q.isEmpty()) {
                 emptyList<AyahData>()
             } else {
-                ayahs.filter { it.text.contains(q) }
+                indexed.filter { it.second.contains(q) }.map { it.first }
             }
-            tvEmpty.visibility = if (results.isEmpty()) View.VISIBLE else View.GONE
+            tvEmpty.visibility =
+                if (q.isNotEmpty() && results.isEmpty()) View.VISIBLE else View.GONE
             rvResults.adapter = object : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
                 override fun getItemCount() = results.size
                 override fun onCreateViewHolder(p: ViewGroup, vt: Int) = object : RecyclerView.ViewHolder(
@@ -1051,12 +1069,43 @@ class SurahDetailActivity : AppCompatActivity() {
         etSearch.addTextChangedListener(object : TextWatcher {
             override fun beforeTextChanged(s: CharSequence?, a: Int, b: Int, c: Int) {}
             override fun onTextChanged(s: CharSequence?, a: Int, b: Int, c: Int) {}
-            override fun afterTextChanged(s: Editable?) { applySearch() }
+            override fun afterTextChanged(s: Editable?) {
+                searchHandler.removeCallbacks(debounce)
+                searchHandler.postDelayed(debounce, 160L)
+            }
         })
 
-        view.findViewById<Button>(R.id.btnSurahSearchClose).setOnClickListener { dialog.dismiss() }
+        view.findViewById<Button>(R.id.btnSurahSearchClose).setOnClickListener {
+            searchHandler.removeCallbacks(debounce)
+            dialog.dismiss()
+        }
+        dialog.setOnDismissListener { searchHandler.removeCallbacks(debounce) }
         etSearch.post { etSearch.requestFocus() }
         dialog.show()
+    }
+
+    /**
+     * تطبيع النص العربي لطبقة البحث فقط: يزيل التشكيل/التنوين/التطويل وصغائر
+     * الكرسي، ويوحّد الألفات/الهمزات والألف المقصورة والياء والتاء المربوطة،
+     * كي يجد «الرحمن» الآية التي نصها «ٱلرَّحۡمَٰنِ» دون تغيير النص المعروض.
+     */
+    private fun normalizeArabicForSearch(text: String): String {
+        val sb = StringBuilder(text.length)
+        for (c in text) {
+            val code = c.code
+            sb.append(when {
+                code in 0x064B..0x065F || code == 0x0670 || code == 0x0640 -> ""      // تشكيل + تطويل
+                code in 0x06D6..0x06ED || code in 0x08F0..0x08FF -> ""               // ملحقات التشكيل
+                c == '\u0622' || c == '\u0623' || c == '\u0625' || c == '\u0671' -> '\u0627' // ألف ممدودة/همزة/وصلة
+                c == '\u0621' -> '\u0627'                                            // همزة على السطر
+                c == '\u0624' -> '\u0648'                                            // واو همزة
+                c == '\u0626' -> '\u064A'                                            // ياء همزة
+                c == '\u0649' -> '\u064A'                                            // ألف مقصورة
+                c == '\u0629' -> '\u0647'                                            // تاء مربوطة
+                else -> c
+            })
+        }
+        return sb.toString()
     }
 
 
@@ -1202,7 +1251,6 @@ class SurahDetailActivity : AppCompatActivity() {
         focusedTools.clear()
         focusedTools.add(findViewById<View>(R.id.topBarLayout))
         focusedTools.add(findViewById<View>(R.id.focusedInfoCard))
-        focusedTools.add(findViewById<View>(R.id.murattalOrnamentTop))
         focusedTools.add(findViewById<View>(R.id.audioPlayerBar))
         showFocusedTools()
 
@@ -1210,6 +1258,7 @@ class SurahDetailActivity : AppCompatActivity() {
         if (st.isActive && st.surahNumber == surahNumber) {
             updateFocusedAyah(st.currentAyah)
             updateFocusedReciter(st.reciterId)
+            updateFocusedReadingWindow(st.currentAyah, st.positionMs, st.durationMs)
         } else {
             UrwahToast.show(this, getString(R.string.focused_mode_enter_hint))
         }
@@ -1253,7 +1302,29 @@ class SurahDetailActivity : AppCompatActivity() {
                 tool.visibility = View.GONE
             }.start()
         }
+        adjustFocusedAyahBottomPadding(restore = true)
         playerUiVisible = false
+    }
+
+    /**
+     * يضمن أن شريط المشغّل العائم أسفل صفحة المرتّل لا يحجب نهاية النص القرآني:
+     * حين يكون المشغّل ظاهرًا تُزاد حشوة سفلية لمنطقة الآية بقدر ارتفاعه،
+     * فيكتمل التمرير حتى آخر سطر، وحين يختفي تُعاد الحشوة.
+     */
+    private fun adjustFocusedAyahBottomPadding(restore: Boolean) {
+        val area = findViewById<View>(R.id.focusedAyahArea) ?: return
+        val base = dpToPx(10f)
+        if (restore) {
+            area.setPadding(dpToPx(16f), dpToPx(10f), dpToPx(16f), base)
+            return
+        }
+        val bar = findViewById<View>(R.id.audioPlayerBar)
+        val extra = if (bar.visibility == View.VISIBLE) {
+            (bar.measuredHeight.coerceAtLeast(dpToPx(96f))) + dpToPx(14f)
+        } else {
+            dpToPx(14f)
+        }
+        area.setPadding(dpToPx(16f), dpToPx(10f), dpToPx(16f), base + extra)
     }
 
     private fun showFocusedTools() {
@@ -1264,6 +1335,7 @@ class SurahDetailActivity : AppCompatActivity() {
         }
         val playerBar = findViewById<View>(R.id.audioPlayerBar)
         playerBar.bringToFront()
+        playerBar.post { adjustFocusedAyahBottomPadding(restore = false) }
         playerUiVisible = true
     }
 
@@ -1364,13 +1436,34 @@ class SurahDetailActivity : AppCompatActivity() {
             )
         }
 
-        // — منطقة الآية —
-        findViewById<TextView>(R.id.tvFocusedAyah).apply {
+        // — منطقة الآية (البطاقة الأصلية نفسها) —
+        findViewById<View>(R.id.focusedAyahCard).apply {
             background = MurattalThemeManager.neoCardDrawable(
                 this@SurahDetailActivity, p, radiusDp = 22f, strokeDp = 2f,
                 shadowOffsetDp = 6f, fill = p.quranFrame
             )
-            setTextColor(p.textPrimary)
+        }
+        findViewById<TextView>(R.id.tvFocusedAyah).setTextColor(p.textPrimary)
+        listOf(
+            R.id.focusedAyahOrnamentTop,
+            R.id.focusedAyahOrnamentBottom
+        ).forEach { id ->
+            findViewById<ImageView>(id).setColorFilter(p.accent)
+        }
+
+        // — بطاقة القراءة المباشرة (الآيات الطويلة) تُلوَّن من اللوحة —
+        findViewById<View>(R.id.focusedReadingCard).apply {
+            background = MurattalThemeManager.flatCardDrawable(
+                this@SurahDetailActivity, p, radiusDp = 14f, strokeDp = 1.5f,
+                fill = withAlphaOf(p.accent, 0x12), stroke = p.accent
+            )
+        }
+        findViewById<TextView>(R.id.tvFocusedReadingCard).setTextColor(p.accent)
+        listOf(
+            R.id.focusedReadingOrnamentStart,
+            R.id.focusedReadingOrnamentEnd
+        ).forEach { id ->
+            findViewById<ImageView>(id).setColorFilter(p.accent)
         }
 
         findViewById<TextView>(R.id.tvFocusedSurahMini).setTextColor(p.textSecondary)
@@ -1402,9 +1495,13 @@ class SurahDetailActivity : AppCompatActivity() {
             }
         }
 
-        findViewById<ImageView>(R.id.murattalOrnamentTop).let { ornament ->
-            ornament.visibility = if (theme.showOrnament) View.VISIBLE else View.GONE
-            ornament.setColorFilter(p.accent)
+        listOf(
+            R.id.focusedAyahOrnamentTop,
+            R.id.focusedAyahOrnamentBottom
+        ).forEach { id ->
+            (findViewById<View>(id) as? ImageView)?.let {
+                it.visibility = if (theme.showOrnament) View.VISIBLE else View.GONE
+            }
         }
 
         findViewById<ProgressBar>(R.id.focusedProgress).apply {
@@ -1504,6 +1601,7 @@ class SurahDetailActivity : AppCompatActivity() {
     private fun updateFocusedAyah(ayahNumber: Int) {
         if (ayahNumber == lastFocusedAyah) return
         lastFocusedAyah = ayahNumber
+        readingWindowKey = null
         val idx = ayahs.indexOfFirst { it.number == ayahNumber }
         if (idx < 0) return
         val ayah = ayahs[idx]
@@ -1524,6 +1622,61 @@ class SurahDetailActivity : AppCompatActivity() {
         val percent = (ayahNumber * 100 / ayahs.size.coerceAtLeast(1)).coerceIn(0, 100)
         findViewById<TextView>(R.id.tvFocusedPercent).text = "${toHindiDigits(percent)}٪"
         findViewById<ProgressBar>(R.id.focusedProgress).progress = (percent * 10)
+    }
+
+    /**
+     * بطاقة القراءة المباشرة للآيات الطويلة: تعرض نافذة ثابتة من ~6 كلمات من
+     * النص القرآني (مصدرها قاعدة البيانات لا تحليل الصوت)، وتتبدل كوحدة كاملة
+     * عند تجاوز نهاية المجموعة. حدود المجموعات تُقطَّع مرة واحدة عند التحميل،
+     * وبالتالي لا تغيّرها اكتشافات الكلمات العابرة، ولا تُعاد ترتيب الكلمات،
+     * ولا يتحرك النص ذهابًا وإيابًا أثناء التلاوة أو عند الرجوع لآية سابقة.
+     * كلمة القراءة الحالية لا تُلوَّن بأي حال.
+     */
+    private fun updateFocusedReadingWindow(ayahNumber: Int, positionMs: Long, durationMs: Long) {
+        val card = findViewById<TextView>(R.id.tvFocusedReadingCard) ?: return
+        val idx = ayahs.indexOfFirst { it.number == ayahNumber }
+        if (idx < 0) {
+            card.visibility = View.GONE
+            return
+        }
+        val ayah = ayahs[idx]
+        if (com.urwah.dhikr.align.WordAlignmentTracker.tokenize(ayah.text).size <=
+            com.urwah.dhikr.align.WordAlignmentTracker.FULL_AYAH_WORD_LIMIT
+        ) {
+            // الآيات القصيرة تُعرض كاملة من البطاقة الرئيسية.
+            if (card.visibility != View.GONE) {
+                card.visibility = View.GONE
+                readingWindowKey = null
+            }
+            return
+        }
+
+        val tracker = ayahWordTrackers[ayahNumber] ?: com.urwah.dhikr.align.WordAlignmentTracker().also {
+            it.load(ayah.text, durationMs.coerceAtLeast(1L))
+            ayahWordTrackers[ayahNumber] = it
+            ayahWordDurations[ayahNumber] = durationMs
+        }
+        val storedDuration = ayahWordDurations[ayahNumber] ?: 0L
+        if (durationMs > 0L && storedDuration != durationMs) {
+            // المدة الصوتية الحقيقية وصلت بعد أول عرض — يُعاد توزيع الحدود مرة
+            // واحدة فقط ثم تُثبَّت (لا إعادة ضبط متكررة أثناء التشغيل).
+            tracker.load(ayah.text, durationMs)
+            ayahWordDurations[ayahNumber] = durationMs
+        }
+
+        val wordIdx = tracker.update(positionMs)
+        if (wordIdx < 0) return
+        val window = tracker.window(wordIdx)
+        val key = "${window.startIndex}:${window.endIndex}"
+        if (key == readingWindowKey && card.visibility == View.VISIBLE) return
+        readingWindowKey = key
+        val windowWords = tracker.wordsForWindow(window)
+        if (windowWords.isEmpty()) {
+            card.visibility = View.GONE
+            return
+        }
+        card.text = windowWords.joinToString(" ") { it.text }
+        card.visibility = View.VISIBLE
     }
 
     private fun updateFocusedReciter(reciterId: Int) {
@@ -1726,6 +1879,12 @@ class SurahDetailActivity : AppCompatActivity() {
             AudioPlayerService.next(this)
         }
 
+        // في الواجهة العربية (RTL) «السابقة» تقع يمين الشاشة ويجب أن يشير سهمها
+        // نحو اليمين و«التالية» نحو اليسار — نعكس الرمزين أفقيًا ليطابقا الاتجاه.
+        val isRtl = resources.configuration.layoutDirection == View.LAYOUT_DIRECTION_RTL
+        findViewById<ImageButton>(R.id.btnPlayerPrevious).rotationY = if (isRtl) 180f else 0f
+        findViewById<ImageButton>(R.id.btnPlayerNext).rotationY = if (isRtl) 180f else 0f
+
         findViewById<View>(R.id.btnPlayerClose).setOnClickListener {
             AudioPlayerService.stop(this)
             hideAudioPlayer()
@@ -1795,6 +1954,9 @@ class SurahDetailActivity : AppCompatActivity() {
                         if (state.isActive && state.surahNumber == surahNumber) {
                             updateFocusedAyah(state.currentAyah)
                             updateFocusedReciter(state.reciterId)
+                            updateFocusedReadingWindow(
+                                state.currentAyah, state.positionMs, state.durationMs
+                            )
                         }
                     }
                 }
@@ -1845,6 +2007,9 @@ class SurahDetailActivity : AppCompatActivity() {
         continuousAyahOffsets = null
         playbackColorSpanActive = false
         lastPlaybackAyah = -1
+        ayahWordTrackers.clear()
+        ayahWordDurations.clear()
+        readingWindowKey = null
 
         renderAyahsInSingleCard(containerAyahs, ayahs, isDark)
 
