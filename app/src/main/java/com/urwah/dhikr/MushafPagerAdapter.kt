@@ -37,6 +37,16 @@ class MushafPagerAdapter(
     override fun onBindViewHolder(holder: PageHolder, position: Int) {
         holder.boundPage = position + 1
         getItemViewHolder(holder, position)
+        // صفحات ViewPager2 تُعاد تدويرها عبر RecyclerView، وقد تصل حاملة حالة
+        // المحوّل السابقة (alpha=0 لصفحة خرجت خارج النطاق). إعادة الضبط هنا تضمن
+        // أن أي صفحة تدخل الشاشة تكون مرئية فوراً مهما كان تسلسل إعادة الاستخدام.
+        holder.pageView.apply {
+            alpha = 1f
+            scaleX = 1f
+            scaleY = 1f
+            translationX = 0f
+            translationY = 0f
+        }
         holder.pageView.setCallbacks(
             onSingleTap = { onPageTap.invoke(holder.boundPage) },
             onLongPress = { onPageLongPress.invoke(holder.boundPage) },

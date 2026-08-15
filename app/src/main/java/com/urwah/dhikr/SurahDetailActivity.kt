@@ -21,6 +21,7 @@ import android.view.MotionEvent
 import android.view.View
 import android.view.WindowManager
 import android.view.ViewGroup
+import android.view.ViewTreeObserver
 import android.widget.Button
 import android.widget.EditText
 import android.widget.ImageButton
@@ -1146,17 +1147,72 @@ class SurahDetailActivity : AppCompatActivity() {
         updatePagesOverlayInfo(pagesLastPosition)
         syncCurrentPositionFromPage(pagesLastPosition)
 
-        // إظهار الكونتينر وتثبيت الصفحة داخل نفس خطوة layout: لو أُظهِر أولاً
-        // ثم ضُبطت الصفحة لاحقاً، تُرسم الصفحة المعروضة فارغة حتى أول تمرير
-        // (لأن قياسها الأول استقر على عرض صفر قبل ضبط الموضع). بعد اكتمال
-        // القياس تُثبَّت الصفحة المطلوبة بلا انزلاق فتظهر بحجمها الصحيح فوراً.
-        container.post {
+        val pager = pagesViewPager
+        if (pager == null) {
             container.visibility = View.VISIBLE
+            return
+        }
+
+        // إظهار الكونتينر فوراً وإخفاء الـ pager بصرياً عبر alpha بدل تقلبات الرؤية
+        // INVISIBLE↔VISIBLE: انتقالات الرؤية خلّفت تعارضاً بين currentItem المنطقي
+        // وإزاحة RecyclerView الفعلية (سُجّل rvScrollX=602×1200 مقابل currentItem=1 —
+        // الموضع المعكوس RTL) فبقيت نافذة العرض على فراغ حتى أول تمرير.
+        container.visibility = View.VISIBLE
+        pager.alpha = 0f
+
+        fun placeAt() {
             showPagesOverlay(false)
             updatePagesOverlayInfo(idx + 1)
-            pagesViewPager?.setCurrentItem(idx, false)
-            pagesViewPager?.requestLayout()
-            pagesViewPager?.invalidate()
+            val p = pagesViewPager ?: return
+            // تشخيص مؤقت — يُحذف بعد اكتمال التحقق.
+            android.util.Log.i(
+                "PagesDiag",
+                "before currentItem=${p.currentItem} " +
+                    "rvScrollX=${(p.getChildAt(0) as? RecyclerView)?.computeHorizontalScrollOffset()}"
+            )
+            p.setCurrentItem(idx, false)
+            p.alpha = 1f
+            p.invalidate()
+            // setCurrentItem بلا انزلاق لا يوجّه transformPage، فيبقى الـ alpha stale
+            // (صفحة أولى فارغة حتى التمرير). requestTransform يوجّه تحويلات المحوّل
+            // للصفحات المرتبطة فيعود الرسم فوراً (نمط android/views-widgets-samples#109).
+            p.post { p.requestTransform() }
+            // التصاق مضمون بعد استقرار القياس: إعادة تثبيت نفس الموضع تفرض على
+            // RecyclerView إعادة اصطفاف إزاحته مع currentItem المنطقي.
+            p.postDelayed({
+                val rv = p.getChildAt(0) as? RecyclerView
+                android.util.Log.i(
+                    "PagesDiag",
+                    "settle-start currentItem=${p.currentItem} " +
+                        "rvScrollX=${rv?.computeHorizontalScrollOffset()}"
+                )
+                p.setCurrentItem(p.currentItem, false)
+                p.post { p.requestTransform() }
+                android.util.Log.i(
+                    "PagesDiag",
+                    "settle-end currentItem=${p.currentItem} " +
+                        "rvScrollX=${rv?.computeHorizontalScrollOffset()}"
+                )
+            }, 150)
+        }
+
+        if (pager.width > 0 && pager.height > 0) {
+            pager.post { placeAt() }
+        } else {
+            // الكونتينر ظاهر الآن يُقاس ويُخطط فعلياً، فتنطلق GlobalLayout بعرض حقيقي.
+            val observer = pager.viewTreeObserver
+            if (observer.isAlive) {
+                observer.addOnGlobalLayoutListener(object : ViewTreeObserver.OnGlobalLayoutListener {
+                    override fun onGlobalLayout() {
+                        if (pager.width > 0 && pager.height > 0) {
+                            pager.viewTreeObserver.removeOnGlobalLayoutListener(this)
+                            placeAt()
+                        }
+                    }
+                })
+            } else {
+                pager.post { placeAt() }
+            }
         }
     }
 

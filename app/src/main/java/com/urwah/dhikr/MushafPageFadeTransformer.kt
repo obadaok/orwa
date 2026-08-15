@@ -16,6 +16,15 @@ class MushafPageFadeTransformer : ViewPager2.PageTransformer {
             page.alpha = 0f
             return
         }
+        if (position == 0f) {
+            // الصفحة الجارية في المنتصف: تُعاد دائماً إلى الحالة الطبيعية، وإلا
+            // تظل على alpha/scale ثابتين من حالة مُعاد تدويرها (یختفي الرسم حتى
+            // أول تمرير — المؤثر المعروف عند setCurrentItem بلا انزلاق).
+            page.alpha = 1f
+            page.scaleX = 1f
+            page.scaleY = 1f
+            return
+        }
         page.alpha = 1f - absPos * 0.08f
         page.scaleX = 1f - absPos * 0.015f
         page.scaleY = 1f - absPos * 0.015f
