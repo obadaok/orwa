@@ -21,6 +21,7 @@ object QuranPageLayouts {
         val line: Int,
         val type: String,
         val code: String,
+        val g: String?,
     )
 
     class Line(
@@ -75,6 +76,7 @@ object QuranPageLayouts {
                                 line = num,
                                 type = w.optString("type", "word"),
                                 code = w.optString("code"),
+                                g = if (w.has("g")) w.optString("g") else null,
                             )
                         )
                     }

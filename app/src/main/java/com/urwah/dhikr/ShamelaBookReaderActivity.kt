@@ -64,7 +64,7 @@ private object PageChromeMetrics {
     const val PAGE_NUMBER_TEXT_SIZE_SP = 11f
     const val PAGE_NUMBER_MARGIN_TOP_DP = 8f
     const val TOC_DRAWER_WIDTH_DP = 288f
-    const val MIN_ONLINE_PROGRESS_PAGES = 120
+    const val MIN_ONLINE_PROGRESS_PAGES = 50
     const val ONLINE_REFRESH_INTERVAL_MS = 800L
 }
 
@@ -1072,11 +1072,26 @@ class ShamelaBookReaderActivity : AppCompatActivity() {
         val targetPage = pendingSearchMatchPage
         if (targetPage < 0) return
 
-        val rv = viewPager.getChildAt(0) as? RecyclerView ?: return
-        val vh = rv.findViewHolderForAdapterPosition(targetPage) as? BookPageAdapter.PageViewHolder ?: return
+        val rv = viewPager.getChildAt(0) as? RecyclerView ?: run {
+            // ViewPager2 لم يبنِRecyclerView بعد — أعد المحاولة بعد دورة.
+            viewPager.post { performPendingSearchScroll() }
+            return
+        }
+        val vh = rv.findViewHolderForAdapterPosition(targetPage) as? BookPageAdapter.PageViewHolder
+        if (vh == null) {
+            // VH غير مرتبط بعد (offscreen) — انتقل للصفحة أولاً ثم مرّر بعد الالتصاق.
+            if (viewPager.currentItem != targetPage) {
+                viewPager.setCurrentItem(targetPage, true)
+            }
+            viewPager.postDelayed({ performPendingSearchScroll() }, 80)
+            return
+        }
 
         val tv = vh.tvContent
-        val layout = tv.layout ?: return
+        val layout = tv.layout ?: run {
+            viewPager.postDelayed({ performPendingSearchScroll() }, 80)
+            return
+        }
         val fullText = tv.text.toString()
         val normalizedQuery = normalizeSearchQuery(query)
         val normalized = buildNormalizedSearchText(fullText)

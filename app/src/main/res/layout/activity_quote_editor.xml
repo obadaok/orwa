@@ -10,64 +10,50 @@
         android:layout_height="match_parent"
         android:orientation="vertical">
 
-        <!-- Top bar -->
+        <!-- Top bar: مضغوط كنمط PixelLab/Canva — إغلاق + تراجع/إعادة + معاينة + أدوات -->
         <LinearLayout
             android:id="@+id/topBar"
             android:layout_width="match_parent"
-            android:layout_height="60dp"
+            android:layout_height="52dp"
             android:background="@color/urwah_background"
             android:gravity="center_vertical"
             android:orientation="horizontal"
-            android:paddingHorizontal="8dp">
+            android:paddingHorizontal="12dp">
 
             <TextView
                 android:id="@+id/btnClose"
-                android:layout_width="wrap_content"
+                android:layout_width="40dp"
                 android:layout_height="40dp"
                 android:background="@drawable/bg_chip_neo"
-                android:fontFamily="@font/alyamama"
+                android:fontFamily="@font/alyamama_bold"
                 android:gravity="center"
-                android:paddingHorizontal="14dp"
-                android:text="إغلاق"
+                android:text="✕"
                 android:textColor="@color/urwah_thread_dark"
-                android:textSize="12sp" />
+                android:textSize="16sp" />
 
             <ImageButton
                 android:id="@+id/btnUndo"
-                android:layout_width="44dp"
-                android:layout_height="44dp"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
                 android:layout_marginStart="6dp"
                 android:background="@drawable/bg_chip_neo"
                 android:contentDescription="تراجع"
-                android:padding="10dp"
+                android:padding="9dp"
                 android:scaleType="centerInside"
                 android:src="@drawable/ic_undo"
                 android:tint="@color/urwah_thread_dark" />
 
             <ImageButton
                 android:id="@+id/btnRedo"
-                android:layout_width="44dp"
-                android:layout_height="44dp"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
                 android:layout_marginStart="6dp"
                 android:background="@drawable/bg_chip_neo"
                 android:contentDescription="إعادة"
-                android:padding="10dp"
+                android:padding="9dp"
                 android:scaleType="centerInside"
                 android:src="@drawable/ic_redo"
                 android:tint="@color/urwah_thread_dark" />
-
-            <View
-                android:layout_width="0dp"
-                android:layout_height="0dp"
-                android:layout_weight="1" />
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:fontFamily="@font/alyamama_bold"
-                android:text="محرر الاقتباس"
-                android:textColor="@color/urwah_thread_dark"
-                android:textSize="14sp" />
 
             <View
                 android:layout_width="0dp"
@@ -92,7 +78,7 @@
                 android:layout_height="40dp"
                 android:layout_marginStart="6dp"
                 android:background="@drawable/bg_chip_neo"
-                android:fontFamily="@font/alyamama_bold"
+                android:fontFamily="@font/alyamama"
                 android:gravity="center"
                 android:paddingHorizontal="14dp"
                 android:text="أدوات"
@@ -100,7 +86,7 @@
                 android:textSize="12sp" />
         </LinearLayout>
 
-        <!-- Editor preview area (the largest part of the screen) -->
+        <!-- Editor preview area: تملأ الحجم الباقي -->
         <FrameLayout
             android:id="@+id/editorContainer"
             android:layout_width="match_parent"
@@ -134,14 +120,12 @@
                             android:orientation="vertical"
                             android:paddingVertical="32dp">
 
-                            <!-- مضيف النص: FrameLayout يلفّ النص فقط، حتى تُرسم مقابض
-                                 التحديد فوقه بإحداثيات مطابقة تمامًا لموضع الحروف -->
+                            <!-- مضيف النص حتى تُرسم مقابض التحديد فوقه تمامًا -->
                             <FrameLayout
                                 android:id="@+id/tvContentHost"
                                 android:layout_width="match_parent"
                                 android:layout_height="wrap_content">
 
-                                <!-- Text content -->
                                 <TextView
                                     android:id="@+id/tvPreviewContent"
                                     android:layout_width="match_parent"
@@ -149,11 +133,9 @@
                                     android:layout_marginHorizontal="24dp"
                                     android:gravity="start"
                                     android:lineSpacingExtra="0dp"
-                                    android:textDirection="anyRtl"
-                                    android:textColor="@color/urwah_thread_dark" />
+                                    android:textColor="@color/urwah_thread_dark"
+                                    android:textDirection="anyRtl" />
 
-                                <!-- مقابض تحديد مرئية: تظهر فقط أثناء وجود تحديد نشط،
-                                     لتسهيل سحب حدود التحديد بدقة على اللمس -->
                                 <View
                                     android:id="@+id/selHandleStart"
                                     android:layout_width="22dp"
@@ -182,7 +164,6 @@
                                 android:background="@color/urwah_thread_light"
                                 android:visibility="visible" />
 
-                            <!-- سطر المصدر: اسم الكتاب · المؤلف · الصفحة ... -->
                             <TextView
                                 android:id="@+id/tvPreviewMeta"
                                 android:layout_width="match_parent"
@@ -197,7 +178,6 @@
                                 android:textDirection="anyRtl"
                                 android:textSize="13sp" />
 
-                            <!-- Footer: الشعار مباشرة مع «عبر تطبيق عروة» -->
                             <LinearLayout
                                 android:id="@+id/previewFooter"
                                 android:layout_width="match_parent"
@@ -230,7 +210,6 @@
                         </LinearLayout>
                     </FrameLayout>
 
-                    <!-- المعاينة الدقيقة: صورة الناتج النهائي الفعلي (يُبنى بنفس renderer التصدير) -->
                     <ImageView
                         android:id="@+id/ivPreviewBitmap"
                         android:layout_width="match_parent"
@@ -238,7 +217,6 @@
                         android:scaleType="fitXY"
                         android:visibility="gone" />
 
-                    <!-- Final image boundary (export preview) -->
                     <View
                         android:id="@+id/previewBorder"
                         android:layout_width="match_parent"
@@ -250,15 +228,16 @@
                 </FrameLayout>
             </androidx.core.widget.NestedScrollView>
 
-            <!-- Selection tools: compact bar (only when text selected) -->
+            <!-- Selection tools: تظهر مباشرة عند التحديد، فوق bottomBar -->
             <LinearLayout
                 android:id="@+id/selectionTools"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_gravity="bottom|center_horizontal"
-                android:layout_marginBottom="12dp"
+                android:layout_marginBottom="72dp"
                 android:layout_marginHorizontal="12dp"
                 android:background="@drawable/bg_neo_card"
+                android:elevation="8dp"
                 android:orientation="vertical"
                 android:padding="6dp"
                 android:visibility="gone">
@@ -274,7 +253,6 @@
                     android:textColor="@color/urwah_thread_brown"
                     android:textSize="11sp" />
 
-                <!-- شريط قابل للتمرير أفقيًا حتى لا تُقصّ الأزرار على الشاشات الضيقة -->
                 <HorizontalScrollView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
@@ -355,7 +333,7 @@
             </LinearLayout>
         </FrameLayout>
 
-        <!-- Bottom actions (always visible) -->
+        <!-- Bottom bar: مشاركة + حفظ كصورة -->
         <LinearLayout
             android:id="@+id/bottomBar"
             android:layout_width="match_parent"
@@ -393,7 +371,7 @@
         </LinearLayout>
     </LinearLayout>
 
-    <!-- ===== Tools panel (slide-up overlay, hidden by default) ===== -->
+    <!-- ===== Tools panel (slide-up overlay, hidden by default) — يبقى كما هو ===== -->
     <FrameLayout
         android:id="@+id/toolsOverlay"
         android:layout_width="match_parent"
@@ -418,7 +396,6 @@
             android:orientation="vertical"
             android:paddingBottom="10dp">
 
-            <!-- Drag handle -->
             <View
                 android:layout_width="44dp"
                 android:layout_height="4dp"
@@ -608,7 +585,6 @@
                             android:orientation="horizontal" />
                     </HorizontalScrollView>
 
-                    <!-- Bold all -->
                     <TextView
                         android:id="@+id/btnBoldAll"
                         android:layout_width="wrap_content"
@@ -619,7 +595,7 @@
                         android:fontFamily="@font/alyamama_bold"
                         android:gravity="center"
                         android:paddingHorizontal="18dp"
-                        android:text="عريض" 
+                        android:text="عريض"
                         android:textColor="@color/urwah_thread_dark"
                         android:textSize="12sp" />
 
@@ -821,7 +797,6 @@
                         android:textColor="@color/urwah_thread_light"
                         android:textSize="10sp" />
 
-                    <!-- شبكة التأثيرات (3 أعمدة)، تتفعّل بصريًا حسب التأثير الحالي للتحديد -->
                     <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"

@@ -13,6 +13,7 @@ import androidx.recyclerview.widget.RecyclerView
 class MushafPagerAdapter(
     private val pageCount: Int,
     private val typeface: Typeface,
+    private val glyphTypefaceProvider: (Int) -> Typeface?,
     private val inkColor: Int,
     private val accentColor: Int,
     private val surahNameProvider: (Int) -> String,
@@ -20,6 +21,10 @@ class MushafPagerAdapter(
     private val onPageTap: (Int) -> Unit,
     private val onPageLongPress: (Int) -> Unit,
 ) : RecyclerView.Adapter<MushafPagerAdapter.PageHolder>() {
+
+    /** النطاق المتاح (شريط الواجهة/المشغّل/الحواف الآمنة) — يُطبَّق على كل ربط قادم. */
+    var pagesInsets: Pair<Int, Int> = 0 to 0
+    var pagesSafeInsets: Pair<Int, Int> = 0 to 0
 
     class PageHolder(val pageView: MushafPageView) : RecyclerView.ViewHolder(pageView) {
         var boundPage: Int = -1
@@ -51,6 +56,7 @@ class MushafPagerAdapter(
             onSingleTap = { onPageTap.invoke(holder.boundPage) },
             onLongPress = { onPageLongPress.invoke(holder.boundPage) },
         )
+        holder.pageView.setInsets(pagesInsets.first, pagesInsets.second, pagesSafeInsets.first, pagesSafeInsets.second)
     }
 
     private fun getItemViewHolder(holder: PageHolder, position: Int) {
@@ -58,6 +64,7 @@ class MushafPagerAdapter(
         holder.pageView.bind(
             page = page,
             typeface = typeface,
+            glyphTypeface = glyphTypefaceProvider(position + 1),
             inkColor = inkColor,
             accentColor = accentColor,
             surahNameProvider = surahNameProvider,

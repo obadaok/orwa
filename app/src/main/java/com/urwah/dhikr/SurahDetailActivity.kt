@@ -19,6 +19,7 @@ import android.view.Gravity
 import android.view.LayoutInflater
 import android.view.MotionEvent
 import android.view.View
+import android.view.WindowInsets
 import android.view.WindowManager
 import android.view.ViewGroup
 import android.view.ViewTreeObserver
@@ -111,6 +112,10 @@ class SurahDetailActivity : AppCompatActivity() {
     // ===== وضع الصفحات =====
     private var pagesModeActive = false
     private var pagesOverlayVisible = true
+    private var pageInsetTop = 0
+    private var pageInsetBottom = 0
+    private var pagesSafeInsets: Pair<Int, Int> = 0 to 0
+    private var pagesInsetsHooked = false
     private var pagesLastPosition = 1
     private var pagesViewPager: ViewPager2? = null
     private var pagesPagerAdapter: MushafPagerAdapter? = null
@@ -1089,6 +1094,7 @@ class SurahDetailActivity : AppCompatActivity() {
 
         pager.offscreenPageLimit = 1
         pager.setPageTransformer(MushafPageFadeTransformer())
+        hookPagesInsets()
 
         lifecycleScope.launch {
             QuranPageLayouts.ensureLoaded(this@SurahDetailActivity)
@@ -1104,6 +1110,7 @@ class SurahDetailActivity : AppCompatActivity() {
             val adapter = MushafPagerAdapter(
                 pageCount = QuranPageLayouts.PAGE_COUNT,
                 typeface = tf,
+                glyphTypefaceProvider = { page -> loadGlyphFaceForPage(page) },
                 inkColor = ink,
                 accentColor = accent,
                 surahNameProvider = { s ->
@@ -1125,8 +1132,24 @@ class SurahDetailActivity : AppCompatActivity() {
             })
 
             pagesUiReady = true
+            updatePagesInsets()
             onReady()
         }
+    }
+
+    private val glyphFaceCache = HashMap<Int, android.graphics.Typeface>()
+
+    /** خط الكراكترز QCF V2 للصفحة (مصحف حفص)، أو null لبقية الروايات. */
+    private fun loadGlyphFaceForPage(page: Int): android.graphics.Typeface? {
+        if (QuranDataLoader.fontResFor(QuranDataLoader.getQiraat(this)) != R.font.uthmanic_hafs) return null
+        glyphFaceCache[page]?.let { return it }
+        val face = try {
+            android.graphics.Typeface.createFromAsset(assets, "fonts/qcf/QCF_P%03d.TTF".format(page))
+        } catch (e: Exception) {
+            null
+        }
+        if (face != null) glyphFaceCache[page] = face
+        return face
     }
 
     private fun enterPagesMode(initialPage: Int) {
@@ -1153,32 +1176,26 @@ class SurahDetailActivity : AppCompatActivity() {
             return
         }
 
-        // إظهار الكونتينر فوراً وإخفاء الـ pager بصرياً عبر alpha بدل تقلبات الرؤية
-        // INVISIBLE↔VISIBLE: انتقالات الرؤية خلّفت تعارضاً بين currentItem المنطقي
-        // وإزاحة RecyclerView الفعلية (سُجّل rvScrollX=602×1200 مقابل currentItem=1 —
-        // الموضع المعكوس RTL) فبقيت نافذة العرض على فراغ حتى أول تمرير.
+        // المسار ب (الرسم المباشر): الصفحات تُرسم نصّها داخل onDraw —
+        // تظهر فوراً في أول تسجيل لها، فلا حاجة لأي حالات إخفاء/تلاشي
+        // (كل محاولات INVISIBLE/alpha خلّفت فراغاً حتى أول تمرير).
         container.visibility = View.VISIBLE
-        pager.alpha = 0f
 
         fun placeAt() {
             showPagesOverlay(false)
             updatePagesOverlayInfo(idx + 1)
             val p = pagesViewPager ?: return
-            // تشخيص مؤقت — يُحذف بعد اكتمال التحقق.
             android.util.Log.i(
                 "PagesDiag",
                 "before currentItem=${p.currentItem} " +
                     "rvScrollX=${(p.getChildAt(0) as? RecyclerView)?.computeHorizontalScrollOffset()}"
             )
             p.setCurrentItem(idx, false)
-            p.alpha = 1f
-            p.invalidate()
-            // setCurrentItem بلا انزلاق لا يوجّه transformPage، فيبقى الـ alpha stale
-            // (صفحة أولى فارغة حتى التمرير). requestTransform يوجّه تحويلات المحوّل
-            // للصفحات المرتبطة فيعود الرسم فوراً (نمط android/views-widgets-samples#109).
-            p.post { p.requestTransform() }
-            // التصاق مضمون بعد استقرار القياس: إعادة تثبيت نفس الموضع تفرض على
-            // RecyclerView إعادة اصطفاف إزاحته مع currentItem المنطقي.
+            // الحل: إجبار RecyclerView على إعادة ربط/رسم الصفحة الحالية بعد أول
+            // قياس حقيقي. المشكلة المعروفة: ViewPager2 مبني على RecyclerView
+            // وصفحاته تُرسم فقط عند التمرير لأنه إذا ضُبط currentItem قبل
+            // القياس يخزّن إزاحة جانبية خاطئة تبقى الصفحة معها «فارغة».
+            // notifyDataSetChanged + تثبيت نفس الموضع تُجبر إعادة bind فورية.
             p.postDelayed({
                 val rv = p.getChildAt(0) as? RecyclerView
                 android.util.Log.i(
@@ -1186,14 +1203,19 @@ class SurahDetailActivity : AppCompatActivity() {
                     "settle-start currentItem=${p.currentItem} " +
                         "rvScrollX=${rv?.computeHorizontalScrollOffset()}"
                 )
-                p.setCurrentItem(p.currentItem, false)
-                p.post { p.requestTransform() }
+                // إجبار إعادة ربط الصفحة الحالية بعد القياس الكامل
+                (p.adapter as? MushafPagerAdapter)?.let { adapter ->
+                    adapter.notifyItemChanged(p.currentItem)
+                }
+                p.requestTransform()
+                p.invalidate()
+                container.invalidate()
                 android.util.Log.i(
                     "PagesDiag",
                     "settle-end currentItem=${p.currentItem} " +
                         "rvScrollX=${rv?.computeHorizontalScrollOffset()}"
                 )
-            }, 150)
+            }, 100)
         }
 
         if (pager.width > 0 && pager.height > 0) {
@@ -1247,21 +1269,100 @@ class SurahDetailActivity : AppCompatActivity() {
         if (pagesOverlayVisible) hidePagesOverlay() else showPagesOverlay(true)
     }
 
+    /**
+     * يقيس النطاق الرأسي المتاح لوضع الصفحات (بعد شريط الواجهة العلوي وفوق
+     * سطر المشغّل السفلي إن ظهرا) ويبثّه لكل صفحات المعرض — فيُعاد تحجيم
+     * الصفحة وتثبيتها ديناميكياً كلما ظهر/اختفى أيٌّ من الشريطين أو تغيّر
+     * حجمُهما (تدوير، تغيير خط، ملء الشاشة...).
+     */
+    private fun updatePagesInsets() {
+        val container = findViewById<View>(R.id.pagesModeContainer) ?: return
+        if (!pagesModeActive || container.height <= 0) return
+        val bar = findViewById<View>(R.id.pagesOverlayBar) ?: return
+        // مع الشريط الظاهر: يغطي كل شيء تحته (سطر الواجهة + شريط الحالة). ومع
+        // إخفائه نُبقي حارساً ديناميكياً صغيراً = ارتفاع شريط الحالة من نظام
+        // Window Insets (لا قيمة ثابتة) حتى لا يقترب السطر الأول من شريط الحالة.
+        val top = if (bar.visibility == View.VISIBLE) bar.height else systemStatusBarHeight(container)
+        val player = findViewById<View>(R.id.audioPlayerBar)
+        val bottom = if (player != null && player.visibility == View.VISIBLE && player.top > 0) {
+            (container.height - player.top).coerceAtLeast(player.height)
+        } else 0
+        // الحواف الآمنة الأفقية (قصّ الشاشة/التثبيت) — لا تؤثر إلا على عرض القيود.
+        val sInsets = systemSafeInsets(container)
+        if (top == pageInsetTop && bottom == pageInsetBottom && sInsets == pagesSafeInsets) return
+        pageInsetTop = top
+        pageInsetBottom = bottom
+        pagesSafeInsets = sInsets
+        pagesPagerAdapter?.pagesInsets = top to bottom
+        pagesPagerAdapter?.pagesSafeInsets = sInsets
+        (pagesViewPager?.getChildAt(0) as? RecyclerView)?.let { rv ->
+            for (i in 0 until rv.childCount) {
+                (rv.getChildAt(i) as? MushafPageView)?.setInsets(top, bottom, sInsets.first, sInsets.second)
+            }
+        }
+    }
+
+    /** ارتفاع شريط الحالة من نظام Insets (ديناميكي، صغير — كحارس سفلي لعنوان السطر الأول عند إخفاء الشريط). */
+    @Suppress("DEPRECATION")
+    private fun systemStatusBarHeight(view: View): Int {
+        val insets = view.rootWindowInsets ?: return 0
+        return if (Build.VERSION.SDK_INT >= 30) {
+            insets.getInsets(WindowInsets.Type.systemBars()).top
+        } else {
+            insets.systemWindowInsetTop
+        }
+    }
+
+    /** الحواف الآمنة الأفقية (يمين/يسار) من نظام Insets — تُقيّد العرض دون المساس بالعمودية. */
+    @Suppress("DEPRECATION")
+    private fun systemSafeInsets(view: View): Pair<Int, Int> {
+        val insets = view.rootWindowInsets ?: return 0 to 0
+        return if (Build.VERSION.SDK_INT >= 30) {
+            val b = insets.getInsets(WindowInsets.Type.systemBars())
+            b.left to b.right
+        } else {
+            insets.systemWindowInsetLeft to insets.systemWindowInsetRight
+        }
+    }
+
+    /** يُفسح أحد الشريطين مساحةً لصفحات وضع الصفحات (يُستدعى عند تغيّر حجمهما/ظهورهما). */
+    private fun hookPagesInsets() {
+        if (pagesInsetsHooked) return
+        pagesInsetsHooked = true
+        val container = findViewById<View>(R.id.pagesModeContainer) ?: return
+        container.addOnLayoutChangeListener { _, _, _, _, _, _, _, _, _ ->
+            if (pagesModeActive) updatePagesInsets()
+        }
+        findViewById<View>(R.id.pagesOverlayBar)?.addOnLayoutChangeListener { v, _, _, _, _, _, _, _, _ ->
+            if (pagesModeActive) v.post { updatePagesInsets() }
+        }
+        findViewById<View>(R.id.audioPlayerBar)?.addOnLayoutChangeListener { v, _, _, _, _, _, _, _, _ ->
+            if (pagesModeActive) v.post { updatePagesInsets() }
+        }
+    }
+
     private fun showPagesOverlay(animated: Boolean) {
         pagesOverlayVisible = true
         val bar = findViewById<View>(R.id.pagesOverlayBar) ?: return
         if (animated) {
-            bar.animate().alpha(1f).setDuration(180).withEndAction { bar.visibility = View.VISIBLE }
+            bar.animate().alpha(1f).setDuration(180).withEndAction {
+                bar.visibility = View.VISIBLE
+                if (pagesModeActive) updatePagesInsets()
+            }
         } else {
             bar.alpha = 1f
             bar.visibility = View.VISIBLE
+            if (pagesModeActive) updatePagesInsets()
         }
     }
 
     private fun hidePagesOverlay() {
         pagesOverlayVisible = false
         val bar = findViewById<View>(R.id.pagesOverlayBar) ?: return
-        bar.animate().alpha(0f).setDuration(180).withEndAction { bar.visibility = View.GONE }
+        bar.animate().alpha(0f).setDuration(180).withEndAction {
+            bar.visibility = View.GONE
+            if (pagesModeActive) updatePagesInsets()
+        }
     }
 
     private fun updatePagesOverlayInfo(page: Int) {

@@ -9,6 +9,7 @@ import android.os.Bundle
 import android.os.Environment
 import android.os.Handler
 import android.os.Looper
+import android.os.SystemClock
 import android.provider.MediaStore
 import android.text.Editable
 import android.text.Layout
@@ -482,9 +483,16 @@ class QuoteEditorActivity : AppCompatActivity() {
         scrollView.scrollTo(scrollView.scrollX, newScrollY)
     }
 
+    private var lastHapticTime = 0L
+
     private fun performHandleHaptic(newOffset: Int) {
+        // تبسيط: منع التكرار المطلق للـ offset نفسه + حد زمني أدنى 40ms
+        // بين الإشعارات أثناء السحب، تجنّبًا لإرباك الإحساس بالمهتز.
         if (newOffset == lastHapticOffset) return
+        val now = SystemClock.uptimeMillis()
+        if (now - lastHapticTime < 40) return
         lastHapticOffset = newOffset
+        lastHapticTime = now
         tvContent.performHapticFeedback(HapticFeedbackConstants.TEXT_HANDLE_MOVE)
     }
 
@@ -1567,6 +1575,7 @@ class QuoteEditorActivity : AppCompatActivity() {
 
     private fun saveImage() {
         btnSave.isEnabled = false
+        btnShare.isEnabled = false
         if (::loadingOverlay.isInitialized) loadingOverlay.visibility = View.VISIBLE
         scope.launch {
             val bmp = capturePreviewBitmap(3f)
@@ -1581,6 +1590,7 @@ class QuoteEditorActivity : AppCompatActivity() {
                 Toast.makeText(this@QuoteEditorActivity, "خطأ في إنشاء الصورة", Toast.LENGTH_SHORT).show()
             }
             btnSave.isEnabled = true
+            btnShare.isEnabled = true
             if (::loadingOverlay.isInitialized && !isFinishing && !isDestroyed) {
                 loadingOverlay.visibility = View.GONE
             }
