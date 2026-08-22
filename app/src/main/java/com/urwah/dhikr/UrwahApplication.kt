@@ -13,15 +13,6 @@ class UrwahApplication : Application() {
         // تدفئة فهرس المكتبة (8589 كتابًا) في الخلفية فور الإقلاع حتى لا يُحلَّل
         // على الـ main thread عند أول دخول إلى «المكتبة».
         ShamelaCatalogReader.warmCache(this)
-        // تدفئة بيانات أسطر صفحات المصحف (~6MB JSON) فور الإقلاع حتى لا يتأخر
-        // دخول «وضع الصفحات» على شاشة بيضاء.
-        Thread {
-            QuranPageLayouts.ensureLoadedBlocking(this)
-            QuranPageIndex.ensureLoadedBlocking(this)
-        }.apply {
-            isDaemon = true
-            start()
-        }
     }
 
     private fun applyNightMode() {

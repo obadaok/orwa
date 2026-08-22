@@ -14,6 +14,7 @@ import android.os.Looper
 import android.os.SystemClock
 import android.text.Editable
 import android.text.Layout
+import android.text.Spannable
 import android.text.SpannableStringBuilder
 import android.text.Spanned
 import android.text.TextPaint
@@ -155,6 +156,8 @@ class ShamelaBookReaderActivity : AppCompatActivity() {
 
     private var pendingSearchQuery: String? = null
     private var pendingSearchMatchPage: Int = -1
+    private var pendingSearchRetries: Int = 0
+    private var searchHighlightRunnable: Runnable? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -1062,48 +1065,93 @@ class ShamelaBookReaderActivity : AppCompatActivity() {
     private fun scrollToSearchMatch(pageIndex: Int, query: String) {
         pendingSearchQuery = query
         pendingSearchMatchPage = pageIndex
+        pendingSearchRetries = 0
         viewPager.post {
             performPendingSearchScroll()
         }
     }
 
+    private fun clearPendingSearch() {
+        pendingSearchQuery = null
+        pendingSearchMatchPage = -1
+        pendingSearchRetries = 0
+    }
+
+    /**
+     * السبب الجذري لمشكلة الكتب الكبيرة: الاعتماد على تأخير ثابت (80ms) لإعادة المحاولة،
+     * وهو غير كافٍ عندما يستغرق تخطيط الصفحات وقتًا طويلاً، وقد يتكرر بلا نهاية.
+     * الحل: حد أقصى للمحاولات + انتقال event-driven عند اكتمال layout النص (doOnLayout-style)
+     * بدل انتظار أعمى.
+     */
     private fun performPendingSearchScroll() {
         val query = pendingSearchQuery ?: return
         val targetPage = pendingSearchMatchPage
         if (targetPage < 0) return
 
         val rv = viewPager.getChildAt(0) as? RecyclerView ?: run {
-            // ViewPager2 لم يبنِRecyclerView بعد — أعد المحاولة بعد دورة.
+            if (++pendingSearchRetries > MAX_SEARCH_SCROLL_RETRIES) { clearPendingSearch(); return }
             viewPager.post { performPendingSearchScroll() }
             return
         }
         val vh = rv.findViewHolderForAdapterPosition(targetPage) as? BookPageAdapter.PageViewHolder
         if (vh == null) {
-            // VH غير مرتبط بعد (offscreen) — انتقل للصفحة أولاً ثم مرّر بعد الالتصاق.
+            // VH غير مرتبط بعد (offscreen) — انتقل للصفحة مرة واحدة ثم انتظر التصاقها.
             if (viewPager.currentItem != targetPage) {
                 viewPager.setCurrentItem(targetPage, true)
+                pendingSearchRetries = 0 // الانتقال نفسه يُعيد المحاولة عبر onPageSelected
+                return
             }
-            viewPager.postDelayed({ performPendingSearchScroll() }, 80)
+            if (++pendingSearchRetries > MAX_SEARCH_SCROLL_RETRIES) { clearPendingSearch(); return }
+            viewPager.postDelayed({ performPendingSearchScroll() }, SEARCH_RETRY_DELAY_MS)
             return
         }
 
         val tv = vh.tvContent
-        val layout = tv.layout ?: run {
-            viewPager.postDelayed({ performPendingSearchScroll() }, 80)
-            return
+        // event-driven: لا نمرّر إلا بعد اكتمال layout النص الفعلي — لا تأخيرات ثابتة.
+        tv.addOnLayoutChangeListener(object : View.OnLayoutChangeListener {
+            override fun onLayoutChange(
+                v: View, l: Int, t: Int, r: Int, b: Int,
+                ol: Int, ot: Int, or_: Int, ob: Int
+            ) {
+                v.removeOnLayoutChangeListener(this)
+                if (pendingSearchMatchPage != targetPage) return
+                scrollAndHighlightMatch(vh, query)
+            }
+        })
+        if (tv.layout != null) {
+            // التخطيط جاهز بالفعل — نفّذ فورًا (المستمع لن يُطلق إن لم يتغير شيء).
+            tv.post { if (pendingSearchMatchPage == targetPage) scrollAndHighlightMatch(vh, query) }
         }
+    }
+
+    /** يمرر إلى أول تطابق داخل صفحة النتيجة ويبرزه مؤقتًا (3 ثوانٍ). */
+    private fun scrollAndHighlightMatch(vh: BookPageAdapter.PageViewHolder, query: String) {
+        val tv = vh.tvContent
+        val layout = tv.layout ?: run { clearPendingSearch(); return }
         val fullText = tv.text.toString()
         val normalizedQuery = normalizeSearchQuery(query)
         val normalized = buildNormalizedSearchText(fullText)
         val matchIdx = normalized.text.indexOf(normalizedQuery, ignoreCase = true)
-        if (matchIdx < 0) return
-        val origOffset = normalized.offsetMap[matchIdx]
+        if (matchIdx < 0) { clearPendingSearch(); return }
+        val origOffset = normalized.offsetMap[matchIdx] ?: 0
 
         val line = layout.getLineForOffset(origOffset)
         val y = layout.getLineTop(line)
         vh.scrollView.smoothScrollTo(0, y)
-        pendingSearchQuery = null
-        pendingSearchMatchPage = -1
+
+        // Highlight مؤقت: تمييز التطابق بلون خفيف يزول تلقائيًا بعد 3 ثوانٍ.
+        searchHighlightRunnable?.let { tv.removeCallbacks(it) }
+        val endOffset = normalized.offsetMap.getOrNull(matchIdx + normalizedQuery.length)
+            ?: (origOffset + normalizedQuery.length).coerceAtMost(fullText.length)
+        if (endOffset > origOffset && tv.text is Spannable) {
+            val sp = tv.text as Spannable
+            val span = BackgroundColorSpan(SEARCH_HIGHLIGHT_COLOR)
+            sp.setSpan(span, origOffset, endOffset, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
+            searchHighlightRunnable = Runnable { sp.removeSpan(span) }.also {
+                tv.postDelayed(it, SEARCH_HIGHLIGHT_MS)
+            }
+        }
+        clearPendingSearch()
     }
 
     /** يزيل التشكيل من استعلام البحث (لا يشترط الخريطة — الاستعلام مُدخل مستخدم). */
@@ -1738,5 +1786,9 @@ class ShamelaBookReaderActivity : AppCompatActivity() {
 
     companion object {
         const val PAGE_CONTEXT_HALF = 2
+        private const val MAX_SEARCH_SCROLL_RETRIES = 12
+        private const val SEARCH_RETRY_DELAY_MS = 60L
+        private const val SEARCH_HIGHLIGHT_MS = 3000L
+        private const val SEARCH_HIGHLIGHT_COLOR = 0x401A73E8
     }
 }

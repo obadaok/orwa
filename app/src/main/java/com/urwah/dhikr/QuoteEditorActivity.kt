@@ -59,6 +59,7 @@ class QuoteEditorActivity : AppCompatActivity() {
     private lateinit var ivQuoteLogo: ImageView
     private lateinit var previewRoot: LinearLayout
     private lateinit var previewFrame: FrameLayout
+    private lateinit var previewWrap: FrameLayout
     private lateinit var previewBorder: View
     private lateinit var tvSelectionInfo: TextView
     private lateinit var selHandleStart: View
@@ -68,7 +69,6 @@ class QuoteEditorActivity : AppCompatActivity() {
     private lateinit var btnSave: TextView
     private lateinit var btnShare: TextView
     private lateinit var btnClose: TextView
-    private lateinit var btnTools: TextView
     private lateinit var btnUndo: View
     private lateinit var btnRedo: View
     private lateinit var btnPreview: TextView
@@ -102,7 +102,6 @@ class QuoteEditorActivity : AppCompatActivity() {
     private lateinit var etCitation: EditText
     private lateinit var etCommentary: EditText
     private lateinit var topBar: LinearLayout
-    private lateinit var bottomBar: LinearLayout
     private var topBarsHidden = false
     private var lastScrollY = 0
 
@@ -209,6 +208,7 @@ class QuoteEditorActivity : AppCompatActivity() {
         ivQuoteLogo = findViewById(R.id.ivQuoteLogo)
         previewRoot = findViewById(R.id.previewRoot)
         previewFrame = findViewById(R.id.previewFrame)
+        previewWrap = findViewById(R.id.previewWrap)
         previewBorder = findViewById(R.id.previewBorder)
         tvSelectionInfo = findViewById(R.id.tvSelectionInfo)
         selHandleStart = findViewById(R.id.selHandleStart)
@@ -218,7 +218,6 @@ class QuoteEditorActivity : AppCompatActivity() {
         btnSave = findViewById(R.id.btnSave)
         btnShare = findViewById(R.id.btnShare)
         btnClose = findViewById(R.id.btnClose)
-        btnTools = findViewById(R.id.btnTools)
         btnUndo = findViewById(R.id.btnUndo)
         btnRedo = findViewById(R.id.btnRedo)
         btnPreview = findViewById(R.id.btnPreview)
@@ -252,7 +251,6 @@ class QuoteEditorActivity : AppCompatActivity() {
         etCitation = findViewById(R.id.etCitation)
         etCommentary = findViewById(R.id.etCommentary)
         topBar = findViewById(R.id.topBar)
-        bottomBar = findViewById(R.id.bottomBar)
 
         effectChips += findViewById<View>(R.id.btnEffectBold)
         effectChips += findViewById<View>(R.id.btnEffectUnderline)
@@ -264,6 +262,7 @@ class QuoteEditorActivity : AppCompatActivity() {
         // الاقتباس ولا يجب أن يُعطَّل لمجرد عدم وجود تحديد نشط حاليًا.
 
         setupTouch()
+        hookSelectionHandlesRelayout()
         setupAutoHideTopBars()
         loadData()
         setupEffectsBar()
@@ -275,7 +274,9 @@ class QuoteEditorActivity : AppCompatActivity() {
         setupAdvancedFormatting()
         setupFontChips()
         setupToolsPanel()
+        setupSheetDrag()
         setupButtons()
+        setupToolbarTools()
         applyImageSize()
         refreshPreview(preserveScroll = false)
         updateUndoRedoUI()
@@ -314,7 +315,6 @@ class QuoteEditorActivity : AppCompatActivity() {
         private const val AUTO_SCROLL_EDGE_DP = 48f
         private const val AUTO_SCROLL_SPEED_DP = 26f
         // حد ارتفاع المعاينة النقطية (بكسلات): النص الأطول يعرض بالمحرر الحي الحي.
-        private const val MAX_PREVIEW_BITMAP_HEIGHT = 14000
     }
 
     private fun setupTouch() {
@@ -516,13 +516,12 @@ class QuoteEditorActivity : AppCompatActivity() {
         topBarsHidden = true
         val dy = topBar.height.toFloat()
         topBar.animate().translationY(-dy).alpha(0f).setDuration(220).start()
-        bottomBar.animate().translationY(dy).alpha(0f).setDuration(220).start()
+        // bottomBar أُزيل — الحفظ/المشاركة في الشريط العلوي الآن
     }
 
     private fun showTopBars() {
         topBarsHidden = false
         topBar.animate().translationY(0f).alpha(1f).setDuration(220).start()
-        bottomBar.animate().translationY(0f).alpha(1f).setDuration(220).start()
     }
 
     private fun offsetAt(event: MotionEvent, layout: android.text.Layout): Int {
@@ -586,6 +585,20 @@ class QuoteEditorActivity : AppCompatActivity() {
 
         selHandleStart.visibility = View.VISIBLE
         selHandleEnd.visibility = View.VISIBLE
+    }
+
+    /**
+     * السبب الجذري لاختفاء المقابض: كانت تُموضع مرة واحدة بعد تغيير النص
+     * قبل اكتمال layout. الحل: إعادة التموضع عند كل تمرير layout للمضيف —
+     * (تغيير خط، مقاس، فتح/إغلاق اللوحة، سكرول) فيبقى المقابض ظاهرة دائمًا.
+     */
+    private fun hookSelectionHandlesRelayout() {
+        findViewById<View>(R.id.tvContentHost).addOnLayoutChangeListener { _, _, _, _, _, _, _, _, _ ->
+            if (hasSelection && !previewMode) {
+                selHandleStart.post { positionSelectionHandles() }
+                selHandleEnd.post { positionSelectionHandles() }
+            }
+        }
     }
 
     private fun updateSelectionUI() {
@@ -672,6 +685,17 @@ class QuoteEditorActivity : AppCompatActivity() {
         val removed = end - start
 
         fullText = fullText.substring(0, start) + fullText.substring(end)
+        // حذف الأسطر الفارغة (أو whitespace-only) الناتجة عن الحذف حتى لا تبقى فراغات
+        val lineStart = fullText.lastIndexOf('\n', (start - 1).coerceAtLeast(0)) + 1
+        val lineEnd = fullText.indexOf('\n', start).let { if (it == -1) fullText.length else it }
+        if (lineStart < lineEnd && fullText.substring(lineStart, lineEnd).isBlank()) {
+            val nlAfter = if (lineEnd < fullText.length) 1 else 0
+            val nlBefore = if (lineStart > 0 && fullText[lineStart - 1] == '\n') 1 else 0
+            fullText = fullText.substring(0, lineStart) + fullText.substring((lineEnd + nlAfter).coerceAtMost(fullText.length))
+            if (nlBefore == 1 && fullText.isNotEmpty() && fullText.lastOrNull() == '\n') {
+                fullText = fullText.dropLast(1)
+            }
+        }
         pageMarkers = detectPageMarkers(fullText)
 
         val newSpans = mutableMapOf<IntRange, QuoteSpanStyle>()
@@ -1121,13 +1145,99 @@ class QuoteEditorActivity : AppCompatActivity() {
     }
 
     private fun setupToolsPanel() {
-        btnTools.setOnClickListener { showToolsPanel(true) }
-        btnCloseTools.setOnClickListener { showToolsPanel(false) }
-        findViewById<View>(R.id.toolsScrim).setOnClickListener { showToolsPanel(false) }
+        // اللمس على الخلفية المعتمة = طيّ اللوحة للمقبض فقط
+        findViewById<View>(R.id.toolsScrim).setOnClickListener { setSheetState(false) }
+        btnCloseTools.setOnClickListener { setSheetState(false) }
     }
 
-    private fun showToolsPanel(show: Boolean) {
-        if (show) {
+    /** يربط أزرار الباتتوم بأدواتها: كل زر يفتح اللوحة المناسبة ويسكروول لقسمها. */
+    private fun setupToolbarTools() {
+        findViewById<View>(R.id.toolAlign).setOnClickListener {
+            showToolsPanel(true)
+            toolsScroll.post { toolsScroll.fullScroll(View.FOCUS_UP) }
+        }
+        findViewById<View>(R.id.toolFont).setOnClickListener {
+            showToolsPanel(true)
+            toolsScroll.post { toolsScroll.smoothScrollTo(0, 0) }
+        }
+        findViewById<View>(R.id.toolSize).setOnClickListener {
+            showToolsPanel(true)
+            toolsScroll.post {
+                val secY = findViewById<View>(R.id.sizeSelector).top
+                toolsScroll.smoothScrollTo(0, secY)
+            }
+        }
+        findViewById<View>(R.id.toolEffects).setOnClickListener {
+            if (!hasSelection) {
+                tvEffectsHint?.text = "حدّد جزءًا من النص أولًا لتفعيل هذه الأدوات"
+            }
+            showToolsPanel(true)
+            toolsScroll.post {
+                val secY = findViewById<View>(R.id.btnEffectBold).top
+                toolsScroll.smoothScrollTo(0, secY)
+            }
+        }
+        findViewById<View>(R.id.toolBackground).setOnClickListener {
+            showToolsPanel(true)
+            toolsScroll.post {
+                val secY = findViewById<View>(R.id.bgSelector).top
+                toolsScroll.smoothScrollTo(0, secY)
+            }
+        }
+        findViewById<View>(R.id.toolMeta).setOnClickListener {
+            showToolsPanel(true)
+            toolsScroll.post {
+                val secY = findViewById<View>(R.id.etCitation).top
+                toolsScroll.smoothScrollTo(0, secY)
+            }
+        }
+    }
+
+    // ===== Bottom Sheet موحد: حالتان (موسّع / مطوي) + سحب على المقبض =====
+    private var sheetExpanded = false
+    private val sheetPeekHeight: Int get() = dp(72f).toInt() // المقبض + العنوان يظهران دائمًا
+
+    private fun setupSheetDrag() {
+        val handle = findViewById<View>(R.id.toolsHandle)
+        var downY = 0f
+        var startTranslation = 0f
+        var dragging = false
+        handle.setOnTouchListener { v, event ->
+            when (event.actionMasked) {
+                MotionEvent.ACTION_DOWN -> {
+                    downY = event.rawY
+                    startTranslation = toolsPanel.translationY
+                    dragging = true
+                    true
+                }
+                MotionEvent.ACTION_MOVE -> {
+                    if (dragging && toolsPanel.height > 0) {
+                        val maxT = (toolsPanel.height - sheetPeekHeight).toFloat()
+                        toolsPanel.translationY = (startTranslation + (event.rawY - downY)).coerceIn(0f, maxT)
+                        true
+                    } else false
+                }
+                MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                    if (dragging) {
+                        dragging = false
+                        val maxT = (toolsPanel.height - sheetPeekHeight).toFloat()
+                        // أقرب حالة للإفلات: فوق المنتصف = موسّع، وإلا مطوي
+                        setSheetState(toolsPanel.translationY < maxT / 2f)
+                        true
+                    } else false
+                }
+                else -> false
+            }
+        }
+        // نقرة على المقبض/العنوان والمطوية = توسيع
+        handle.setOnClickListener { if (!sheetExpanded) setSheetState(true) }
+        findViewById<View>(R.id.toolsHeader).setOnClickListener { if (!sheetExpanded) setSheetState(true) }
+    }
+
+    /** الحالة الموحدة: expanded=true يظهر المحتوى كاملاً، false يبقى المقبض فقط. */
+    private fun setSheetState(expanded: Boolean) {
+        sheetExpanded = expanded
+        if (expanded) {
             if (previewMode) return
             showTopBars()
             toolsOverlay.visibility = View.VISIBLE
@@ -1137,26 +1247,38 @@ class QuoteEditorActivity : AppCompatActivity() {
                 toolsScroll.layoutParams = toolsScroll.layoutParams
             }
             toolsPanel.post {
-                toolsPanel.translationY = toolsPanel.height.toFloat()
                 toolsPanel.animate().translationY(0f).setDuration(220).start()
             }
         } else {
-            toolsPanel.animate()
-                .translationY(toolsPanel.height.toFloat())
-                .setDuration(200)
-                .withEndAction {
-                    toolsOverlay.visibility = View.GONE
-                    toolsPanel.translationY = 0f
-                }
-                .start()
+            toolsPanel.post {
+                val target = (toolsPanel.height - sheetPeekHeight).coerceAtLeast(0).toFloat()
+                toolsPanel.animate().translationY(target).setDuration(200)
+                    .withEndAction { /* اللوحة تبقى ظاهرة بالمقبض */ }
+                    .start()
+            }
+        }
+    }
+
+    /** فتح الأداة: إن كانت مطوية نوسّع، وإن كانت مفتوحة نبقى (سكروول فقط). */
+    private fun showToolsPanel(show: Boolean) {
+        if (show) {
+            if (previewMode) return
+            if (!sheetExpanded || toolsOverlay.visibility != View.VISIBLE) {
+                setSheetState(true)
+            }
+        } else {
+            setSheetState(false)
         }
     }
 
     override fun onBackPressed() {
         if (previewMode) {
             togglePreviewMode()
+        } else if (sheetExpanded) {
+            setSheetState(false)
         } else if (toolsOverlay.visibility == View.VISIBLE) {
-            showToolsPanel(false)
+            // اللوحة مطوية (مقبض ظاهر) — الرجوع يخفيها كلياً
+            toolsOverlay.visibility = View.GONE
         } else {
             super.onBackPressed()
         }
@@ -1214,13 +1336,11 @@ class QuoteEditorActivity : AppCompatActivity() {
         if (previewMode) {
             clearSelection()
             showToolsPanel(false)
-            btnTools.visibility = View.GONE
             btnUndo.visibility = View.GONE
             btnRedo.visibility = View.GONE
             btnPreview.text = "تحرير"
             toolsOverlay.visibility = View.GONE
         } else {
-            btnTools.visibility = View.VISIBLE
             btnUndo.visibility = View.VISIBLE
             btnRedo.visibility = View.VISIBLE
             btnPreview.text = "معاينة"
@@ -1236,15 +1356,23 @@ class QuoteEditorActivity : AppCompatActivity() {
 
     /**
      * يبني صورة الناتج النهائي بنفس مسار التصدير (capturePreviewBitmap) ويعرضها،
-     * فيرى المستخدم EXACTLY ما سيُحفظ. النص الطويل جدًا (يتجاوز حد ارتفاع الصورة)
-     * يبقى معروضًا بالمحرر الحي نفسه (نفس الـ renderer).
+     * فيرى المستخدم EXACTLY ما سيُحفظ. الإصلاح الجذري للمعاينة الفارغة:
+     * 1) القياس عبر measure() صريح قبل الالتقاط (لا اعتماد على measuredHeight القديم).
+     * 2) ضبط ارتفاع ImageView من نسبة أبعاد الصورة الفعلية (fitCenter وحده لا يمنح ارتفاعاً
+     *    داخل match_parent فيظهر فارغاً إن كانت الصورة أطول من الشاشة).
      */
     private fun renderPreviewBitmap() {
         if (!previewMode) return
-        val frameH = previewFrame.measuredHeight.takeIf { it > 0 } ?: previewFrame.height
-        if (frameH <= 0 || frameH > MAX_PREVIEW_BITMAP_HEIGHT) return
-        val bmp = capturePreviewBitmap(1f) ?: return
+        val wrapW = previewWrap.width.takeIf { it > 0 } ?: return
+        val bmp = capturePreviewBitmap(1f) ?: run {
+            // فشل الالتقاط: نُبقي المحرر الحي ظاهراً بدل شاشة فارغة
+            ivPreviewBitmap.visibility = View.GONE
+            return
+        }
         ivPreviewBitmap.setImageBitmap(bmp)
+        val lp = ivPreviewBitmap.layoutParams
+        lp.height = (wrapW.toLong() * bmp.height / bmp.width).toInt().coerceAtLeast(1)
+        ivPreviewBitmap.layoutParams = lp
         ivPreviewBitmap.visibility = View.VISIBLE
     }
 
@@ -1484,6 +1612,29 @@ class QuoteEditorActivity : AppCompatActivity() {
         btnRedo.alpha = if (redoStack.isEmpty()) 0.4f else 1f
     }
 
+    /**
+     * أرقام الصفحات («≪ صفحة 12 ≫») علامات داخلية للمحرر فقط — تُحذف فعليًا
+     * من نص التصدير/المعاينة مع إزاحة الـ spans المحيطة، فلا تظهر في الصورة النهائية.
+     */
+    private fun stripPageMarkersForExport(): Pair<String, Map<IntRange, QuoteSpanStyle>> {
+        var text = fullText
+        var spans = currentSpans.map { it.key to it.value }
+        for (m in PAGE_MARKER_REGEX.findAll(fullText).toList().reversed()) {
+            val s = m.range.first
+            val e = m.range.last + 1
+            val len = e - s
+            text = text.substring(0, s) + text.substring(e.coerceAtMost(text.length))
+            spans = spans.mapNotNull { (r, st) ->
+                when {
+                    r.first >= e -> ((r.first - len)..(r.last - len)) to st
+                    r.last < s -> r to st
+                    else -> null
+                }
+            }
+        }
+        return text to spans.toMap()
+    }
+
     private fun capturePreviewBitmap(scale: Float = 3f): android.graphics.Bitmap? {
         // If user selected text, export only the selection
         val savedText = fullText
@@ -1522,6 +1673,21 @@ class QuoteEditorActivity : AppCompatActivity() {
             tvContent.text = ssb
         }
 
+        // تصدير بلا أرقام صفحات: استبدال مؤقت للنص/spans ثم استرجاع كامل بعد الالتقاط.
+        val savedMarkers = pageMarkers
+        val savedSpans = LinkedHashMap(currentSpans)
+        var swapped = false
+        if (!hasSelection && pageMarkers.isNotEmpty()) {
+            val (exportText, exportSpanMap) = stripPageMarkersForExport()
+            currentSpans.clear()
+            currentSpans.putAll(exportSpanMap)
+            pageMarkers = emptyList()
+            val exportSsb = SpannableStringBuilder(exportText)
+            applyBaseStyles(exportSsb)
+            tvContent.text = exportSsb
+            swapped = true
+        }
+
         val frame = previewFrame
         val sz = quoteSizes[sizeIndex]
         val w = frame.width.takeIf { it > 0 } ?: resources.displayMetrics.widthPixels
@@ -1547,8 +1713,15 @@ class QuoteEditorActivity : AppCompatActivity() {
 
         // Restore full text (بما في ذلك إعادة تطبيق «إخفاء غير المحدد» حتى لا يختفي
         // التعتيم بعد التصدير — إصلاح الحالة القديمة العالقة)
+        if (swapped) {
+            pageMarkers = savedMarkers
+            currentSpans.clear()
+            currentSpans.putAll(savedSpans)
+        }
         if (hasSelection) {
             restoreLiveText(savedText)
+        } else if (swapped) {
+            restoreLiveText(fullText)
         }
 
         if (scale <= 1f) return bitmap
