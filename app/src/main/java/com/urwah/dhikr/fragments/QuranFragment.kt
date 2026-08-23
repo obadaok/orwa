@@ -22,6 +22,7 @@ import com.urwah.dhikr.BookmarksActivity
 import com.urwah.dhikr.R
 import com.urwah.dhikr.ReadingTracker
 import com.urwah.dhikr.SurahAdapter
+import com.urwah.dhikr.SurahCardItemAnimator
 import com.urwah.dhikr.SurahData
 import com.urwah.dhikr.SurahDataProvider
 import com.urwah.dhikr.SurahDetailActivity
@@ -49,6 +50,8 @@ class QuranFragment : Fragment(), com.urwah.dhikr.SearchableFragment {
         allSurahs = SurahDataProvider.allSurahs
 
         binding.rvSurahs.layoutManager = LinearLayoutManager(requireContext())
+        // أنيميشن ظهور خفيف لبطاقات السور أثناء التمرير
+        binding.rvSurahs.itemAnimator = SurahCardItemAnimator()
 
         binding.ivBookmarksIcon.setOnClickListener {
             startActivity(Intent(requireContext(), BookmarksActivity::class.java))
