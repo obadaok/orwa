@@ -91,6 +91,8 @@ class SettingsFragment : Fragment() {
             type = NotificationHelper.TYPE_MORNING,
             defaultHour = 6, defaultMinute = 0,
             prefs = prefs
+        ,
+            rowView = binding.rowMorning
         )
         setupReminder(
             switchView = binding.switchEvening,
@@ -98,6 +100,8 @@ class SettingsFragment : Fragment() {
             type = NotificationHelper.TYPE_EVENING,
             defaultHour = 17, defaultMinute = 0,
             prefs = prefs
+        ,
+            rowView = binding.rowEvening
         )
         setupReminder(
             switchView = binding.switchBedtime,
@@ -105,6 +109,8 @@ class SettingsFragment : Fragment() {
             type = NotificationHelper.TYPE_BEDTIME,
             defaultHour = 22, defaultMinute = 0,
             prefs = prefs
+        ,
+            rowView = binding.rowBedtime
         )
 
         setupReminder(
@@ -113,6 +119,8 @@ class SettingsFragment : Fragment() {
             type = NotificationHelper.TYPE_KAHF,
             defaultHour = 6, defaultMinute = 0,
             prefs = prefs
+        ,
+            rowView = binding.rowKahf
         )
         setupReminder(
             switchView = binding.switchKahf,
@@ -120,6 +128,8 @@ class SettingsFragment : Fragment() {
             type = NotificationHelper.TYPE_KAHF,
             defaultHour = 6, defaultMinute = 0,
             prefs = prefs
+        ,
+            rowView = binding.rowKahf
         )
         setupReminder(
             switchView = binding.switchKhatma,
@@ -127,6 +137,8 @@ class SettingsFragment : Fragment() {
             type = NotificationHelper.TYPE_KHATMA,
             defaultHour = 8, defaultMinute = 0,
             prefs = prefs
+        ,
+            rowView = binding.rowKhatma
         )
 
         setupQuranSettings(quranPrefs)
@@ -206,15 +218,15 @@ class SettingsFragment : Fragment() {
         binding.tvQiraatMode.text = QuranDataLoader.getRiwayatInfo(qiraatMode).arabicName
         binding.tvAyahAlignment.text = alignmentLabel(alignment)
 
-        binding.tvAyahDisplayMode.setOnClickListener {
+        binding.rowAyahDisplayMode.setOnClickListener {
             showViewModeDialog(prefs)
         }
 
-        binding.tvQiraatMode.setOnClickListener {
+        binding.rowQiraatMode.setOnClickListener {
             showRiwayaDialog()
         }
 
-        binding.tvAyahAlignment.setOnClickListener {
+        binding.rowAyahAlignment.setOnClickListener {
             showAlignmentDialog(prefs)
         }
 
@@ -222,7 +234,6 @@ class SettingsFragment : Fragment() {
         binding.tvMurattalTheme.text = murattalTheme.name
         binding.root.findViewById<View>(R.id.row_murattal_theme)
             .setOnClickListener { showMurattalThemeDialog() }
-        binding.tvMurattalTheme.setOnClickListener { showMurattalThemeDialog() }
         applyThemeSwatches(murattalTheme)
     }
 
@@ -302,6 +313,12 @@ class SettingsFragment : Fragment() {
         }
         binding.switchDarkMode.isChecked = actualIsDark
 
+        fun toggleDarkMode() {
+            binding.switchDarkMode.isChecked = !binding.switchDarkMode.isChecked
+        }
+        binding.rowDarkMode.setOnClickListener { toggleDarkMode() }
+        // الضغط على المفتاح نفسه يبقى مسموحاً ولا يتضاعف
+        binding.switchDarkMode.setOnClickListener { it.isPressed = false; toggleDarkMode() }
         binding.switchDarkMode.setOnCheckedChangeListener { _, isChecked ->
             prefs.edit().putBoolean(KEY_DARK_MODE, isChecked).apply()
             AppCompatDelegate.setDefaultNightMode(
@@ -313,6 +330,9 @@ class SettingsFragment : Fragment() {
     private fun setupVibration(prefs: SharedPreferences) {
         val enabled = prefs.getBoolean(KEY_VIBRATION, true)
         binding.switchVibration.isChecked = enabled
+        binding.rowVibration.setOnClickListener {
+            binding.switchVibration.isChecked = !binding.switchVibration.isChecked
+        }
         binding.switchVibration.setOnCheckedChangeListener { _, isChecked ->
             prefs.edit().putBoolean(KEY_VIBRATION, isChecked).apply()
         }
@@ -320,7 +340,8 @@ class SettingsFragment : Fragment() {
 
     private fun setupReminder(
         switchView: SwitchCompat, timeText: TextView, type: String,
-        defaultHour: Int, defaultMinute: Int, prefs: SharedPreferences
+        defaultHour: Int, defaultMinute: Int, prefs: SharedPreferences,
+        rowView: View? = null
     ) {
         val hourKey = "${type}_hour"
         val minKey = "${type}_min"
@@ -335,6 +356,11 @@ class SettingsFragment : Fragment() {
 
         timeText.setOnClickListener {
             showCustomTimePicker(prefs, timeText, switchView, type, hourKey, minKey, savedHour, savedMin)
+        }
+
+        // الصف بالكامل: الضغط في أي مكان يبدّل المفتاح (الوقت له مستمعه الخاص فيُستهلك الحدث هناك)
+        rowView?.setOnClickListener {
+            switchView.isChecked = !switchView.isChecked
         }
 
         switchView.setOnCheckedChangeListener { _, isChecked ->
@@ -564,6 +590,9 @@ class SettingsFragment : Fragment() {
         val enabled = prefs.getBoolean(KEY_KEEP_SCREEN_ON, false)
         binding.switchKeepScreenOn.isChecked = enabled
         applyKeepScreenOn(enabled)
+        binding.rowKeepScreenOn.setOnClickListener {
+            binding.switchKeepScreenOn.isChecked = !binding.switchKeepScreenOn.isChecked
+        }
         binding.switchKeepScreenOn.setOnCheckedChangeListener { _, isChecked ->
             prefs.edit().putBoolean(KEY_KEEP_SCREEN_ON, isChecked).apply()
             applyKeepScreenOn(isChecked)

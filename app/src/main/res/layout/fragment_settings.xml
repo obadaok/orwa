@@ -89,6 +89,7 @@
                 app:contentPadding="16dp">
 
                 <LinearLayout
+                android:id="@+id/row_dark_mode"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:gravity="center_vertical"
@@ -161,6 +162,7 @@
                         android:contentDescription="الاهتزاز عند الضغط" />
 
                     <LinearLayout
+                    android:id="@+id/row_vibration"
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
@@ -262,6 +264,7 @@
                             android:contentDescription="أذكار الصباح" />
 
                         <LinearLayout
+                        android:id="@+id/row_morning"
                             android:layout_width="0dp"
                             android:layout_height="wrap_content"
                             android:layout_weight="1"
@@ -320,6 +323,7 @@
                             android:contentDescription="أذكار المساء" />
 
                         <LinearLayout
+                        android:id="@+id/row_evening"
                             android:layout_width="0dp"
                             android:layout_height="wrap_content"
                             android:layout_weight="1"
@@ -378,6 +382,7 @@
                             android:contentDescription="أذكار النوم" />
 
                         <LinearLayout
+                        android:id="@+id/row_bedtime"
                             android:layout_width="0dp"
                             android:layout_height="wrap_content"
                             android:layout_weight="1"
@@ -533,6 +538,7 @@
                             android:contentDescription="سورة الكهف" />
 
                         <LinearLayout
+                        android:id="@+id/row_kahf"
                             android:layout_width="0dp"
                             android:layout_height="wrap_content"
                             android:layout_weight="1"
@@ -591,6 +597,7 @@
                             android:contentDescription="تذكير الختمات" />
 
                         <LinearLayout
+                        android:id="@+id/row_khatma"
                             android:layout_width="0dp"
                             android:layout_height="wrap_content"
                             android:layout_weight="1"
@@ -669,6 +676,7 @@
                         android:contentDescription="إبقاء الشاشة قيد التشغيل" />
 
                     <LinearLayout
+                    android:id="@+id/row_keep_screen_on"
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
@@ -756,8 +764,12 @@
 
                     <!-- طريقة عرض الآيات -->
                     <LinearLayout
+                        android:id="@+id/row_ayah_display_mode"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
+                        android:background="?attr/selectableItemBackground"
+                        android:clickable="true"
+                        android:focusable="true"
                         android:layout_marginTop="18dp"
                         android:gravity="center_vertical"
                         android:orientation="horizontal">
@@ -808,8 +820,12 @@
 
                     <!-- محاذاة النص -->
                     <LinearLayout
+                        android:id="@+id/row_ayah_alignment"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
+                        android:background="?attr/selectableItemBackground"
+                        android:clickable="true"
+                        android:focusable="true"
                         android:layout_marginTop="14dp"
                         android:gravity="center_vertical"
                         android:orientation="horizontal">
@@ -860,8 +876,12 @@
 
                     <!-- اختيار الرواية -->
                     <LinearLayout
+                        android:id="@+id/row_qiraat_mode"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
+                        android:background="?attr/selectableItemBackground"
+                        android:clickable="true"
+                        android:focusable="true"
                         android:gravity="center_vertical"
                         android:orientation="horizontal">
 
