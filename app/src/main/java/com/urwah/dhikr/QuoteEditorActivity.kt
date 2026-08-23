@@ -1150,47 +1150,66 @@ class QuoteEditorActivity : AppCompatActivity() {
         btnCloseTools.setOnClickListener { setSheetState(false) }
     }
 
-    /** يربط أزرار الباتتوم بأدواتها: كل زر يفتح اللوحة المناسبة ويسكروول لقسمها. */
+    /**
+     * كل زر في الشريط السفلي يفتح Bottom Sheet مستقلاً به:
+     * نُظهر قسمه فقط ونخفي بقية الأقسام — لا صفحة أدوات واحدة ولا تمرير للوصول للإعداد.
+     */
     private fun setupToolbarTools() {
+        val allSections = listOf(
+            R.id.sectionAlign, R.id.sectionFont, R.id.sectionSpacing,
+            R.id.sectionWidth, R.id.sectionSize, R.id.sectionEffects,
+            R.id.sectionBackground, R.id.sectionMeta
+        )
+        fun showOnly(sectionId: Int) {
+            for (id in allSections) {
+                findViewById<View>(id).visibility = if (id == sectionId) View.VISIBLE else View.GONE
+            }
+            toolsScroll.scrollTo(0, 0)
+        }
+        // الخط + التباعد + العرض معاً في نفس اللوحة
+        fun showFontFamily() {
+            for (id in allSections) {
+                findViewById<View>(id).visibility =
+                    if (id == R.id.sectionFont || id == R.id.sectionSpacing || id == R.id.sectionWidth)
+                        View.VISIBLE else View.GONE
+            }
+            toolsScroll.scrollTo(0, 0)
+        }
+
         findViewById<View>(R.id.toolAlign).setOnClickListener {
-            showToolsPanel(true)
-            toolsScroll.post { toolsScroll.fullScroll(View.FOCUS_UP) }
+            showOnly(R.id.sectionAlign)
+            openToolsSheet()
         }
         findViewById<View>(R.id.toolFont).setOnClickListener {
-            showToolsPanel(true)
-            toolsScroll.post { toolsScroll.smoothScrollTo(0, 0) }
+            showFontFamily()
+            openToolsSheet()
         }
         findViewById<View>(R.id.toolSize).setOnClickListener {
-            showToolsPanel(true)
-            toolsScroll.post {
-                val secY = findViewById<View>(R.id.sizeSelector).top
-                toolsScroll.smoothScrollTo(0, secY)
-            }
+            showOnly(R.id.sectionSize)
+            openToolsSheet()
         }
         findViewById<View>(R.id.toolEffects).setOnClickListener {
             if (!hasSelection) {
-                tvEffectsHint?.text = "حدّد جزءًا من النص أولًا لتفعيل هذه الأدوات"
+                Toast.makeText(this, "حدّد جزءًا من النص أولًا لتفعيل التأثيرات", Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
             }
-            showToolsPanel(true)
-            toolsScroll.post {
-                val secY = findViewById<View>(R.id.btnEffectBold).top
-                toolsScroll.smoothScrollTo(0, secY)
-            }
+            showOnly(R.id.sectionEffects)
+            openToolsSheet()
         }
         findViewById<View>(R.id.toolBackground).setOnClickListener {
-            showToolsPanel(true)
-            toolsScroll.post {
-                val secY = findViewById<View>(R.id.bgSelector).top
-                toolsScroll.smoothScrollTo(0, secY)
-            }
+            showOnly(R.id.sectionBackground)
+            openToolsSheet()
         }
         findViewById<View>(R.id.toolMeta).setOnClickListener {
-            showToolsPanel(true)
-            toolsScroll.post {
-                val secY = findViewById<View>(R.id.etCitation).top
-                toolsScroll.smoothScrollTo(0, secY)
-            }
+            showOnly(R.id.sectionMeta)
+            openToolsSheet()
         }
+    }
+
+    /** فتح اللوحة موسّعة على القسم المحدد مسبقاً. */
+    private fun openToolsSheet() {
+        if (previewMode) return
+        setSheetState(true)
     }
 
     // ===== Bottom Sheet موحد: حالتان (موسّع / مطوي) + سحب على المقبض =====
