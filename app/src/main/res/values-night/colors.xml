@@ -5,6 +5,7 @@
     <color name="card_background">#2C2C2C</color>
     <color name="icon_on_category_circle">#FFFFFF</color>
     <color name="urwah_primary">#C9A182</color>
+    <color name="urwah_selection">#66C9A182</color>
     <color name="urwah_background">#121212</color>
     <color name="urwah_surface">#1E1E1E</color>
     <color name="urwah_thread_brown">#C9A182</color>
@@ -64,5 +65,6 @@
     <color name="oc_primary_24">#3DC9A182</color>
     <color name="oc_text_secondary_40">#66A89888</color>
     <color name="oc_card_stroke">#1AC9A182</color>
+    <color name="oc_primary_deep">#C9A182</color>
     <color name="oc_ripple">#29C9A182</color>
 </resources>
