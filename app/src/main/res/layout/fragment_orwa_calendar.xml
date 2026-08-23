@@ -292,9 +292,7 @@
                         android:layout_marginTop="6dp"
                         android:textSize="20sp"
                         android:lineSpacingMultiplier="1.6"
-                        android:gravity="center"
-                        android:maxLines="5"
-                        android:ellipsize="end" />
+                        android:gravity="center" />
 
                     <TextView
                         android:id="@+id/tvSurahRef"
@@ -304,17 +302,6 @@
                         android:layout_marginTop="6dp"
                         android:textSize="10sp" />
 
-                    <TextView
-                        android:id="@+id/btnAyahMore"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_gravity="center"
-                        android:layout_marginTop="4dp"
-                        android:text="@string/oc_read_more"
-                        android:textSize="11sp"
-                        android:textColor="@color/oc_primary"
-                        android:fontFamily="@font/alyamama_medium"
-                        android:visibility="gone" />
 
                 </LinearLayout>
             </FrameLayout>
@@ -358,20 +345,8 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="3dp"
-                        android:textSize="12sp"
-                        android:maxLines="2"
-                        android:ellipsize="end" />
+                        android:textSize="12sp" />
 
-                    <TextView
-                        android:id="@+id/btnTafsirMore"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="2dp"
-                        android:text="@string/oc_read_more"
-                        android:textSize="11sp"
-                        android:textColor="@color/oc_primary"
-                        android:fontFamily="@font/alyamama_medium"
-                        android:visibility="gone" />
 
                 </LinearLayout>
             </FrameLayout>
@@ -409,20 +384,8 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="4dp"
-                        android:textSize="13sp"
-                        android:maxLines="3"
-                        android:ellipsize="end" />
+                        android:textSize="13sp" />
 
-                    <TextView
-                        android:id="@+id/btnHadithMore"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="2dp"
-                        android:text="@string/oc_read_more"
-                        android:textSize="11sp"
-                        android:textColor="@color/oc_primary"
-                        android:fontFamily="@font/alyamama_medium"
-                        android:visibility="gone" />
 
                     <View
                         android:layout_width="match_parent"
@@ -506,20 +469,8 @@
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
                             android:layout_marginTop="3dp"
-                            android:textSize="12sp"
-                            android:maxLines="2"
-                            android:ellipsize="end" />
+                            android:textSize="12sp" />
 
-                        <TextView
-                            android:id="@+id/btnBenefitMore"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:layout_marginTop="2dp"
-                            android:text="@string/oc_read_more"
-                            android:textSize="11sp"
-                            android:textColor="@color/oc_primary"
-                            android:fontFamily="@font/alyamama_medium"
-                            android:visibility="gone" />
 
                     </LinearLayout>
 

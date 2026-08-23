@@ -226,65 +226,6 @@ class OrwaCalendarFragment : Fragment() {
 
         tvBenefitText.text = state.benefitOfTheDay
         tvScholarName.text = state.scholarName
-
-        setupReadMoreButtons(state)
-    }
-
-    private fun setupReadMoreButtons(state: OrwaCalendarUiState) = with(binding) {
-        postCheckTruncated(tvAyahText) { btnAyahMore.visibility = it }
-        btnAyahMore.setOnClickListener {
-            openDetail(
-                title = getString(R.string.oc_ayah_title),
-                subtitle = getString(R.string.oc_surah_ref_format, state.surahName, state.ayahNumber),
-                content = state.ayahText
-            )
-        }
-
-        postCheckTruncated(tvTafsirText) { btnTafsirMore.visibility = it }
-        btnTafsirMore.setOnClickListener {
-            openDetail(
-                title = getString(R.string.oc_tafsir_title),
-                subtitle = getString(R.string.oc_surah_ref_format, state.surahName, state.ayahNumber),
-                content = state.tafsirText
-            )
-        }
-
-        postCheckTruncated(tvHadithText) { btnHadithMore.visibility = it }
-        btnHadithMore.setOnClickListener {
-            openDetail(
-                title = getString(R.string.oc_hadith_title),
-                subtitle = "${state.hadithNarrator} · ${state.hadithSource}",
-                content = state.hadithText
-            )
-        }
-
-        postCheckTruncated(tvBenefitText) { btnBenefitMore.visibility = it }
-        btnBenefitMore.setOnClickListener {
-            openDetail(
-                title = getString(R.string.oc_scholars_title),
-                subtitle = state.scholarName,
-                content = state.benefitOfTheDay
-            )
-        }
-    }
-
-    private fun postCheckTruncated(textView: TextView, onResult: (Int) -> Unit) {
-        textView.post {
-            val layout = textView.layout ?: return@post
-            val isTruncated = layout.lineCount > 0 &&
-                    (layout.getLineWidth(layout.lineCount - 1) > textView.width ||
-                            textView.layout?.getEllipsisCount(layout.lineCount - 1) ?: 0 > 0)
-            onResult(if (isTruncated) View.VISIBLE else View.GONE)
-        }
-    }
-
-    private fun openDetail(title: String, subtitle: String, content: String) {
-        val intent = Intent(requireContext(), CalendarDetailActivity::class.java).apply {
-            putExtra(CalendarDetailActivity.EXTRA_TITLE, title)
-            putExtra(CalendarDetailActivity.EXTRA_SUBTITLE, subtitle)
-            putExtra(CalendarDetailActivity.EXTRA_CONTENT, content)
-        }
-        startActivity(intent)
     }
 
     private fun applyCardPressMotion() {
