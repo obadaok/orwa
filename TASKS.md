@@ -526,3 +526,13 @@ Word Spacing، RTL، shaping، 15 سطراً، ووضوح الأرقام (راج
 ## لم يُنفذ (يحتاج قراراً أو مصادر خارجية)
 - تقويم عروة: التصميم الفاخر موجود من جلسة سابقة (OrwaCalendarFragment بزخارف وشبكة هجرية) — لم أغيّره لأن الطلب قال لا تعيد تصميم ما هو صحيح
 - بيانات المكتبة الشاملة (Shamela4_Full_DB على HuggingFace): استبدال المصدر يتطلب فهرسة جديدة كاملة خارج نطاق جلسة واحدة — المصدر الحالي موثق ويعمل
+
+## FINAL REVIEW (2026-08-23)
+- Build: ✅ assembleDebug ناجح — app-debug.apk (81MB) موقّع debug
+- Tests: ✅ testDebugUnitTest كامل ناجح
+- Lint: 135 errors كلها pre-existing على origin/main (UseAppTint ×112 / WrongConstant ×21 false-positive على Layout.JUSTIFICATION_* / UnsafeOptIn ×2) — صفر أخطاء جديدة من هذه الجلسة
+- Known issues: لا crash في logcat عند إطلاق MainActivity/SurahDetail/QuoteEditor/CalendarDetail فعلياً على الجهاز المتصل (Honor AUYFVB5917002431)
+- Manual device tests: تم التثبيت الفعلي والإطلاق بلا انهيار؛ يبقى التحقق البصري اليدوي للأنيميشن واللمس والوضع الليلي (قائمة ⚠️ أعلاه)
+- Files changed: 554 ملف (معظمها أيقونات PNG موحدة) — الكود الأساسي: SettingsFragment, SurahDetailActivity, QuranFragment+SurahCardItemAnimator, QuoteEditorActivity+layout, ShamelaBookReaderActivity, ShamelaBookListActivity, SearchNormalizer(جديد), OrwaCalendarFragment+layout, calendar_data.json, values-night/colors.xml
+- Major architectural changes: لا شيء يكسر المعمارية — أداة SearchNormalizer مشتركة، حاويات IDs لأقسام أدوات المحرر، حذف dead code للمكتبة
+- Remaining tasks: تحسين مصدر بيانات المكتبة الشاملة (فهرسة Shamela4 كاملة)، ولمس التحقق اليدوي للبنود ⚠️ أعلاه
