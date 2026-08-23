@@ -1112,20 +1112,48 @@ class SurahDetailActivity : AppCompatActivity() {
 
 
     private fun addNextSurahButton() {
-        val btn = ImageButton(this).apply {
-            contentDescription = "السورة التالية"
-            setImageResource(R.drawable.ic_next_surah)
-            setColorFilter(ContextCompat.getColor(this@SurahDetailActivity, R.color.urwah_thread_brown))
-            val attr = intArrayOf(android.R.attr.selectableItemBackgroundBorderless)
-            val typedArray = this@SurahDetailActivity.obtainStyledAttributes(attr)
-            background = typedArray.getDrawable(0)
-            typedArray.recycle()
+        val btn = Button(this).apply {
+            text = "السورة التالية"
+            contentDescription = "الانتقال إلى السورة التالية"
+            typeface = ResourcesCompat.getFont(this@SurahDetailActivity, R.font.alyamama)
+            textSize = 15f
+            setTextColor(Color.WHITE)
+            setCompoundDrawablesRelativeWithIntrinsicBounds(R.drawable.ic_next_surah, 0, 0, 0)
+            compoundDrawablePadding = dpToPx(8f)
+            // في RTL يظهر الأيقونة على يمين النص طبيعياً
+            compoundDrawablesRelative.firstOrNull()?.setTint(
+                ContextCompat.getColor(this@SurahDetailActivity, android.R.color.white)
+            )
+            setBackgroundResource(R.drawable.bg_button_next_surah)
+            stateListAnimator = null
             layoutParams = LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.WRAP_CONTENT, dpToPx(56f)
+                LinearLayout.LayoutParams.WRAP_CONTENT, dpToPx(48f)
             ).apply {
-                topMargin = dpToPx(20f)
+                gravity = android.view.Gravity.CENTER_HORIZONTAL
+                topMargin = dpToPx(24f)
                 marginStart = dpToPx(20f)
                 marginEnd = dpToPx(20f)
+                // padding أفقي داخلي عبر minimumWidth
+            }
+            minWidth = dpToPx(180f)
+            setPadding(dpToPx(24f), 0, dpToPx(24f), 0)
+            // ظهور لطيف: انزلاق لأعلى مع شفافية
+            alpha = 0f
+            translationY = dpToPx(24f).toFloat()
+            animate().alpha(1f).translationY(0f).setDuration(350L)
+                .setStartDelay(150L)
+                .setInterpolator(android.view.animation.DecelerateInterpolator(1.5f))
+                .start()
+            // استجابة لمسية خفيفة بدون مبالغة
+            setOnTouchListener { v, ev ->
+                when (ev.actionMasked) {
+                    android.view.MotionEvent.ACTION_DOWN ->
+                        v.animate().scaleX(0.97f).scaleY(0.97f).setDuration(90L).start()
+                    android.view.MotionEvent.ACTION_UP,
+                    android.view.MotionEvent.ACTION_CANCEL ->
+                        v.animate().scaleX(1f).scaleY(1f).setDuration(120L).start()
+                }
+                false
             }
             setOnClickListener { navigateToNextSurah() }
         }
@@ -1136,7 +1164,10 @@ class SurahDetailActivity : AppCompatActivity() {
         if (isNavigating) return
         isNavigating = true
         val nextNum = surahNumber + 1
-        val next = SurahDataProvider.allSurahs.find { it.number == nextNum } ?: return
+        val next = SurahDataProvider.allSurahs.find { it.number == nextNum } ?: run {
+            isNavigating = false
+            return
+        }
         val intent = Intent(this, SurahDetailActivity::class.java).apply {
             putExtra("SURAH_NUMBER", next.number)
             putExtra("SURAH_NAME", next.name)
@@ -1145,7 +1176,7 @@ class SurahDetailActivity : AppCompatActivity() {
         startActivity(intent)
         finish()
         @Suppress("DEPRECATION")
-        overridePendingTransition(android.R.anim.fade_in, android.R.anim.fade_out)
+        overridePendingTransition(R.anim.slide_in_up, R.anim.fade_out)
     }
 
     private fun setupJuzHizbToast() {
