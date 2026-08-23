@@ -158,6 +158,7 @@ class ShamelaBookReaderActivity : AppCompatActivity() {
     private var pendingSearchMatchPage: Int = -1
     private var pendingSearchRetries: Int = 0
     private var searchHighlightRunnable: Runnable? = null
+    private var searchHighlightFadeRunnable: Runnable? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -1139,15 +1140,26 @@ class ShamelaBookReaderActivity : AppCompatActivity() {
         val y = layout.getLineTop(line)
         vh.scrollView.smoothScrollTo(0, y)
 
-        // Highlight مؤقت: تمييز التطابق بلون خفيف يزول تلقائيًا بعد 3 ثوانٍ.
+        // Highlight مؤقت: تمييز التطابق بلون يخفت تدريجياً بعد 3 ثوانٍ
+        // (بلا scroll إضافي وبلا تغيير في النص أو selection).
         searchHighlightRunnable?.let { tv.removeCallbacks(it) }
         val endOffset = normalized.offsetMap.getOrNull(matchIdx + normalizedQuery.length)
             ?: (origOffset + normalizedQuery.length).coerceAtMost(fullText.length)
         if (endOffset > origOffset && tv.text is Spannable) {
             val sp = tv.text as Spannable
-            val span = BackgroundColorSpan(SEARCH_HIGHLIGHT_COLOR)
+            val span = object : BackgroundColorSpan(SEARCH_HIGHLIGHT_COLOR) {}
             sp.setSpan(span, origOffset, endOffset, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
-            searchHighlightRunnable = Runnable { sp.removeSpan(span) }.also {
+            // مرحلة التلاشي: نستبدل الخلفية بلون أخفّ ثم نزيلها كلياً
+            val fade = Runnable {
+                if (sp.getSpanStart(span) < 0) return@Runnable
+                sp.removeSpan(span)
+                val faded = BackgroundColorSpan(SEARCH_HIGHLIGHT_FADED_COLOR)
+                sp.setSpan(faded, origOffset, endOffset, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
+                searchHighlightFadeRunnable = Runnable { sp.removeSpan(faded) }.also { r ->
+                    tv.postDelayed(r, SEARCH_HIGHLIGHT_FADE_MS)
+                }
+            }
+            searchHighlightRunnable = fade.also {
                 tv.postDelayed(it, SEARCH_HIGHLIGHT_MS)
             }
         }
@@ -1161,24 +1173,7 @@ class ShamelaBookReaderActivity : AppCompatActivity() {
 
     /** يطبع استعلام البحث: بلا تشكيل، همزات موحّدة (آ/أ/إ/ٱ→ا، ؤ→و، ئ→ي، ى→ي، ة→ه)،
      *  وأرقام عربية-هندية/فارسية موحّدة إلى أرقام ASCII ليُطابق «12» نص «١٢». */
-    private fun normalizeSearchQuery(text: String): String {
-        val sb = StringBuilder(text.length)
-        for (c in text) {
-            val code = c.code
-            sb.append(when {
-                code in 0x064B..0x065F || code == 0x0670 || code in 0x06D6..0x06ED -> ""
-                c == '\u0622' || c == '\u0623' || c == '\u0625' || c == '\u0671' || c == '\u0621' -> '\u0627'
-                c == '\u0624' -> '\u0648'
-                c == '\u0626' -> '\u064A'
-                c == '\u0649' -> '\u064A'
-                c == '\u0629' -> '\u0647'
-                code in 0x0660..0x0669 -> ('0'.code + code - 0x0660).toChar()
-                code in 0x06F0..0x06F9 -> ('0'.code + code - 0x06F0).toChar()
-                else -> c
-            })
-        }
-        return sb.toString()
-    }
+    private fun normalizeSearchQuery(text: String): String = SearchNormalizer.normalize(text)
 
     /**
      * نبني النص المطبَّع للصفحة مع خريطة مواضع (normalized index -> original
@@ -1789,6 +1784,8 @@ class ShamelaBookReaderActivity : AppCompatActivity() {
         private const val MAX_SEARCH_SCROLL_RETRIES = 12
         private const val SEARCH_RETRY_DELAY_MS = 60L
         private const val SEARCH_HIGHLIGHT_MS = 3000L
+        private const val SEARCH_HIGHLIGHT_FADE_MS = 600L
         private const val SEARCH_HIGHLIGHT_COLOR = 0x401A73E8
+        private const val SEARCH_HIGHLIGHT_FADED_COLOR = 0x181A73E8
     }
 }

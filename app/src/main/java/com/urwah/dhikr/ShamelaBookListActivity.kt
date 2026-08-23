@@ -133,9 +133,11 @@ class ShamelaBookListActivity : AppCompatActivity() {
     private fun doFilter() {
         val query = etSearch.text?.toString() ?: ""
         val version = ++searchVersion
-        val results = allBooks.filter { book ->
-            book.title.contains(query, ignoreCase = true) ||
-            book.author.contains(query, ignoreCase = true)
+        // بحث مطبَّع: بلا تشكيل، همزات موحّدة، وأرقام هندية/غربية متكافئة
+        val nq = SearchNormalizer.normalize(query)
+        val results = if (nq.isBlank()) allBooks else allBooks.filter { book ->
+            SearchNormalizer.normalize(book.title).contains(nq, ignoreCase = true) ||
+                SearchNormalizer.normalize(book.author).contains(nq, ignoreCase = true)
         }
         if (version != searchVersion) return // نتيجة قديمة بعد أحدث استعلام
         adapter.updateBooks(results)
