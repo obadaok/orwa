@@ -140,7 +140,7 @@
                         <ImageView
                             android:layout_width="26dp"
                             android:layout_height="26dp"
-                            android:layout_gravity="top|start"
+                            android:layout_gravity="top|left"
                             android:layout_margin="6dp"
                             android:rotation="0"
                             android:src="@drawable/ic_ornament_corner"
@@ -150,7 +150,7 @@
                         <ImageView
                             android:layout_width="26dp"
                             android:layout_height="26dp"
-                            android:layout_gravity="top|end"
+                            android:layout_gravity="top|right"
                             android:layout_marginTop="6dp"
                             android:layout_marginEnd="12dp"
                             android:rotation="90"
@@ -161,10 +161,11 @@
                         <ImageView
                             android:layout_width="26dp"
                             android:layout_height="26dp"
-                            android:layout_gravity="bottom|start"
-                            android:layout_marginStart="6dp"
-                            android:layout_marginBottom="12dp"
+                            android:layout_gravity="bottom|left"
                             android:rotation="270"
+                            android:layout_marginStart="6dp"
+                            android:layout_marginLeft="6dp"
+                            android:layout_marginBottom="12dp"
                             android:src="@drawable/ic_ornament_corner"
                             android:tint="@color/urwah_thread_light"
                             android:contentDescription="@null" />
@@ -172,10 +173,11 @@
                         <ImageView
                             android:layout_width="26dp"
                             android:layout_height="26dp"
-                            android:layout_gravity="bottom|end"
-                            android:layout_marginEnd="12dp"
-                            android:layout_marginBottom="12dp"
+                            android:layout_gravity="bottom|right"
                             android:rotation="180"
+                            android:layout_marginEnd="12dp"
+                            android:layout_marginRight="12dp"
+                            android:layout_marginBottom="12dp"
                             android:src="@drawable/ic_ornament_corner"
                             android:tint="@color/urwah_thread_light"
                             android:contentDescription="@null" />
