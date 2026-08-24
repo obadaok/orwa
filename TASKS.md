@@ -542,6 +542,12 @@ Word Spacing، RTL، shaping، 15 سطراً، ووضوح الأرقام (راج
 6. **جودة الصورة**: كان التصدير يرسم بدقة الشاشة ثم يكبّر راسترياً ×3 (blur في النص). الإصلاح: رسم مباشر عبر `canvas.scale(scale, scale)` بدقة الإخراج الكاملة (vector-sharp). الحفظ PNG/100 و ARGB_8888 كانا سليمين. نفس الإصلاح في ImageExporter.exportHighRes (رسم بالعرض الهدف مباشرة).
 - Regression: assembleDebug ✅ + testDebugUnitTest ✅ — لم تتغير الميزات السليمة (selection/long-press/auto-scroll/undo-redo/preview/share لم تُمَس منطقياً).
 
+## ✅ تحقق نهائي إضافي (2026-08-24 — جلسة ثانية)
+- **تحسين Highlight**: عند تعدد النتائج في نفس الصفحة كان التمييز دائماً على أول مطابقة — أُضيف `pageMatchStart/pageMatchEnd` لكل نتيجة ويميّز الآن النتيجة المختارة بالضبط (مع fallback للتطبيع عند عدم صلاحية النطاق المحفوظ)
+- **حماية OOM للتصدير**: النص الطويل جداً ×3 قد يفجّر الذاكرة — سقف 128MB للبيتكماپ مع خفض تدريجي (3→2→1) بدل OutOfMemory
+- **البناء النهائي**: assembleDebug ✅ + testDebugUnitTest ✅ (BUILD SUCCESSFUL)
+- ⚠️ يبقى التحقق اللمسي/البصري للبنود 1، 3، 5 على جهاز فعلي
+
 ## FINAL REVIEW (2026-08-23)
 - Build: ✅ assembleDebug ناجح — app-debug.apk (81MB) موقّع debug
 - Tests: ✅ testDebugUnitTest كامل ناجح

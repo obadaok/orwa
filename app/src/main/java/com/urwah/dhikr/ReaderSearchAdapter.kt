@@ -22,7 +22,11 @@ class ReaderSearchAdapter(
         val pageNumber: Int,
         val snippet: String,
         val matchStart: Int,
-        val matchEnd: Int
+        val matchEnd: Int,
+        // موضع المطابقة داخل نص الصفحة الكامل — لتمييز النتيجة الصحيحة
+        // عندما تتعدد النتائج في نفس الصفحة (بدل أول مطابقة دائماً)
+        val pageMatchStart: Int = -1,
+        val pageMatchEnd: Int = -1
     )
 
     fun setActivePosition(pos: Int) {

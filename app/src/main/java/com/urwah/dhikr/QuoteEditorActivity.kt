@@ -1733,11 +1733,28 @@ class QuoteEditorActivity : AppCompatActivity() {
 
         // الرسم مباشرة بدقة عالية عبر canvas.scale — نص ورسوميات vector-sharp،
         // بدل الرسم بدقة الشاشة ثم تكبير راستري يسبب blur.
-        val outW = if (scale > 1f) (mw * scale).toInt() else mw
-        val outH = if (scale > 1f) (mh * scale).toInt() else mh
-        val bitmap = android.graphics.Bitmap.createBitmap(outW, outH, android.graphics.Bitmap.Config.ARGB_8888)
+        // حماية ذاكرة: النصوص الطويلة جداً ×3 قد تتجاوز heap — نخفض المقياس
+        // تدريجياً (3→2→1) بدل OutOfMemory، مع الحفاظ على أعلى جودة ممكنة.
+        var effScale = if (scale > 1f) scale else 1f
+        var outW = (mw * effScale).toInt()
+        var outH = (mh * effScale).toInt()
+        val maxBytes = 128L * 1024 * 1024 // سقف ~128MB للبيتكماپ (ARGB_8888 = 4 بايت/بكسل)
+        while (effScale > 1f && outW.toLong() * outH * 4 > maxBytes) {
+            effScale = when {
+                effScale > 2f -> 2f
+                else -> 1f
+            }
+            outW = (mw * effScale).toInt()
+            outH = (mh * effScale).toInt()
+        }
+        val bitmap = try {
+            android.graphics.Bitmap.createBitmap(outW, outH, android.graphics.Bitmap.Config.ARGB_8888)
+        } catch (_: OutOfMemoryError) {
+            if (hasSelection) restoreLiveText(savedText)
+            return null
+        }
         val canvas = android.graphics.Canvas(bitmap)
-        if (scale > 1f) canvas.scale(scale, scale)
+        if (effScale > 1f) canvas.scale(effScale, effScale)
         frame.draw(canvas)
 
         // Restore full text (بما في ذلك إعادة تطبيق «إخفاء غير المحدد» حتى لا يختفي

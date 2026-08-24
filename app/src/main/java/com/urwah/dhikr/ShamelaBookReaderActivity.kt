@@ -157,6 +157,8 @@ class ShamelaBookReaderActivity : AppCompatActivity() {
     private var pendingSearchQuery: String? = null
     private var pendingSearchMatchPage: Int = -1
     private var pendingSearchRetries: Int = 0
+    private var pendingSearchMatchStart = -1
+    private var pendingSearchMatchEnd = -1
     private var searchHighlightRunnable: Runnable? = null
     private var searchHighlightFadeRunnable: Runnable? = null
 
@@ -848,7 +850,8 @@ class ShamelaBookReaderActivity : AppCompatActivity() {
         searchAdapter = ReaderSearchAdapter(emptyList()) { pageIndex ->
             navigateToPage(pageIndex)
             closeSearchPanel()
-            scrollToSearchMatch(pageIndex, etSearch.text.toString())
+            val r = searchResults.getOrNull(currentSearchIndex)
+            scrollToSearchMatch(pageIndex, etSearch.text.toString(), r?.pageMatchStart ?: -1, r?.pageMatchEnd ?: -1)
         }
         rvResults.layoutManager = LinearLayoutManager(this)
         rvResults.adapter = searchAdapter
@@ -892,7 +895,7 @@ class ShamelaBookReaderActivity : AppCompatActivity() {
             rvResults.scrollToPosition(currentSearchIndex)
             tvCount.text = "${currentSearchIndex + 1} / ${searchResults.size}"
             closeSearchPanel()
-            scrollToSearchMatch(result.pageIndex, etSearch.text.toString())
+            scrollToSearchMatch(result.pageIndex, etSearch.text.toString(), result.pageMatchStart, result.pageMatchEnd)
         }
 
         view.findViewById<ImageView>(R.id.ivSearchNext).setOnClickListener {
@@ -904,7 +907,7 @@ class ShamelaBookReaderActivity : AppCompatActivity() {
             rvResults.scrollToPosition(currentSearchIndex)
             tvCount.text = "${currentSearchIndex + 1} / ${searchResults.size}"
             closeSearchPanel()
-            scrollToSearchMatch(result.pageIndex, etSearch.text.toString())
+            scrollToSearchMatch(result.pageIndex, etSearch.text.toString(), result.pageMatchStart, result.pageMatchEnd)
         }
 
         view.findViewById<View>(R.id.btnCloseSearch).setOnClickListener {
@@ -1031,7 +1034,9 @@ class ShamelaBookReaderActivity : AppCompatActivity() {
                                 pageNumber = origNum,
                                 snippet = snippet,
                                 matchStart = localMatchStart,
-                                matchEnd = localMatchEnd
+                                matchEnd = localMatchEnd,
+                                pageMatchStart = origStart,
+                                pageMatchEnd = origEnd
                             )
                         )
                         searchFrom = matchIdx + normalizedQuery.length
@@ -1063,9 +1068,11 @@ class ShamelaBookReaderActivity : AppCompatActivity() {
         }
     }
 
-    private fun scrollToSearchMatch(pageIndex: Int, query: String) {
+    private fun scrollToSearchMatch(pageIndex: Int, query: String, matchStart: Int = -1, matchEnd: Int = -1) {
         pendingSearchQuery = query
         pendingSearchMatchPage = pageIndex
+        pendingSearchMatchStart = matchStart
+        pendingSearchMatchEnd = matchEnd
         pendingSearchRetries = 0
         viewPager.post {
             performPendingSearchScroll()
@@ -1075,6 +1082,8 @@ class ShamelaBookReaderActivity : AppCompatActivity() {
     private fun clearPendingSearch() {
         pendingSearchQuery = null
         pendingSearchMatchPage = -1
+        pendingSearchMatchStart = -1
+        pendingSearchMatchEnd = -1
         pendingSearchRetries = 0
     }
 
@@ -1130,11 +1139,26 @@ class ShamelaBookReaderActivity : AppCompatActivity() {
         val tv = vh.tvContent
         val layout = tv.layout ?: run { clearPendingSearch(); return }
         val fullText = tv.text.toString()
-        val normalizedQuery = normalizeSearchQuery(query)
-        val normalized = buildNormalizedSearchText(fullText)
-        val matchIdx = normalized.text.indexOf(normalizedQuery, ignoreCase = true)
-        if (matchIdx < 0) { clearPendingSearch(); return }
-        val origOffset = normalized.offsetMap[matchIdx] ?: 0
+        // موضع المطابقة الدقيق للنتيجة المختارة (حتى لو تعددت النتائج في نفس الصفحة):
+        // نقبل النطاق المحفوظ فقط إذا كان صالحاً ومطابقاً للاستعلام بعد التطبيع.
+        val exactStart = pendingSearchMatchStart
+        val exactEnd = pendingSearchMatchEnd
+        val exactValid = exactStart >= 0 && exactEnd > exactStart && exactEnd <= fullText.length &&
+            normalizeSearchQuery(fullText.substring(exactStart, exactEnd)) == normalizeSearchQuery(query)
+        val origOffset: Int
+        val endOffset: Int
+        if (exactValid) {
+            origOffset = exactStart
+            endOffset = exactEnd
+        } else {
+            val normalizedQuery = normalizeSearchQuery(query)
+            val normalized = buildNormalizedSearchText(fullText)
+            val matchIdx = normalized.text.indexOf(normalizedQuery, ignoreCase = true)
+            if (matchIdx < 0) { clearPendingSearch(); return }
+            origOffset = normalized.offsetMap[matchIdx] ?: 0
+            endOffset = normalized.offsetMap.getOrNull(matchIdx + normalizedQuery.length)
+                ?: (origOffset + normalizedQuery.length).coerceAtMost(fullText.length)
+        }
 
         val line = layout.getLineForOffset(origOffset)
         val y = layout.getLineTop(line)
@@ -1143,9 +1167,7 @@ class ShamelaBookReaderActivity : AppCompatActivity() {
         // Highlight مؤقت: تمييز التطابق بلون يخفت تدريجياً بعد 3 ثوانٍ
         // (بلا scroll إضافي وبلا تغيير في النص أو selection).
         searchHighlightRunnable?.let { tv.removeCallbacks(it) }
-        val endOffset = normalized.offsetMap.getOrNull(matchIdx + normalizedQuery.length)
-            ?: (origOffset + normalizedQuery.length).coerceAtMost(fullText.length)
-        if (endOffset > origOffset && tv.text is Spannable) {
+        if (endOffset > origOffset && endOffset <= fullText.length && tv.text is Spannable) {
             val sp = tv.text as Spannable
             val span = object : BackgroundColorSpan(SEARCH_HIGHLIGHT_COLOR) {}
             sp.setSpan(span, origOffset, endOffset, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
