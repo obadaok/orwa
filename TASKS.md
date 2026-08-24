@@ -525,7 +525,12 @@ Word Spacing، RTL، shaping، 15 سطراً، ووضوح الأرقام (راج
 
 ## لم يُنفذ (يحتاج قراراً أو مصادر خارجية)
 - تقويم عروة: التصميم الفاخر موجود من جلسة سابقة (OrwaCalendarFragment بزخارف وشبكة هجرية) — لم أغيّره لأن الطلب قال لا تعيد تصميم ما هو صحيح
-- بيانات المكتبة الشاملة (Shamela4_Full_DB على HuggingFace): استبدال المصدر يتطلب فهرسة جديدة كاملة خارج نطاق جلسة واحدة — المصدر الحالي موثق ويعمل
+
+## ✅ تحقق مصدر المكتبة الشاملة (2026-08-24) — مكتمل
+- فحص فعلي شامل للداتاسيت AuthenticIlm/Shamela4_Full_DB على HuggingFace عبر HfApi (تعداد كامل لكل المجلدات)
+- الفهرس المحلي shamela_catalog.json مطابق 100% للداتاسيت: 40 تصنيفاً = 40، و8,589 كتاباً = 8,589، وصفر اختلاف في عدد كتب كل تصنيف
+- عيّنة عشوائية (40 كتاباً): مسارات pages.jsonl كلها موجودة ومتاحة (40/40 ✓)
+- النتيجة: «فهرسة Shamela4 كاملة» منجزة أصلاً — لا حاجة لاستبدال المصدر ولا فهرسة جديدة
 
 ## FINAL REVIEW (2026-08-23)
 - Build: ✅ assembleDebug ناجح — app-debug.apk (81MB) موقّع debug
@@ -535,4 +540,4 @@ Word Spacing، RTL، shaping، 15 سطراً، ووضوح الأرقام (راج
 - Manual device tests: تم التثبيت الفعلي والإطلاق بلا انهيار؛ يبقى التحقق البصري اليدوي للأنيميشن واللمس والوضع الليلي (قائمة ⚠️ أعلاه)
 - Files changed: 554 ملف (معظمها أيقونات PNG موحدة) — الكود الأساسي: SettingsFragment, SurahDetailActivity, QuranFragment+SurahCardItemAnimator, QuoteEditorActivity+layout, ShamelaBookReaderActivity, ShamelaBookListActivity, SearchNormalizer(جديد), OrwaCalendarFragment+layout, calendar_data.json, values-night/colors.xml
 - Major architectural changes: لا شيء يكسر المعمارية — أداة SearchNormalizer مشتركة، حاويات IDs لأقسام أدوات المحرر، حذف dead code للمكتبة
-- Remaining tasks: تحسين مصدر بيانات المكتبة الشاملة (فهرسة Shamela4 كاملة)، ولمس التحقق اليدوي للبنود ⚠️ أعلاه
+- Remaining tasks: ~~تحسين مصدر بيانات المكتبة الشاملة~~ (✅ تحقق 2026-08-24: الفهرس مطابق للداتاسيت كاملة)، ولمس التحقق اليدوي للبنود ⚠️ أعلاه (يتطلب جهازاً متصلاً)
