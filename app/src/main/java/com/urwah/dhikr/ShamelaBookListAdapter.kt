@@ -50,6 +50,7 @@ class ShamelaBookListAdapter(
         val name: TextView = view.findViewById(R.id.tv_category_name)
         val author: TextView = view.findViewById(R.id.tv_category_count)
         val type: TextView = view.findViewById(R.id.tvBookType)
+        val actionRow: LinearLayout = view.findViewById(R.id.actionRow)
         val btnAction: MaterialButton = view.findViewById(R.id.btnAction)
         val btnReadOnline: MaterialButton = view.findViewById(R.id.btnReadOnline)
         val downloadProgressRow: LinearLayout = view.findViewById(R.id.downloadProgressRow)
@@ -92,6 +93,7 @@ class ShamelaBookListAdapter(
 
         when {
             state?.status == DownloadStatus.DOWNLOADING -> {
+                holder.actionRow.visibility = View.VISIBLE
                 holder.btnAction.visibility = View.VISIBLE
                 holder.btnAction.text = "إلغاء"
                 holder.btnAction.setIconResource(R.drawable.ic_close_circle)
@@ -106,12 +108,12 @@ class ShamelaBookListAdapter(
             }
             state?.status == DownloadStatus.DOWNLOADED || ShamelaBookStorage.isBookDownloaded(context, book.id) -> {
                 // البطاقة نفسها قابلة للضغط وتدخل الكتاب، فلا حاجة لزر «فتح» إضافي.
-                holder.btnAction.visibility = View.GONE
-                holder.btnReadOnline.visibility = View.GONE
+                holder.actionRow.visibility = View.GONE
                 holder.downloadProgressRow.visibility = View.GONE
                 holder.readingProgressRow.visibility = View.GONE
             }
             state?.status == DownloadStatus.FAILED -> {
+                holder.actionRow.visibility = View.VISIBLE
                 holder.btnAction.visibility = View.VISIBLE
                 holder.btnAction.text = "إعادة المحاولة"
                 holder.btnAction.setIconResource(R.drawable.ic_download)
@@ -123,6 +125,7 @@ class ShamelaBookListAdapter(
                 holder.btnAction.setOnClickListener { onDownloadClick(book) }
             }
             else -> {
+                holder.actionRow.visibility = View.VISIBLE
                 holder.btnAction.visibility = View.VISIBLE
                 holder.btnAction.text = "تحميل"
                 holder.btnAction.setIconResource(R.drawable.ic_download)

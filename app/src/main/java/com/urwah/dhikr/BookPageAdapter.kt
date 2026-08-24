@@ -55,7 +55,8 @@ class BookPageAdapter(
             holder.dividerTop.visibility = View.GONE
         }
 
-        holder.tvContent.text = page.text
+        // SPANNABLE: يسمح بـ highlight نتائج البحث (BackgroundColorSpan) دون تغيير النص
+        holder.tvContent.setText(page.text, TextView.BufferType.SPANNABLE)
         holder.tvContent.textSize = fontSize
         holder.tvContent.setLineSpacing(0f, lineSpacing)
         if (typeface != null) {

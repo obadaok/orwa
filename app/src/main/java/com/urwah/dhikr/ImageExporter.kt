@@ -66,13 +66,30 @@ object ImageExporter {
     }
 
     fun exportHighRes(config: ExportConfig, context: Context, scale: Float = 3f): Bitmap? {
-        val base = exportPreview(config, context) ?: return null
-        if (scale <= 1f) return base
-        val w = (base.width * scale).toInt()
-        val h = (base.height * scale).toInt()
-        val scaled = Bitmap.createScaledBitmap(base, w, h, true)
-        base.recycle()
-        return scaled
+        // رسم مباشر بالعرض الهدف (بدل تكبير راستري يسبب blur في النص)
+        val s = scale.coerceAtLeast(1f)
+        val metrics = context.resources.displayMetrics
+        val targetWidthPx = (TypedValue.applyDimension(
+            TypedValue.COMPLEX_UNIT_DIP, EXPORT_WIDTH_DP, metrics
+        ) * s).toInt()
+
+        val root = buildPreviewLayout(context, config, targetWidthPx)
+
+        val widthSpec = View.MeasureSpec.makeMeasureSpec(targetWidthPx, View.MeasureSpec.EXACTLY)
+        val heightSpec = View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED)
+        root.measure(widthSpec, heightSpec)
+
+        val mw = root.measuredWidth
+        val mh = root.measuredHeight
+        if (mw <= 0 || mh <= 0) return null
+
+        root.layout(0, 0, mw, mh)
+
+        val bitmap = Bitmap.createBitmap(mw, mh, Bitmap.Config.ARGB_8888)
+        val canvas = Canvas(bitmap)
+        root.draw(canvas)
+
+        return bitmap
     }
 
     private fun buildPreviewLayout(

@@ -137,57 +137,61 @@
                         android:visibility="gone" />
                 </LinearLayout>
             </LinearLayout>
+        </LinearLayout>
 
-            <LinearLayout
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
+        <!-- صف الأفعال الموحد: تحت الترويسة مباشرة، زران متساويان بلا ازدحام -->
+        <LinearLayout
+            android:id="@+id/actionRow"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:orientation="horizontal"
+            android:gravity="center_vertical">
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnReadOnline"
+                style="@style/Widget.Material3.Button.TonalButton"
+                android:layout_width="0dp"
+                android:layout_height="38dp"
+                android:layout_weight="1"
+                android:fontFamily="@font/alyamama"
+                android:textSize="13sp"
+                android:text="قراءة"
+                android:insetTop="0dp"
+                android:insetBottom="0dp"
+                app:cornerRadius="14dp"
+                app:backgroundTint="@color/urwah_background"
+                android:textColor="@color/urwah_thread_dark"
+                app:strokeColor="@color/urwah_thread_dark"
+                app:strokeWidth="1.5dp"
+                app:icon="@drawable/ic_open_book"
+                app:iconTint="@color/urwah_thread_dark"
+                app:iconSize="16dp"
+                app:iconGravity="textStart"
+                android:visibility="gone" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnAction"
+                style="@style/Widget.Material3.Button.TonalButton"
+                android:layout_width="0dp"
+                android:layout_height="38dp"
+                android:layout_weight="1"
                 android:layout_marginStart="10dp"
-                android:orientation="vertical">
-
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/btnAction"
-                    style="@style/Widget.Material3.Button.TonalButton"
-                    android:layout_width="wrap_content"
-                    android:layout_height="40dp"
-                    android:fontFamily="@font/alyamama"
-                    android:textSize="12sp"
-                    android:text="تحميل"
-                    android:minWidth="64dp"
-                    android:insetTop="0dp"
-                    android:insetBottom="0dp"
-                    app:cornerRadius="14dp"
-                    app:backgroundTint="@color/urwah_background"
-                    android:textColor="@color/urwah_thread_dark"
-                    app:strokeColor="@color/urwah_thread_dark"
-                    app:strokeWidth="1.5dp"
-                    app:icon="@drawable/ic_download"
-                    app:iconTint="@color/urwah_thread_dark"
-                    app:iconSize="16dp"
-                    app:iconPadding="4dp" />
-
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/btnReadOnline"
-                    style="@style/Widget.Material3.Button.TonalButton"
-                    android:layout_width="wrap_content"
-                    android:layout_height="40dp"
-                    android:layout_marginTop="6dp"
-                    android:fontFamily="@font/alyamama"
-                    android:textSize="12sp"
-                    android:text="قراءة"
-                    android:minWidth="64dp"
-                    android:insetTop="0dp"
-                    android:insetBottom="0dp"
-                    app:cornerRadius="14dp"
-                    app:backgroundTint="@color/urwah_background"
-                    android:textColor="@color/urwah_thread_dark"
-                    app:strokeColor="@color/urwah_thread_dark"
-                    app:strokeWidth="1.5dp"
-                    app:icon="@drawable/ic_open_book"
-                    app:iconTint="@color/urwah_thread_dark"
-                    app:iconSize="16dp"
-                    app:iconPadding="4dp"
-                    android:visibility="gone" />
-            </LinearLayout>
+                android:fontFamily="@font/alyamama"
+                android:textSize="13sp"
+                android:text="تحميل"
+                android:insetTop="0dp"
+                android:insetBottom="0dp"
+                app:cornerRadius="14dp"
+                app:backgroundTint="@color/urwah_background"
+                android:textColor="@color/urwah_thread_dark"
+                app:strokeColor="@color/urwah_thread_dark"
+                app:strokeWidth="1.5dp"
+                app:icon="@drawable/ic_download"
+                app:iconTint="@color/urwah_thread_dark"
+                app:iconSize="16dp"
+                app:iconGravity="textStart"
+                android:visibility="gone" />
         </LinearLayout>
 
         <LinearLayout

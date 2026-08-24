@@ -685,16 +685,21 @@ class QuoteEditorActivity : AppCompatActivity() {
         val removed = end - start
 
         fullText = fullText.substring(0, start) + fullText.substring(end)
-        // حذف الأسطر الفارغة (أو whitespace-only) الناتجة عن الحذف حتى لا تبقى فراغات
-        val lineStart = fullText.lastIndexOf('\n', (start - 1).coerceAtLeast(0)) + 1
+        // حذف السطر الذي أُفرغ بسب الحذف (أو whitespace-only) حتى لا تبقى مساحة فارغة.
+        // يعمل لأول سطر وآخر سطر ووسطها: السطر الفارغ عند حدود النص يكون lineStart == lineEnd.
+        // ملاحظة: عندما start == 0 فالسطر المعني يبدأ من 0 حتماً (لا نبحث عن \n وإلا التُقط السطر الجديد نفسه).
+        val lineStart = if (start == 0) 0 else fullText.lastIndexOf('\n', start - 1) + 1
         val lineEnd = fullText.indexOf('\n', start).let { if (it == -1) fullText.length else it }
-        if (lineStart < lineEnd && fullText.substring(lineStart, lineEnd).isBlank()) {
-            val nlAfter = if (lineEnd < fullText.length) 1 else 0
-            val nlBefore = if (lineStart > 0 && fullText[lineStart - 1] == '\n') 1 else 0
-            fullText = fullText.substring(0, lineStart) + fullText.substring((lineEnd + nlAfter).coerceAtMost(fullText.length))
-            if (nlBefore == 1 && fullText.isNotEmpty() && fullText.lastOrNull() == '\n') {
-                fullText = fullText.dropLast(1)
+        if (fullText.substring(lineStart, lineEnd).isBlank()) {
+            // نحذف السطر مع أحد الـ newline المجاورين فقط (لا الاثنين) حتى نحافظ على أسطر الجيران
+            val delStart: Int
+            val delEnd: Int
+            when {
+                lineEnd < fullText.length -> { delStart = lineStart; delEnd = lineEnd + 1 }        // يوجد \n بعده
+                lineStart > 0 -> { delStart = lineStart - 1; delEnd = lineEnd }                     // آخر سطر: نحذف \n قبله
+                else -> { delStart = lineStart; delEnd = lineEnd }                                  // السطر الوحيد
             }
+            fullText = fullText.substring(0, delStart) + fullText.substring(delEnd)
         }
         pageMarkers = detectPageMarkers(fullText)
 
@@ -1726,8 +1731,13 @@ class QuoteEditorActivity : AppCompatActivity() {
         }
         frame.layout(0, 0, mw, mh)
 
-        val bitmap = android.graphics.Bitmap.createBitmap(mw, mh, android.graphics.Bitmap.Config.ARGB_8888)
+        // الرسم مباشرة بدقة عالية عبر canvas.scale — نص ورسوميات vector-sharp،
+        // بدل الرسم بدقة الشاشة ثم تكبير راستري يسبب blur.
+        val outW = if (scale > 1f) (mw * scale).toInt() else mw
+        val outH = if (scale > 1f) (mh * scale).toInt() else mh
+        val bitmap = android.graphics.Bitmap.createBitmap(outW, outH, android.graphics.Bitmap.Config.ARGB_8888)
         val canvas = android.graphics.Canvas(bitmap)
+        if (scale > 1f) canvas.scale(scale, scale)
         frame.draw(canvas)
 
         // Restore full text (بما في ذلك إعادة تطبيق «إخفاء غير المحدد» حتى لا يختفي
@@ -1743,12 +1753,7 @@ class QuoteEditorActivity : AppCompatActivity() {
             restoreLiveText(fullText)
         }
 
-        if (scale <= 1f) return bitmap
-        val sw = (mw * scale).toInt()
-        val sh = (mh * scale).toInt()
-        val scaled = android.graphics.Bitmap.createScaledBitmap(bitmap, sw, sh, true)
-        bitmap.recycle()
-        return scaled
+        return bitmap
     }
 
     private fun restoreLiveText(text: String) {

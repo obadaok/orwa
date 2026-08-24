@@ -313,12 +313,9 @@ class SettingsFragment : Fragment() {
         }
         binding.switchDarkMode.isChecked = actualIsDark
 
-        fun toggleDarkMode() {
-            binding.switchDarkMode.isChecked = !binding.switchDarkMode.isChecked
-        }
-        binding.rowDarkMode.setOnClickListener { toggleDarkMode() }
-        // الضغط على المفتاح نفسه يبقى مسموحاً ولا يتضاعف
-        binding.switchDarkMode.setOnClickListener { it.isPressed = false; toggleDarkMode() }
+        // الضغط على الصف يقلب المفتاح برمجياً؛ المفتاح نفسه يُدار بالضغطة الأصلية للـ Switch.
+        // لا نضع onClick على المفتاح نفسه حتى لا يتضاعف التبديل (toggle أصلي + toggle برمجي = لا تغيير).
+        binding.rowDarkMode.setOnClickListener { binding.switchDarkMode.toggle() }
         binding.switchDarkMode.setOnCheckedChangeListener { _, isChecked ->
             prefs.edit().putBoolean(KEY_DARK_MODE, isChecked).apply()
             AppCompatDelegate.setDefaultNightMode(
