@@ -204,11 +204,13 @@ class ShamelaBookListAdapter(
         }
 
         val lastPage = stats.lastPage
-        if (stats.pageCount > 0 && lastPage > 0) {
+        // البسط = أكبر رقم صفحة أصلي (نفس نظام الترقيم المعروض)، لا عدد أسطر المصدر.
+        val totalPagesShown = stats.maxPageNum.takeIf { it > 0 } ?: stats.pageCount
+        if (totalPagesShown > 0 && lastPage > 0) {
             holder.readingProgressRow.visibility = View.VISIBLE
-            val progress = ((lastPage.toFloat() / stats.pageCount) * 100).toInt().coerceIn(0, 100)
+            val progress = ((lastPage.toFloat() / totalPagesShown) * 100).toInt().coerceIn(0, 100)
             holder.tvReadingProgress.text = "قرأت $progress%"
-            holder.tvProgressPage.text = "صفحة $lastPage من ${stats.pageCount}"
+            holder.tvProgressPage.text = "صفحة $lastPage من $totalPagesShown"
             holder.progressReading.progress = progress
         } else {
             holder.readingProgressRow.visibility = View.GONE

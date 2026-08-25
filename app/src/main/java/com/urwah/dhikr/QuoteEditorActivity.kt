@@ -47,6 +47,7 @@ import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.FileOutputStream
 import kotlin.math.abs
+import kotlin.math.hypot
 import kotlin.math.min
 import kotlin.math.max
 
@@ -82,8 +83,6 @@ class QuoteEditorActivity : AppCompatActivity() {
     private var tvEffectsHint: TextView? = null
     private lateinit var btnDeleteSelection: TextView
     private lateinit var btnHideUnselected: TextView
-    private lateinit var btnFormat: TextView
-    private lateinit var selectionTools: LinearLayout
     private lateinit var btnAlignRight: TextView
     private lateinit var btnAlignCenter: TextView
     private lateinit var btnAlignLeft: TextView
@@ -231,8 +230,6 @@ class QuoteEditorActivity : AppCompatActivity() {
         tvEffectsHint = findViewById(R.id.tvEffectsHint)
         btnDeleteSelection = findViewById(R.id.btnDeleteSelection)
         btnHideUnselected = findViewById(R.id.btnHideUnselected)
-        btnFormat = findViewById(R.id.btnFormat)
-        selectionTools = findViewById(R.id.selectionTools)
         btnAlignRight = findViewById(R.id.btnAlignRight)
         btnAlignCenter = findViewById(R.id.btnAlignCenter)
         btnAlignLeft = findViewById(R.id.btnAlignLeft)
@@ -328,37 +325,63 @@ class QuoteEditorActivity : AppCompatActivity() {
                     pendingTouchOffset = touchOffset
                     downX = event.x
                     downY = event.y
-                    wasDownOutsideSelection = !(hasSelection && touchOffset >= selStart && touchOffset <= selEnd)
+                    // التقاط المقابض بموقعها الفعلي (تحت السطر) — لا نشترط أن تكون
+                    // اللمسة داخل نص التحديد وإلا بدأ تحديد جديد «يقلب» التحديد الحالي
+                    val hs = selHandleStart.layoutParams?.width?.takeIf { it > 0 } ?: dp(34f).toInt()
+                    val grabR = hs.toFloat()
+                    val cStartX = layout.getPrimaryHorizontal(selStart)
+                    val cStartY = layout.getLineBottom(layout.getLineForOffset(selStart)) + hs / 2f - dp(4f)
+                    val cEndX = layout.getPrimaryHorizontal(selEnd)
+                    val cEndY = layout.getLineBottom(layout.getLineForOffset(selEnd)) + hs / 2f - dp(4f)
+                    val dStart = hypot(event.x - cStartX, event.y - cStartY)
+                    val dEnd = hypot(event.x - cEndX, event.y - cEndY)
                     lastHapticOffset = -1
-                    if (!wasDownOutsideSelection) {
-                        // داخل التحديد: إذا اقتربت اللمسة من أحد الحدود نبدأ سحبه فورًا
-                        val grabTolerancePx = dp(GRAB_TOLERANCE_DP)
-                        val startLine = layout.getLineForOffset(selStart)
-                        val endLine = layout.getLineForOffset(selEnd)
-                        val touchLine = layout.getLineForVertical(event.y.toInt())
-                        val distToStart = if (touchLine == startLine)
-                            abs(event.x - layout.getPrimaryHorizontal(selStart)) else Float.MAX_VALUE
-                        val distToEnd = if (touchLine == endLine)
-                            abs(event.x - layout.getPrimaryHorizontal(selEnd)) else Float.MAX_VALUE
-                        if (distToStart <= grabTolerancePx && distToStart <= distToEnd) {
+                    when {
+                        dStart <= grabR && dStart <= dEnd -> {
                             adjustMode = AdjustMode.START
                             selectionBase = selEnd
                             selectionExtent = touchOffset
                             scrollView.requestDisallowInterceptTouchEvent(true)
-                        } else if (distToEnd <= grabTolerancePx) {
+                        }
+                        dEnd <= grabR -> {
                             adjustMode = AdjustMode.END
                             selectionBase = selStart
                             selectionExtent = touchOffset
                             scrollView.requestDisallowInterceptTouchEvent(true)
-                        } else {
-                            adjustMode = AdjustMode.NONE
-                            scheduleLongPress(touchOffset)
                         }
-                    } else {
-                        // خارج التحديد: لا تحديد جديد إلا بالضغط المطول،
-                        // مع ترك التمرير الطبيعي يعمل (لا نستولي على اللمسة)
-                        adjustMode = AdjustMode.NONE
-                        scheduleLongPress(touchOffset)
+                        else -> {
+                            wasDownOutsideSelection = !(hasSelection && touchOffset >= selStart && touchOffset <= selEnd)
+                            if (!wasDownOutsideSelection) {
+                                // داخل التحديد: إذا اقتربت اللمسة من أحد الحدود نبدأ سحبه فورًا
+                                val grabTolerancePx = dp(GRAB_TOLERANCE_DP)
+                                val startLine = layout.getLineForOffset(selStart)
+                                val endLine = layout.getLineForOffset(selEnd)
+                                val touchLine = layout.getLineForVertical(event.y.toInt())
+                                val distToStart = if (touchLine == startLine)
+                                    abs(event.x - layout.getPrimaryHorizontal(selStart)) else Float.MAX_VALUE
+                                val distToEnd = if (touchLine == endLine)
+                                    abs(event.x - layout.getPrimaryHorizontal(selEnd)) else Float.MAX_VALUE
+                                if (distToStart <= grabTolerancePx && distToStart <= distToEnd) {
+                                    adjustMode = AdjustMode.START
+                                    selectionBase = selEnd
+                                    selectionExtent = touchOffset
+                                    scrollView.requestDisallowInterceptTouchEvent(true)
+                                } else if (distToEnd <= grabTolerancePx) {
+                                    adjustMode = AdjustMode.END
+                                    selectionBase = selStart
+                                    selectionExtent = touchOffset
+                                    scrollView.requestDisallowInterceptTouchEvent(true)
+                                } else {
+                                    adjustMode = AdjustMode.NONE
+                                    scheduleLongPress(touchOffset)
+                                }
+                            } else {
+                                // خارج التحديد: لا تحديد جديد إلا بالضغط المطول،
+                                // مع ترك التمرير الطبيعي يعمل (لا نستولي على اللمسة)
+                                adjustMode = AdjustMode.NONE
+                                scheduleLongPress(touchOffset)
+                            }
+                        }
                     }
                     true
                 }
@@ -501,7 +524,7 @@ class QuoteEditorActivity : AppCompatActivity() {
      */
     private fun setupAutoHideTopBars() {
         scrollView.setOnScrollChangeListener { _, _, scrollY, _, oldScrollY ->
-            if (selectionTools.visibility == View.VISIBLE) return@setOnScrollChangeListener
+            if (sheetExpanded) return@setOnScrollChangeListener
             lastScrollY = scrollY
             val hideThreshold = (topBar.height * 0.5f).toInt().coerceAtLeast(dp(24f).toInt())
             if (scrollY > hideThreshold && scrollY > oldScrollY && !topBarsHidden) {
@@ -536,7 +559,6 @@ class QuoteEditorActivity : AppCompatActivity() {
         selectionExtent = -1
         adjustMode = AdjustMode.NONE
         lastHapticOffset = -1
-        selectionTools.visibility = View.GONE
         tvSelectionInfo.text = ""
         selHandleStart.visibility = View.GONE
         selHandleEnd.visibility = View.GONE
@@ -604,16 +626,9 @@ class QuoteEditorActivity : AppCompatActivity() {
     private fun updateSelectionUI() {
         if (hasSelection) {
             showTopBars()
-            if (selectionTools.visibility != View.VISIBLE) {
-                selectionTools.visibility = View.VISIBLE
-                selectionTools.alpha = 0f
-                selectionTools.translationY = dp(10f)
-                selectionTools.animate().alpha(1f).translationY(0f).setDuration(160).start()
-            }
             tvSelectionInfo.text = buildSelectionInfoText()
             positionSelectionHandles()
         } else {
-            selectionTools.visibility = View.GONE
             tvSelectionInfo.text = ""
             selHandleStart.visibility = View.GONE
             selHandleEnd.visibility = View.GONE
@@ -1070,7 +1085,6 @@ class QuoteEditorActivity : AppCompatActivity() {
             }
             updateUndoRedoUI()
         }
-        btnFormat.setOnClickListener { showToolsPanel(true) }
     }
 
     private fun setupCitationInputs() {
@@ -1151,8 +1165,9 @@ class QuoteEditorActivity : AppCompatActivity() {
 
     private fun setupToolsPanel() {
         // اللمس على الخلفية المعتمة = طيّ اللوحة للمقبض فقط
-        findViewById<View>(R.id.toolsScrim).setOnClickListener { setSheetState(false) }
-        btnCloseTools.setOnClickListener { setSheetState(false) }
+        findViewById<View>(R.id.toolsScrim).setOnClickListener { hideToolsSheet() }
+        // «تم» تُخفي اللوحة كلياً (من الحالتين الموسّعة والمطوية) — لا تكتفِ بالطيّ
+        btnCloseTools.setOnClickListener { hideToolsSheet() }
     }
 
     /**
@@ -1266,8 +1281,10 @@ class QuoteEditorActivity : AppCompatActivity() {
             showTopBars()
             toolsOverlay.visibility = View.VISIBLE
             toolsScroll.post {
+                // الارتفاع على قد المحتوى الفعلي — بسقف 60% من الشاشة (لا فراغ سفلي ضخم)
+                val contentH = toolsScroll.getChildAt(0)?.height ?: 0
                 val maxH = (resources.displayMetrics.heightPixels * 0.6f).toInt()
-                toolsScroll.layoutParams.height = maxH
+                toolsScroll.layoutParams.height = if (contentH in 1..maxH) contentH else maxH
                 toolsScroll.layoutParams = toolsScroll.layoutParams
             }
             toolsPanel.post {
@@ -1281,6 +1298,14 @@ class QuoteEditorActivity : AppCompatActivity() {
                     .start()
             }
         }
+    }
+
+    /** إخفاء اللوحة كلياً (زر «تم»، النقر على الخلفية المعتمة) — لا مقبض متبقٍ. */
+    private fun hideToolsSheet() {
+        sheetExpanded = false
+        toolsPanel.animate().translationY(toolsPanel.height.toFloat()).setDuration(180)
+            .withEndAction { toolsOverlay.visibility = View.GONE }
+            .start()
     }
 
     /** فتح الأداة: إن كانت مطوية نوسّع، وإن كانت مفتوحة نبقى (سكروول فقط). */
@@ -1388,7 +1413,8 @@ class QuoteEditorActivity : AppCompatActivity() {
     private fun renderPreviewBitmap() {
         if (!previewMode) return
         val wrapW = previewWrap.width.takeIf { it > 0 } ?: return
-        val bmp = capturePreviewBitmap(1f) ?: run {
+        // نفس مسار الحفظ/المشاركة تماماً (×3) — النتيجة المطابقة للصورة المُصدَّرة
+        val bmp = capturePreviewBitmap(3f) ?: run {
             // فشل الالتقاط: نُبقي المحرر الحي ظاهراً بدل شاشة فارغة
             ivPreviewBitmap.visibility = View.GONE
             return

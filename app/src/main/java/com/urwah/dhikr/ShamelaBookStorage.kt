@@ -20,8 +20,10 @@ object ShamelaBookStorage {
     private const val KEY_READING_WIDTH = "reading_width"
     private const val KEY_FONT_FILE = "reader_font_file"
     private const val KEY_PAGE_COUNT = "page_count_%d"
+    private const val KEY_MAX_PAGE_NUM = "max_page_num_%d"
 
     private val pageCountCache = java.util.concurrent.ConcurrentHashMap<Int, Int>()
+    private val maxPageNumCache = java.util.concurrent.ConcurrentHashMap<Int, Int>()
 
     private fun getBooksDir(context: Context): File {
         val dir = File(context.filesDir, "shamela_books")
@@ -73,6 +75,10 @@ object ShamelaBookStorage {
             val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
             prefs.edit().putInt(String.format(KEY_PAGE_COUNT, bookId), pages.size).apply()
             pageCountCache[bookId] = pages.size
+            // أكبر رقم صفحة أصلي في المصدر (لأن pageNum ≠ index+1: فيه فراغات/nulls).
+            val maxNum = pages.mapNotNull { it.pageNum }.maxOrNull()
+            if (maxNum != null) prefs.edit().putInt(String.format(KEY_MAX_PAGE_NUM, bookId), maxNum).apply()
+            maxPageNumCache[bookId] = maxNum ?: pages.size
         }
 
         // Save pages as JSONL
@@ -239,11 +245,36 @@ object ShamelaBookStorage {
         return count
     }
 
+    /** أكبر رقم صفحة أصلي في الكتاب (نظام الترقيم المعروض)؛ احتياطًا عدد الأسطر. */
+    fun getMaxPageNum(context: Context, bookId: Int): Int {
+        maxPageNumCache[bookId]?.let { return it }
+        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        val stored = prefs.getInt(String.format(KEY_MAX_PAGE_NUM, bookId), -1)
+        if (stored > 0) { maxPageNumCache[bookId] = stored; return stored }
+        // كتب قديمة حُفظت قبل هذا الحقل: خذ الحد الأقصى من الملف مباشرة (مرور واحد).
+        val pagesFile = File(getBookDir(context, bookId), "pages.jsonl")
+        if (!pagesFile.exists()) return 0
+        var maxNum = 0
+        pagesFile.forEachLine { line ->
+            if (line.isNotBlank()) {
+                val n = runCatching { JSONObject(line).optInt("page_num", -1) }.getOrDefault(-1)
+                if (n > maxNum) maxNum = n
+            }
+        }
+        if (maxNum > 0) {
+            prefs.edit().putInt(String.format(KEY_MAX_PAGE_NUM, bookId), maxNum).apply()
+            maxPageNumCache[bookId] = maxNum
+        }
+        return maxNum
+    }
+
     /** بُسطات قراءة كتاب محفوظ تُعرض في قوائم المكتبة (تمنع تكرار الحساب). */
     data class BookListStats(
         val pageCount: Int,
         val lastPage: Int,
-        val lastReadTime: Long
+        val lastReadTime: Long,
+        /** أكبر رقم صفحة أصلي (للعرض)؛ 0 لو غير متاح. */
+        val maxPageNum: Int = 0
     )
 
     fun getBookListStats(context: Context, bookId: Int): BookListStats {
@@ -251,13 +282,15 @@ object ShamelaBookStorage {
         return BookListStats(
             pageCount = getPageCount(context, bookId),
             lastPage = prefs.getInt(String.format(KEY_LAST_PAGE, bookId), 0),
-            lastReadTime = prefs.getLong(String.format(KEY_LAST_READ, bookId), 0L)
+            lastReadTime = prefs.getLong(String.format(KEY_LAST_READ, bookId), 0L),
+            maxPageNum = getMaxPageNum(context, bookId)
         )
     }
 
     /** يُصفّر الكاش الحسابي (بعد حذف كتاب أو إعادة تحميله). */
     fun invalidatePageCount(bookId: Int) {
         pageCountCache.remove(bookId)
+        maxPageNumCache.remove(bookId)
     }
 
     fun getBookSizeBytes(context: Context, bookId: Int): Long {

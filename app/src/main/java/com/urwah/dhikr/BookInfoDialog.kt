@@ -26,21 +26,25 @@ class BookInfoDialog(
         )
 
         val pageCount = ShamelaBookStorage.getPageCount(appContext, book.id)
+        // البسط الحقيقي = أكبر رقم صفحة أصلي (نفس الترقيم المعروض في القارئ)،
+        // لأن عدد أسطر المصدر قد يقل عنه (فراغات/صفحات null).
+        val totalPages = ShamelaBookStorage.getMaxPageNum(appContext, book.id)
+            .takeIf { it > 0 } ?: pageCount
         val downloadSize = ShamelaBookStorage.getBookDownloadSize(appContext, book.id)
         val sizeText = ShamelaBookStorage.formatFileSize(downloadSize)
         val lastRead = ShamelaBookStorage.getLastReadTime(appContext, book.id)
         val lastPage = ShamelaBookStorage.getLastReadPage(appContext, book.id)
 
-        val progressText = if (pageCount > 0 && lastPage > 0) {
-            val pct = ((lastPage.toFloat() / pageCount) * 100).toInt().coerceIn(0, 100)
-            "$pct% — صفحة $lastPage من $pageCount"
+        val progressText = if (totalPages > 0 && lastPage > 0) {
+            val pct = ((lastPage.toFloat() / totalPages) * 100).toInt().coerceIn(0, 100)
+            "$pct% — صفحة $lastPage من $totalPages"
         } else "—"
 
         val infoLines = mapOf(
             "الاسم" to book.title,
             "المؤلف" to book.displayAuthor,
             "القسم" to book.bookType,
-            "عدد الصفحات" to (if (pageCount > 0) "$pageCount صفحة" else "—"),
+            "عدد الصفحات" to (if (totalPages > 0) "$totalPages صفحة" else "—"),
             "حجم الملف" to sizeText,
             "تاريخ التحميل" to getDownloadTime(),
             "آخر قراءة" to (if (lastRead > 0L) formatDate(lastRead) else "—"),

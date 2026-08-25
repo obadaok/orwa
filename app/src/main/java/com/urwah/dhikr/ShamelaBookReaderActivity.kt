@@ -84,6 +84,8 @@ class ShamelaBookReaderActivity : AppCompatActivity() {
     private var bookTitle = ""
     private var bookContent: ShamelaBookContent? = null
     private var fullText: String = ""
+    /** الخريطة الموحدة الوحيدة بين صفحات المصدر الأصلية وصفحات العرض. */
+    private var pageMapping: ShamelaPageMapper.SourceMap? = null
     private var displayPages: List<BookTextPaginator.Page> = emptyList()
     private var pageAdapter: BookPageAdapter? = null
 
@@ -784,8 +786,9 @@ class ShamelaBookReaderActivity : AppCompatActivity() {
             ObjectAnimator.ofFloat(panel, "translationY", startY, 0f).setDuration(220).start()
         }
 
-        val totalOrig = bookContent?.pages?.size?.coerceAtLeast(1) ?: displayPages.size
-        view.findViewById<TextView>(R.id.tvPageRange).text = "من 1 إلى $totalOrig"
+        val totalOrig = pageMapping?.let { "${it.minOriginalNum} إلى ${it.maxOriginalNum}" }
+            ?: ("1 إلى " + (bookContent?.pages?.size?.coerceAtLeast(1) ?: displayPages.size))
+        view.findViewById<TextView>(R.id.tvPageRange).text = "من $totalOrig"
         val etPage = view.findViewById<EditText>(R.id.etPageNumber)
         etPage.requestFocus()
         etPage.postDelayed({
@@ -795,9 +798,14 @@ class ShamelaBookReaderActivity : AppCompatActivity() {
 
         view.findViewById<TextView>(R.id.btnJumpGo).setOnClickListener {
             val pageNum = etPage.text.toString().toIntOrNull() ?: return@setOnClickListener
-            val index = displayPages.indexOfFirst { it.originalPageNum == pageNum }
-                .takeIf { it >= 0 } ?: (pageNum - 1).coerceIn(0, displayPages.size - 1)
-            navigateToPage(index)
+            // الانتقال عبر الخريطة الموحدة: رقم أصلي → صفحة مصدرية (متسامية مع
+            // الفراغات في ترقيم المطبوع) → صفحة العرض الحاوية لبدايتها.
+            val target = jumpToOriginalPage(pageNum)
+            if (target >= 0) {
+                navigateToPage(target)
+            } else {
+                UrwahToast.show(this, "الصفحة $pageNum خارج نطاق الكتاب")
+            }
             val imm = getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
             imm.hideSoftInputFromWindow(etPage.windowToken, 0)
             overlayManager.closeCurrent()
@@ -1268,7 +1276,9 @@ class ShamelaBookReaderActivity : AppCompatActivity() {
             // ويُجمّد التطبيق قبل فتح الكتاب الضخم.
             val pages = try {
                 withContext(Dispatchers.Default) {
-                    fullText = content.pages.joinToString("\n\n") { stripHtml(it.body) }
+                    val (ft, offsets) = ShamelaPageMapper.buildFullText(content.pages) { stripHtml(it) }
+                    fullText = ft
+                    pageMapping = ShamelaPageMapper.build(content.pages, offsets)
                     paginateBook()
                 }
             } catch (e: Exception) {
@@ -1399,7 +1409,6 @@ class ShamelaBookReaderActivity : AppCompatActivity() {
         lifecycleScope.launch {
             val snapshot = onlineLoadedPages.toList()
             val pendingContent = ShamelaBookContent(metadata, toc, snapshot)
-            val ft = snapshot.joinToString("\n\n") { stripHtml(it.body) }
 
             val anchorCharOffset = displayPages.getOrNull(lastIntendedPage)?.startOffset
                 ?.takeIf { it >= 0 }
@@ -1409,7 +1418,9 @@ class ShamelaBookReaderActivity : AppCompatActivity() {
                 .let { if (it < 0) -1 else it }
 
             bookContent = pendingContent
-            fullText = ft
+            val (newFt, newOffsets) = ShamelaPageMapper.buildFullText(pendingContent.pages) { stripHtml(it) }
+            fullText = newFt
+            pageMapping = ShamelaPageMapper.build(pendingContent.pages, newOffsets)
             val pages = withContext(Dispatchers.Default) { paginateBook() }
             displayPages = pages
             buildAdapterAndBind()
@@ -1435,7 +1446,8 @@ class ShamelaBookReaderActivity : AppCompatActivity() {
         pageAdapter = BookPageAdapter(
             pages = displayPages,
             bookTitle = bookTitle,
-            originalTotalPages = bookContent?.pages?.size ?: displayPages.size,
+            originalTotalPages = pageMapping?.maxOriginalNum
+                ?: bookContent?.pages?.size ?: displayPages.size,
             fontSize = fontSize,
             lineSpacing = lineSpacing,
             typeface = currentTypeface,
@@ -1485,30 +1497,15 @@ class ShamelaBookReaderActivity : AppCompatActivity() {
 
         val pages = BookTextPaginator.paginate(this, ft, pageWidth, pageHeight, fontSize, lineSpacing, fontFile)
 
-        // Build cumulative text lengths for each original (Shamela) page
-        val origPageEnds = mutableListOf<Int>()
-        var cumulativeLen = 0
-        for ((i, origPage) in content.pages.withIndex()) {
-            cumulativeLen += stripHtml(origPage.body).length
-            if (i < content.pages.lastIndex) cumulativeLen += 2 // "\n\n"
-            origPageEnds.add(cumulativeLen)
-        }
+        val mapping = pageMapping
 
-        // Map each display page to its original page number using text position in fullText.
-        // Use a running search position for O(n) performance instead of O(n²).
-        var searchPos = 0
+        // Map each display page to its original page number via the unified mapper:
+        // بداية صفحة العرض → الصفحة المصدرية الحاوية لها (بحث ثنائي على الإزاحات)
+        // → رقم الصفحة الأصلي من المصدر. بلا بحث نصي هشّ ولا افتراض index=pageNum-1.
         return pages.map { dp ->
-            val idx = if (dp.text.isNotEmpty()) {
-                val from = maxOf(searchPos, dp.startOffset)
-                ft.indexOf(dp.text, from).takeIf { it >= 0 }
-                    ?: ft.indexOf(dp.text.take(20), from)
-                    ?: -1
-            } else -1
-            if (idx >= 0) searchPos = idx + 1
-            val origNum = if (idx >= 0) {
-                val origIdx = origPageEnds.indexOfFirst { idx < it }
-                    .let { if (it < 0) content.pages.lastIndex else it }
-                content.pages[origIdx].pageNum
+            val origNum = if (dp.startOffset >= 0 && mapping != null) {
+                val srcIdx = mapping.sourceIndexForCharOffset(dp.startOffset)
+                mapping.originalNumAt(srcIdx)
             } else null
             dp.copy(originalPageNum = origNum)
         }
@@ -1550,14 +1547,57 @@ class ShamelaBookReaderActivity : AppCompatActivity() {
         }
     }
 
+    /** فهرس صفحة العرض التي يقع فيها موضع نصي داخل fullText (بحث ثنائي). */
+    private fun displayIndexForCharOffset(charOffset: Int): Int {
+        if (displayPages.isEmpty() || charOffset < 0) return -1
+        var lo = 0
+        var hi = displayPages.size - 1
+        var ans = 0
+        while (lo <= hi) {
+            val mid = (lo + hi) / 2
+            if ((displayPages[mid].startOffset.takeIf { it >= 0 } ?: Int.MIN_VALUE) <= charOffset) {
+                ans = mid; lo = mid + 1
+            } else hi = mid - 1
+        }
+        return ans
+    }
+
+    /** الرقم الأصلي المعروض لصفحة عرض — عبر الخريطة الموحدة فقط. */
+    private fun originalNumOfDisplay(position: Int): Int? {
+        val mapping = pageMapping ?: return null
+        val dp = displayPages.getOrNull(position) ?: return null
+        if (dp.startOffset < 0) return null
+        return mapping.originalNumAt(mapping.sourceIndexForCharOffset(dp.startOffset))
+    }
+
     private fun updatePageInfo(position: Int) {
         if (displayPages.isEmpty()) return
-        // أظهر رقم الصفحة الأصلية بالنسبة لإجمالي الصفحات الأصلية للكتاب
-        // (وليس عدد الصفحات الافتراضية الناتجة عن الترقيم).
-        val page = displayPages.getOrNull(position)
-        val current = page?.originalPageNum ?: (position + 1).coerceIn(1, displayPages.size)
-        val totalOrig = bookContent?.pages?.size?.coerceAtLeast(1) ?: displayPages.size
+        // أظهر رقم الصفحة الأصلية من المصدر بالنسبة لأكبر رقم أصلي في الكتاب
+        // (وليس عدد أسطر المصدر ولا عدد الصفحات الافتراضية).
+        val current = originalNumOfDisplay(position)
+            ?: (position + 1).coerceIn(1, displayPages.size)
+        val totalOrig = pageMapping?.maxOriginalNum
+            ?: bookContent?.pages?.size?.coerceAtLeast(1)
+            ?: displayPages.size
         tvPageInfo.text = "صفحة $current / $totalOrig"
+    }
+
+    /**
+     * الانتقال إلى رقم صفحة أصلي (كما في المصدر): يعيد فهرس صفحة العرض،
+     * أو -1 إن كان الرقم خارج نطاق الكتاب كليًا. أرقام الفراغات تقفز
+     * إلى أول صفحة أصلية تالية موجودة (سلوك قارئات الكتب المعتمد).
+     */
+    private fun jumpToOriginalPage(originalNum: Int): Int {
+        val mapping = pageMapping ?: run {
+            // بلا خريطة (حالة نظرية): رجوع آمن لسلوك الفهرس القديم داخل النطاق فقط.
+            return if (originalNum in 1..displayPages.size) originalNum - 1 else -1
+        }
+        if (originalNum < mapping.minOriginalNum || originalNum > mapping.maxOriginalNum) return -1
+        val srcIdx = mapping.sourceIndexForPageNum(originalNum)
+        if (srcIdx < 0) return -1
+        val srcStart = mapping.startOffsetAt(srcIdx)
+        val displayIdx = displayIndexForCharOffset(srcStart)
+        return displayIdx.coerceIn(0, (displayPages.size - 1).coerceAtLeast(0))
     }
 
     private fun setupToc() {
@@ -1579,31 +1619,32 @@ class ShamelaBookReaderActivity : AppCompatActivity() {
     }
 
     private fun buildTocPageMapping(content: ShamelaBookContent): Map<Int, Int> {
+        // أرقام الفهرس المعروضة = الأرقام الأصلية من المصدر (نفس نظام كل التطبيق).
         val mapping = mutableMapOf<Int, Int>()
-        val pageIds = content.pages.map { it.pageId }
-        val totalShamelaPages = content.pages.size.coerceAtLeast(1)
-        val totalDisplayPages = displayPages.size.coerceAtLeast(1)
-        val displayPerPage = totalDisplayPages.toFloat() / totalShamelaPages
+        val pm = pageMapping
         for (entry in content.toc) {
-            val targetIdx = pageIds.indexOf(entry.pageId)
-            if (targetIdx >= 0) {
-                val approxPage = (targetIdx * displayPerPage).toInt().coerceIn(0, displayPages.size - 1)
-                mapping[entry.titleId] = approxPage + 1
+            val num: Int? = if (pm != null) {
+                val srcIdx = pm.sourceIndexForPageId(entry.pageId)
+                if (srcIdx >= 0) pm.originalNumAt(srcIdx) else null
+            } else null
+            if (num != null) {
+                mapping[entry.titleId] = num
+            } else {
+                // صفحة بلا رقم أصلي (null): أظهر فهرس العرض +1 كخيار أخير.
+                mapping[entry.titleId] = displayIndexForCharOffset(
+                    pageMapping?.startOffsetAt(pageMapping?.sourceIndexForPageId(entry.pageId) ?: -1) ?: -1
+                ).let { if (it < 0) 0 else it + 1 }
             }
         }
         return mapping
     }
 
     private fun findPageForTocEntry(entry: ShamelaTocEntry): Int {
-        val content = bookContent ?: return -1
-        val pageIds = content.pages.map { it.pageId }
-        val targetIdx = pageIds.indexOf(entry.pageId)
-        if (targetIdx < 0) return 0
-        val totalShamelaPages = content.pages.size.coerceAtLeast(1)
-        val totalDisplayPages = displayPages.size.coerceAtLeast(1)
-        val displayPerPage = totalDisplayPages.toFloat() / totalShamelaPages
-        val approxDisplayPage = (targetIdx * displayPerPage).toInt()
-        return approxDisplayPage.coerceIn(0, displayPages.size - 1)
+        // انتقال دقيق: pageId → صفحة مصدرية → بدايتها النصية → صفحة العرض الحاوية.
+        val pm = pageMapping ?: return -1
+        val srcIdx = pm.sourceIndexForPageId(entry.pageId)
+        if (srcIdx < 0) return -1
+        return displayIndexForCharOffset(pm.startOffsetAt(srcIdx))
     }
 
     private fun stripHtml(html: String): String {
