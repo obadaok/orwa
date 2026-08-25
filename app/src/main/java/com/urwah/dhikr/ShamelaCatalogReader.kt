@@ -19,9 +19,14 @@ import java.util.concurrent.Executors
  */
 object ShamelaCatalogReader {
 
+    @Volatile
     private var cachedCatalog: ShamelaCatalog? = null
+    @Volatile
     private var cachedAuthors: List<ShamelaAuthor>? = null
+    @Volatile
     private var searchIndex: IndexedCatalog? = null
+
+    private val catalogLock = Any()
 
     private val io = Executors.newSingleThreadExecutor { r -> Thread(r, "shamela-catalog").apply { priority = Thread.NORM_PRIORITY } }
 
@@ -50,14 +55,17 @@ object ShamelaCatalogReader {
      */
     fun getCatalog(context: Context): ShamelaCatalog {
         cachedCatalog?.let { return it }
-        readIndexCache(context)?.let {
-            cachedCatalog = it
-            return it
+        synchronized(catalogLock) {
+            cachedCatalog?.let { return it }
+            readIndexCache(context)?.let {
+                cachedCatalog = it
+                return it
+            }
+            val catalog = parseJsonCatalog(context)
+            cachedCatalog = catalog
+            writeIndexCache(context, catalog)
+            return catalog
         }
-        val catalog = parseJsonCatalog(context)
-        cachedCatalog = catalog
-        writeIndexCache(context, catalog)
-        return catalog
     }
 
     private fun parseJsonCatalog(context: Context): ShamelaCatalog {
@@ -107,9 +115,11 @@ object ShamelaCatalogReader {
             val cats = mutableListOf<ShamelaCategory>()
             val books = mutableListOf<ShamelaBook>()
             var readingCats = true
+            var sawBooksMarker = false
             file.bufferedReader().forEachLine { line ->
                 if (line == "##BOOKS") {
                     readingCats = false
+                    sawBooksMarker = true
                     return@forEachLine
                 }
                 if (line.isEmpty()) return@forEachLine
@@ -138,6 +148,8 @@ object ShamelaCatalogReader {
                     }
                 }
             }
+            // كاش مبتور/فارغ يُرفض ليُعاد التحليل الكامل من assets بدل اختفاء المكتبة
+            if (!sawBooksMarker || books.isEmpty() || cats.isEmpty()) return null
             ShamelaCatalog(categories = cats, books = books)
         } catch (_: Exception) {
             null
@@ -146,20 +158,29 @@ object ShamelaCatalogReader {
 
     private fun writeIndexCache(context: Context, catalog: ShamelaCatalog) {
         try {
-            val file = indexFile(context)
-            file.bufferedWriter().use { writer ->
+            // كتابة ذرّية (tmp ثم rename): انقطاع أثناء الكتابة لا يحذف آلاف
+            // الكتب من الفهرس بسبب كاش ناقص لكنه صالح البنية.
+            val tmp = File(context.filesDir, "shamela_catalog.idx.tmp")
+            // تنظيف فواصل السجل (tab/newline) حتى لا يفسد نص الكتاب/المؤلف بنية الكاش
+            fun clean(s: String) = s.replace('\t', ' ').replace('\n', ' ').replace('\r', ' ')
+            tmp.bufferedWriter().use { writer ->
                 for (c in catalog.categories) {
-                    writer.write("${c.id}\t${c.name}\t${c.bookCount}\t${c.folder}")
+                    writer.write("${c.id}\t${clean(c.name)}\t${c.bookCount}\t${clean(c.folder)}")
                     writer.newLine()
                 }
                 writer.write("##BOOKS")
                 writer.newLine()
                 for (b in catalog.books) {
-                    writer.write("${b.id}\t${b.shamelaId}\t${b.title}\t${b.author}\t" +
+                    writer.write("${b.id}\t${b.shamelaId}\t${clean(b.title)}\t${clean(b.author)}\t" +
                         "${b.deathHijri ?: ""}\t${b.categoryId}\t${b.version}\t" +
-                        "${if (b.hasMultiPart) 1 else 0}\t${b.bookType}\t${b.hfPath}")
+                        "${if (b.hasMultiPart) 1 else 0}\t${clean(b.bookType)}\t${clean(b.hfPath)}")
                     writer.newLine()
                 }
+            }
+            val file = indexFile(context)
+            if (file.exists()) file.delete()
+            if (!tmp.renameTo(file)) {
+                tmp.delete()
             }
         } catch (_: Exception) {
             // فشل كتابة الكاش لا يمنع عمل التطبيق.

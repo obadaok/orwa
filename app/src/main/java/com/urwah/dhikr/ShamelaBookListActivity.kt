@@ -307,6 +307,7 @@ class ShamelaBookListActivity : AppCompatActivity() {
                     null
                 }
             }
+            if (isFinishing || isDestroyed) return@launch
             if (remoteVersion == null) {
                 AlertDialog.Builder(this@ShamelaBookListActivity)
                     .setTitle("التحقق من التحديث")

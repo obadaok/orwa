@@ -47,17 +47,25 @@ object ShamelaBookmarkManager {
 
     fun getAll(context: Context): List<ShamelaBookmark> {
         val json = prefs(context).getString(KEY_BOOKMARKS, null) ?: return emptyList()
-        val arr = JSONArray(json)
-        return (0 until arr.length()).map { i ->
-            val obj = arr.getJSONObject(i)
-            ShamelaBookmark(
-                bookId = obj.getInt("book_id"),
-                page = obj.getInt("page"),
-                charOffset = obj.optInt("char_offset", -1),
-                bookTitle = obj.optString("book_title", ""),
-                text = obj.optString("text", ""),
-                time = obj.optLong("time", 0L)
-            )
+        return try {
+            val arr = JSONArray(json)
+            (0 until arr.length()).mapNotNull { i ->
+                try {
+                    val obj = arr.getJSONObject(i)
+                    ShamelaBookmark(
+                        bookId = obj.getInt("book_id"),
+                        page = obj.getInt("page"),
+                        charOffset = obj.optInt("char_offset", -1),
+                        bookTitle = obj.optString("book_title", ""),
+                        text = obj.optString("text", ""),
+                        time = obj.optLong("time", 0L)
+                    )
+                } catch (_: Exception) {
+                    null
+                }
+            }
+        } catch (_: Exception) {
+            emptyList()
         }
     }
 

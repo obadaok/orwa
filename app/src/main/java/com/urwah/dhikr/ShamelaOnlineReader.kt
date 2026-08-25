@@ -92,8 +92,10 @@ object ShamelaOnlineReader {
     /**
      * يبثّ صفحات pages.jsonl سطرًا-سطرًا عبر [onPage] (تُنفَّذ على مؤشر IO).
      * يُسهم هذا في ظهور أولى الصفحات قبل اكتمال الجلب كاملًا.
+     * [isCancelled] تُفحص دوريًا لإيقاف البث فور مغادرة الشاشة بدل استكمال
+     * تنزيل الكتاب كاملًا في الخلفية.
      */
-    fun streamPages(hfPath: String, onPage: (ShamelaPage) -> Unit) {
+    fun streamPages(hfPath: String, isCancelled: () -> Boolean = { false }, onPage: (ShamelaPage) -> Unit) {
         val url = URL(buildFileUrl(hfPath, "pages.jsonl"))
         val conn = url.openConnection() as HttpURLConnection
         conn.connectTimeout = 30_000
@@ -106,7 +108,9 @@ object ShamelaOnlineReader {
             }
             val reader = BufferedReader(InputStreamReader(conn.inputStream), 8192 * 4)
             while (true) {
+                if (isCancelled()) break
                 val line = reader.readLine() ?: break
+                if (isCancelled()) break
                 if (line.isBlank()) continue
                 try {
                     val o = JSONObject(line)

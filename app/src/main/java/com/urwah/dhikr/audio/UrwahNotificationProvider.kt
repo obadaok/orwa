@@ -28,6 +28,16 @@ class UrwahNotificationProvider(
     private var actionFactory: MediaNotification.ActionFactory? = null
 
     private val mainHandler = android.os.Handler(android.os.Looper.getMainLooper())
+
+    // أيقونة كبيرة تُفكّ ترميزها مرة واحدة فقط بدل كل ثانية (تسريب ذاكرة متراكم)
+    private val largeIconBitmap: android.graphics.Bitmap? by lazy {
+        try {
+            BitmapFactory.decodeResource(context.resources, R.mipmap.ic_launcher)
+        } catch (_: Exception) {
+            null
+        }
+    }
+
     private val progressRunnable = object : Runnable {
         override fun run() {
             if (player.isPlaying) {
@@ -147,12 +157,7 @@ class UrwahNotificationProvider(
                     .setShowActionsInCompactView(0, 1, 2)
             )
 
-        val largeIcon = try {
-            BitmapFactory.decodeResource(context.resources, R.mipmap.ic_launcher)
-        } catch (_: Exception) {
-            null
-        }
-        if (largeIcon != null) builder.setLargeIcon(largeIcon)
+        if (largeIconBitmap != null) builder.setLargeIcon(largeIconBitmap)
 
         val duration = player.duration
         if (duration > 0) {

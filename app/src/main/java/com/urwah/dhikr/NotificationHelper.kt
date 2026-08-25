@@ -49,7 +49,7 @@ object NotificationHelper {
             ).apply {
                 description = "تذكير بقراءة الأذكار وسور القرآن"
                 enableVibration(true)
-                setBypassDnd(true)
+                // لا تجاوز لوضع الهدوء (سياسات المتجر + احترام إعدادات المستخدم)
             }
             val nm = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
             nm.createNotificationChannel(channel)
@@ -74,7 +74,7 @@ object NotificationHelper {
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setColor(0xFF8B6F5E.toInt())
             .setCategory(NotificationCompat.CATEGORY_REMINDER)
-            .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
+            .setVisibility(NotificationCompat.VISIBILITY_PRIVATE)
             .setStyle(NotificationCompat.BigTextStyle().bigText(data.text))
             .build()
 
@@ -110,9 +110,23 @@ object NotificationHelper {
 
         val alarmInfo = AlarmManager.AlarmClockInfo(cal.timeInMillis, pendingIntent)
         try {
+            // setAlarmClock لا يتطلب صلاحية SCHEDULE_EXACT_ALARM (معفى له)
             alarmManager.setAlarmClock(alarmInfo, pendingIntent)
         } catch (_: SecurityException) {
-            alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, cal.timeInMillis, pendingIntent)
+            scheduleInexactFallback(alarmManager, cal.timeInMillis, pendingIntent)
+        }
+    }
+
+    /** بديل آمن بلا SecurityException عندما تُرفض صلاحية المنبّهات الدقيقة. */
+    private fun scheduleInexactFallback(alarmManager: AlarmManager, triggerAtMillis: Long, pendingIntent: PendingIntent) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && !alarmManager.canScheduleExactAlarms()) {
+            alarmManager.setWindow(AlarmManager.RTC_WAKEUP, triggerAtMillis, 10 * 60 * 1000L, pendingIntent)
+        } else {
+            try {
+                alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerAtMillis, pendingIntent)
+            } catch (_: SecurityException) {
+                alarmManager.setWindow(AlarmManager.RTC_WAKEUP, triggerAtMillis, 10 * 60 * 1000L, pendingIntent)
+            }
         }
     }
 
@@ -259,19 +273,13 @@ class AlarmReceiver : BroadcastReceiver() {
         NotificationHelper.createChannel(context)
         NotificationHelper.showReminder(context, type)
 
-        if (type != NotificationHelper.TYPE_KHATMA) {
-            val prefs = context.getSharedPreferences("urwah_settings", Context.MODE_PRIVATE)
-            val enabled = prefs.getBoolean("${type}_enabled", false)
-            if (enabled) {
-                val h = prefs.getInt("${type}_hour", NotificationHelper.defaultHours[type] ?: 6)
-                val m = prefs.getInt("${type}_min", NotificationHelper.defaultMinutes[type] ?: 0)
-                NotificationHelper.scheduleNext(context, type, h, m)
-            }
-        } else {
-            NotificationHelper.scheduleNext(context, type,
-                NotificationHelper.defaultHours[type] ?: 8,
-                NotificationHelper.defaultMinutes[type] ?: 0
-            )
+        // إعادة الجدولة دائمًا بوقت المستخدم المحفوظ (وليس الافتراضي) لكل الأنواع.
+        val prefs = context.getSharedPreferences("urwah_settings", Context.MODE_PRIVATE)
+        val enabled = prefs.getBoolean("${type}_enabled", false)
+        if (enabled) {
+            val h = prefs.getInt("${type}_hour", NotificationHelper.defaultHours[type] ?: 6)
+            val m = prefs.getInt("${type}_min", NotificationHelper.defaultMinutes[type] ?: 0)
+            NotificationHelper.scheduleNext(context, type, h, m)
         }
     }
 }

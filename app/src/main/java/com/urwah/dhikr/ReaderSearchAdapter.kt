@@ -12,7 +12,7 @@ import androidx.recyclerview.widget.RecyclerView
 
 class ReaderSearchAdapter(
     private var results: List<SearchResult>,
-    private val onResultClick: (Int) -> Unit
+    private val onResultClick: (SearchResult) -> Unit
 ) : RecyclerView.Adapter<ReaderSearchAdapter.ResultViewHolder>() {
 
     private var activePosition = -1
@@ -52,7 +52,7 @@ class ReaderSearchAdapter(
         val result = results[position]
         holder.bind(result, position == activePosition)
         holder.itemView.setOnClickListener {
-            onResultClick(result.pageIndex)
+            onResultClick(result)
         }
     }
 

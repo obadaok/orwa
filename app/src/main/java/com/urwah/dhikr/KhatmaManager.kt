@@ -18,6 +18,7 @@ data class Khatma(
     val lastScrollOffset: Int = -1,
     val endOfWirdSurah: Int = -1,
     val endOfWirdAyah: Int = -1,
+    val confirmedDay: Int = -1,
     val color: Int = -1,
     val riwaya: String = "hafs"
 ) {
@@ -40,25 +41,30 @@ object KhatmaManager {
 
     fun getAll(context: Context): List<Khatma> {
         val json = prefs(context).getString(KEY_KHATMAS, null) ?: return emptyList()
-        val arr = JSONArray(json)
-        return (0 until arr.length()).map { i ->
-            val obj = arr.getJSONObject(i)
-            Khatma(
-                id = obj.getString("id"),
-                name = obj.getString("name"),
-                startJuz = obj.getInt("startJuz"),
-                totalDays = obj.getInt("totalDays"),
-                currentDay = obj.getInt("currentDay"),
-                isActive = obj.getBoolean("isActive"),
-                createdAt = obj.optLong("createdAt", 0L),
-                lastSurah = obj.optInt("lastSurah", -1),
-                lastAyah = obj.optInt("lastAyah", -1),
-                lastScrollOffset = obj.optInt("lastScrollOffset", -1),
-                endOfWirdSurah = obj.optInt("endOfWirdSurah", -1),
-                endOfWirdAyah = obj.optInt("endOfWirdAyah", -1),
-                color = obj.optInt("color", -1),
-                riwaya = obj.optString("riwaya", "hafs")
-            )
+        return try {
+            val arr = JSONArray(json)
+            (0 until arr.length()).map { i ->
+                val obj = arr.getJSONObject(i)
+                Khatma(
+                    id = obj.getString("id"),
+                    name = obj.getString("name"),
+                    startJuz = obj.getInt("startJuz"),
+                    totalDays = obj.getInt("totalDays"),
+                    currentDay = obj.getInt("currentDay"),
+                    isActive = obj.getBoolean("isActive"),
+                    createdAt = obj.optLong("createdAt", 0L),
+                    lastSurah = obj.optInt("lastSurah", -1),
+                    lastAyah = obj.optInt("lastAyah", -1),
+                    lastScrollOffset = obj.optInt("lastScrollOffset", -1),
+                    endOfWirdSurah = obj.optInt("endOfWirdSurah", -1),
+                    endOfWirdAyah = obj.optInt("endOfWirdAyah", -1),
+                    confirmedDay = obj.optInt("confirmedDay", -1),
+                    color = obj.optInt("color", -1),
+                    riwaya = obj.optString("riwaya", "hafs")
+                )
+            }
+        } catch (_: Exception) {
+            emptyList()
         }
     }
 
@@ -77,7 +83,10 @@ object KhatmaManager {
                 isActive = day < list[idx].totalDays,
                 lastSurah = -1,
                 lastAyah = -1,
-                lastScrollOffset = -1
+                lastScrollOffset = -1,
+                endOfWirdSurah = -1,
+                endOfWirdAyah = -1,
+                confirmedDay = -1
             )
             save(context, list)
         }
@@ -92,11 +101,15 @@ object KhatmaManager {
         }
     }
 
-    fun updateEndOfWird(context: Context, id: String, surah: Int, ayah: Int) {
+    fun updateEndOfWird(context: Context, id: String, surah: Int, ayah: Int, confirmedDay: Int) {
         val list = getAll(context).toMutableList()
         val idx = list.indexOfFirst { it.id == id }
         if (idx >= 0) {
-            list[idx] = list[idx].copy(endOfWirdSurah = surah, endOfWirdAyah = ayah)
+            list[idx] = list[idx].copy(
+                endOfWirdSurah = surah,
+                endOfWirdAyah = ayah,
+                confirmedDay = confirmedDay
+            )
             save(context, list)
         }
     }
@@ -123,6 +136,7 @@ object KhatmaManager {
             obj.put("lastScrollOffset", k.lastScrollOffset)
             obj.put("endOfWirdSurah", k.endOfWirdSurah)
             obj.put("endOfWirdAyah", k.endOfWirdAyah)
+            obj.put("confirmedDay", k.confirmedDay)
             obj.put("color", k.color)
             obj.put("riwaya", k.riwaya)
             arr.put(obj)

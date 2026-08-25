@@ -142,7 +142,7 @@ class BookmarksActivity : AppCompatActivity() {
             h.tvName.text = bm.name
             val ayahNum = bm.ayahNumber
             val hindiDigits = arrayOf("٠", "١", "٢", "٣", "٤", "٥", "٦", "٧", "٨", "٩")
-            val ayahStr = ayahNum.toString().map { hindiDigits[it - '0'] }.joinToString("")
+            val ayahStr = ayahNum.toString().map { if (it.isDigit()) hindiDigits[it - '0'] else it }.joinToString("")
             h.tvLocation.text = "${bm.surahName} • الآية $ayahStr"
             h.itemView.setOnClickListener { onClick(bm) }
         }

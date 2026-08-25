@@ -17,6 +17,7 @@ import android.view.LayoutInflater
 import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
+import android.view.ViewParent
 import android.view.WindowManager
 import android.widget.Button
 import android.widget.FrameLayout
@@ -63,15 +64,25 @@ class KhatmaReadingActivity : AppCompatActivity() {
     private var isAutoScrolling = false
     private var autoScrollPixelsPerSecond = 5f
     private var autoScrollGeneration = 0L
-    private var continuousKhatmaViewRef: TextView? = null
-    private var khatmaAyahOffsets: List<Pair<Int, Int>>? = null
+    private var continuousBlocks = listOf<ContinuousBlock>()
     private var toastHelper: JuzHizbToastHelper? = null
     private var allAyahsFlat: List<AyahData> = emptyList()
     private var khatmaRiwaya: String = "hafs"
     private var singleLineMode = true
     private var ayahAlignment = 3
     private var isUiHidden = false
-    private var savedScrollY = -1
+
+    private class ContinuousBlock(
+        val textView: TextView,
+        val baseIndex: Int,
+        val offsets: List<Pair<Int, Int>>
+    ) {
+        fun containsAyah(idx: Int) = idx >= baseIndex && idx < baseIndex + offsets.size
+        fun ayahForOffset(offset: Int): Int {
+            val matchIdx = offsets.indexOfFirst { (s, e) -> offset >= s && offset < e }
+            return if (matchIdx >= 0) baseIndex + matchIdx else -1
+        }
+    }
 
     private val quranPrefs by lazy {
         getSharedPreferences("urwah_quran", Context.MODE_PRIVATE)
@@ -136,9 +147,10 @@ class KhatmaReadingActivity : AppCompatActivity() {
         tvProgress.text = "اليوم ${currentDay + 1} من $totalDays"
         savedSurah = khatma?.lastSurah ?: -1
         savedAyah = khatma?.lastAyah ?: -1
+        isDayCompleted = khatma?.confirmedDay == currentDay
 
         findViewById<ImageButton>(R.id.btnBack).setOnClickListener {
-            saveScrollPosition()
+            // الحفظ يتم في onBackPressed — تجنّب الكتابة المزدوجة
             onBackPressedDispatcher.onBackPressed()
         }
 
@@ -185,7 +197,6 @@ class KhatmaReadingActivity : AppCompatActivity() {
 
         findViewById<ImageButton>(R.id.btnAutoScroll).setOnClickListener {
             if (isAutoScrolling) {
-                savedScrollY = scrollView.scrollY
                 stopAutoScroll()
                 updateAutoScrollButton(false)
             } else {
@@ -224,14 +235,24 @@ class KhatmaReadingActivity : AppCompatActivity() {
         }
     }
 
+    private var uiToggleGeneration = 0
+
     private fun toggleUiVisibility() {
         isUiHidden = !isUiHidden
         val targetAlpha = if (isUiHidden) 0f else 1f
         val duration = 250L
+        val generation = ++uiToggleGeneration
 
-        topToolbar.animate().alpha(targetAlpha).setDuration(duration).start()
-        progressContainer.animate().alpha(targetAlpha).setDuration(duration).start()
-        findViewById<View>(R.id.bottomDivider).animate().alpha(targetAlpha).setDuration(duration).start()
+        val applyInteractivity: (View) -> Unit = { v ->
+            v.animate().alpha(targetAlpha).setDuration(duration).withEndAction {
+                if (generation == uiToggleGeneration) {
+                    v.visibility = if (isUiHidden) View.INVISIBLE else View.VISIBLE
+                }
+            }.start()
+        }
+        applyInteractivity(topToolbar)
+        applyInteractivity(progressContainer)
+        applyInteractivity(findViewById(R.id.bottomDivider))
     }
 
     private fun findAndNotifyPosition(scrollY: Int) {
@@ -253,14 +274,32 @@ class KhatmaReadingActivity : AppCompatActivity() {
                 }
             }
         } else {
-            val tv = continuousKhatmaViewRef ?: return
-            val offsets = khatmaAyahOffsets ?: return
-            val layout = tv.layout ?: return
-            val visibleLine = layout.getLineForVertical((scrollY - tv.top).coerceAtLeast(0))
-            val offset = layout.getLineStart(visibleLine)
-            val matchIdx = offsets.indexOfFirst { (s, e) -> offset >= s && offset < e }
-            if (matchIdx >= 0) {
-                val ayah = currentDayAyahs.getOrNull(matchIdx)
+            if (continuousBlocks.isEmpty()) return
+            var ayahIdx = -1
+            for (block in continuousBlocks) {
+                val tv = block.textView
+                val layout = tv.layout ?: continue
+                // إحداثية بداية البلوك داخل محتوى الـ ScrollView كاملة
+                val blockTop = topOfViewWithinScrollContent(tv)
+                val blockBottom = blockTop + layout.height
+                if (scrollY >= blockTop && scrollY < blockBottom) {
+                    val visibleLine = layout.getLineForVertical((scrollY - blockTop).coerceAtLeast(0))
+                    ayahIdx = block.ayahForOffset(layout.getLineStart(visibleLine))
+                    break
+                }
+            }
+            if (ayahIdx < 0) {
+                // موضع التمرير في منطقة فاصل سورة: خذ آخر آية من أقرب بلوك سابق
+                for (block in continuousBlocks.asReversed()) {
+                    val layout = block.textView.layout ?: continue
+                    if (topOfViewWithinScrollContent(block.textView) <= scrollY) {
+                        ayahIdx = block.baseIndex + block.offsets.size - 1
+                        break
+                    }
+                }
+            }
+            if (ayahIdx >= 0) {
+                val ayah = currentDayAyahs.getOrNull(ayahIdx)
                 if (ayah != null) {
                     visibleGlobalIdx = allAyahsFlat.indexOfFirst {
                         it.surahNumber == ayah.surahNumber && it.number == ayah.number
@@ -288,7 +327,7 @@ class KhatmaReadingActivity : AppCompatActivity() {
 
         val juzNum = JuzData.getJuzNumberForAyah(allAyahsFlat, globalIndex)
         val hindi = arrayOf("٠", "١", "٢", "٣", "٤", "٥", "٦", "٧", "٨", "٩")
-        val toHindi = { n: Int -> n.toString().map { hindi[it - '0'] }.joinToString("") }
+        val toHindi = { n: Int -> n.toString().map { if (it.isDigit()) hindi[it - '0'] else it }.joinToString("") }
         tvJuzName.text = "جزء ${toHindi(juzNum)}"
         tvJuzName.visibility = View.VISIBLE
         tvSeparator2.visibility = View.VISIBLE
@@ -331,23 +370,60 @@ class KhatmaReadingActivity : AppCompatActivity() {
                 }
             }
         } else {
-            val tv = continuousKhatmaViewRef ?: return -1
-            val offsets = khatmaAyahOffsets ?: return -1
-            val layout = tv.layout ?: return -1
-            val visibleLine = layout.getLineForVertical((scrollY - tv.top).coerceAtLeast(0))
-            val offset = layout.getLineStart(visibleLine)
-            bestIdx = offsets.indexOfFirst { (s, e) -> offset >= s && offset < e }
+            var nearestBestDist = Int.MAX_VALUE
+            for (block in continuousBlocks) {
+                val tv = block.textView
+                val layout = tv.layout ?: continue
+                val blockTop = topOfViewWithinScrollContent(tv)
+                val blockBottom = blockTop + layout.height
+                if (viewCenter in blockTop until blockBottom) {
+                    val localY = (viewCenter - blockTop).coerceIn(0, (layout.height - 1).coerceAtLeast(0))
+                    val line = layout.getLineForVertical(localY)
+                    val idx = block.ayahForOffset(layout.getLineStart(line))
+                    if (idx >= 0) return idx
+                }
+                val dist = if (viewCenter < blockTop) blockTop - viewCenter else viewCenter - (blockBottom - 1)
+                if (dist < nearestBestDist) {
+                    nearestBestDist = dist
+                    bestIdx = if (viewCenter < blockTop) block.baseIndex else block.baseIndex + block.offsets.size - 1
+                }
+            }
         }
         return bestIdx
     }
 
+    private fun topOfViewWithinScrollContent(view: View): Int {
+        var offset = view.top
+        val scrollContent = scrollView.getChildAt(0)
+        var p = view.parent
+        while (p is View && p !== scrollContent) {
+            offset += p.top
+            p = p.getParent()
+        }
+        return offset
+    }
+
     private fun renderKhatma() {
         containerAyahs.removeAllViews()
+        continuousBlocks = emptyList()
         val uthmanicTypeface = ResourcesCompat.getFont(this, QuranDataLoader.fontResFor(khatmaRiwaya))
         val ayahColor = if (isDark) Color.parseColor("#e8e0d6") else Color.parseColor("#5E4B40")
         val dividerColor = Color.parseColor("#1A8B6F5E")
 
         val ayahs = currentDayAyahs
+
+        if (ayahs.isEmpty()) {
+            val tvEmpty = TextView(this).apply {
+                text = "تعذّر تحميل ورد هذا اليوم. تأكد من صحة إعدادات الختمة."
+                typeface = ResourcesCompat.getFont(this@KhatmaReadingActivity, R.font.alyamama)
+                textSize = 16f
+                setTextColor(ayahColor)
+                gravity = Gravity.CENTER
+                setPadding(dpToPx(24f), dpToPx(48f), dpToPx(24f), dpToPx(48f))
+            }
+            containerAyahs.addView(tvEmpty)
+            return
+        }
 
         if (singleLineMode) {
             var lastSurahNumber = -1
@@ -401,28 +477,23 @@ class KhatmaReadingActivity : AppCompatActivity() {
                 }
             }
         } else {
-            val offsets = mutableListOf<Pair<Int, Int>>()
+            continuousBlocks = emptyList()
             var lastSurahNumber = -1
             var surahStartIdx = 0
             for (idx in ayahs.indices) {
                 val ayah = ayahs[idx]
-
                 if (ayah.surahNumber != lastSurahNumber) {
                     if (lastSurahNumber != -1) {
-                        addContinuousSurahBlock(ayahs.subList(surahStartIdx, idx), offsets, uthmanicTypeface, ayahColor)
+                        addContinuousSurahBlock(ayahs.subList(surahStartIdx, idx), surahStartIdx, uthmanicTypeface, ayahColor)
                     }
                     addSurahSeparator(ayah.surahNumber)
                     lastSurahNumber = ayah.surahNumber
                     surahStartIdx = idx
-                    offsets.clear()
                 }
             }
             if (surahStartIdx < ayahs.size) {
-                addContinuousSurahBlock(ayahs.subList(surahStartIdx, ayahs.size), offsets, uthmanicTypeface, ayahColor)
+                addContinuousSurahBlock(ayahs.subList(surahStartIdx, ayahs.size), surahStartIdx, uthmanicTypeface, ayahColor)
             }
-            val continuousView = containerAyahs.getChildAt(containerAyahs.childCount - 1) as? TextView
-            continuousKhatmaViewRef = continuousView
-            khatmaAyahOffsets = offsets
         }
 
         if (currentDay < totalDays - 1) {
@@ -520,7 +591,10 @@ class KhatmaReadingActivity : AppCompatActivity() {
                     val lastIdx = findVisibleAyahIndex()
                     if (lastIdx >= 0 && lastIdx < currentDayAyahs.size) {
                         val last = currentDayAyahs[lastIdx]
-                        KhatmaManager.updateEndOfWird(this@KhatmaReadingActivity, khatmaId, last.surahNumber, last.number)
+                        KhatmaManager.updateEndOfWird(this@KhatmaReadingActivity, khatmaId, last.surahNumber, last.number, currentDay)
+                    } else if (currentDayAyahs.isNotEmpty()) {
+                        val last = currentDayAyahs.last()
+                        KhatmaManager.updateEndOfWird(this@KhatmaReadingActivity, khatmaId, last.surahNumber, last.number, currentDay)
                     }
                     rebuildCompletionUI(section)
                 }
@@ -581,22 +655,18 @@ class KhatmaReadingActivity : AppCompatActivity() {
     private fun scheduleScrollToIndex(targetIdx: Int, retries: Int) {
         if (retries <= 0) return
         scrollView.postDelayed({
-            if (continuousKhatmaViewRef != null && khatmaAyahOffsets != null) {
-                val tv = continuousKhatmaViewRef ?: return@postDelayed
-                val offsets = khatmaAyahOffsets ?: return@postDelayed
-                if (targetIdx < 0 || targetIdx >= offsets.size) return@postDelayed
-                val (start, _) = offsets[targetIdx]
+            if (continuousBlocks.isNotEmpty()) {
+                val block = continuousBlocks.firstOrNull { it.containsAyah(targetIdx) }
+                    ?: (if (targetIdx < 0) null else continuousBlocks.lastOrNull { it.baseIndex <= targetIdx })
+                    ?: return@postDelayed
+                val localIdx = (targetIdx - block.baseIndex).coerceIn(0, block.offsets.size - 1)
+                val (start, _) = block.offsets[localIdx]
+                val tv = block.textView
                 tv.post {
                     val layout = tv.layout ?: return@post
                     if (start >= layout.text.length) return@post
                     val line = layout.getLineForOffset(start)
-                    var targetY = tv.top + layout.getLineTop(line)
-                    val scrollContent = scrollView.getChildAt(0) ?: return@post
-                    var p = tv.parent
-                    while (p is View && p != scrollContent) {
-                        targetY += (p as View).top
-                        p = (p as View).parent
-                    }
+                    val targetY = topOfViewWithinScrollContent(tv) + layout.getLineTop(line)
                     scrollView.scrollTo(0, (targetY - dpToPx(80f)).coerceAtLeast(0))
                 }
                 return@postDelayed
@@ -651,10 +721,11 @@ class KhatmaReadingActivity : AppCompatActivity() {
 
     private fun addContinuousSurahBlock(
         ayahs: List<AyahData>,
-        offsets: MutableList<Pair<Int, Int>>,
+        baseIndex: Int,
         uthmanicTypeface: Typeface?,
         ayahColor: Int
     ) {
+        val offsets = mutableListOf<Pair<Int, Int>>()
         val sb = SpannableStringBuilder()
         for (ayah in ayahs) {
             val start = sb.length
@@ -678,6 +749,7 @@ class KhatmaReadingActivity : AppCompatActivity() {
             )
         }
         containerAyahs.addView(textView)
+        continuousBlocks = continuousBlocks + ContinuousBlock(textView, baseIndex, offsets)
     }
 
     private fun showAutoScrollDialog() {
@@ -941,7 +1013,7 @@ class KhatmaReadingActivity : AppCompatActivity() {
 
     private fun toHindiDigits(number: Int): String {
         val hindiDigits = arrayOf("٠", "١", "٢", "٣", "٤", "٥", "٦", "٧", "٨", "٩")
-        return number.toString().map { hindiDigits[it - '0'] }.joinToString("")
+        return number.toString().map { if (it.isDigit()) hindiDigits[it - '0'] else it }.joinToString("")
     }
 
     /**

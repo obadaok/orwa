@@ -6,6 +6,9 @@ import org.json.JSONObject
 import java.util.Calendar
 import java.util.GregorianCalendar
 import kotlin.math.floor
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 
 object OrwaCalendarData {
 
@@ -75,15 +78,33 @@ object OrwaCalendarData {
         val namesOfAllah: JSONArray
     )
 
+    @Volatile
+    private var cachedCalendarData: CalendarData? = null
+
+    fun preloadAsync(context: Context) {
+        kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.Default).launch {
+            try {
+                loadCalendarData(context.applicationContext)
+            } catch (_: Exception) {
+            }
+        }
+    }
+
     private fun loadCalendarData(context: Context): CalendarData {
-        val jsonStr = context.assets.open("calendar_data.json").bufferedReader().use { it.readText() }
-        val root = JSONObject(jsonStr)
-        return CalendarData(
-            ayahs = root.getJSONArray("ayahs"),
-            hadiths = root.getJSONArray("hadiths"),
-            scholarQuotes = root.getJSONArray("scholar_quotes"),
-            namesOfAllah = root.getJSONArray("names_of_allah")
-        )
+        cachedCalendarData?.let { return it }
+        synchronized(this) {
+            cachedCalendarData?.let { return it }
+            val jsonStr = context.assets.open("calendar_data.json").bufferedReader().use { it.readText() }
+            val root = JSONObject(jsonStr)
+            val data = CalendarData(
+                ayahs = root.getJSONArray("ayahs"),
+                hadiths = root.getJSONArray("hadiths"),
+                scholarQuotes = root.getJSONArray("scholar_quotes"),
+                namesOfAllah = root.getJSONArray("names_of_allah")
+            )
+            cachedCalendarData = data
+            return data
+        }
     }
 
     // ──────────────────────────────────────────────
@@ -243,7 +264,7 @@ object OrwaCalendarData {
 
     fun toArabicNum(n: Int): String {
         val arabicDigits = charArrayOf('٠', '١', '٢', '٣', '٤', '٥', '٦', '٧', '٨', '٩')
-        return n.toString().map { arabicDigits[it - '0'] }.joinToString("")
+        return n.toString().map { if (it.isDigit()) arabicDigits[it - '0'] else it }.joinToString("")
     }
 
     private fun arabicDayName(dow: Int): String = when (dow) {
@@ -263,10 +284,9 @@ object OrwaCalendarData {
 
     private fun daysUntilRamadan(currentHijri: HijriDate): Int {
         val ramadanMonth = 9
+        if (currentHijri.month == ramadanMonth) return 0
         var targetYear = currentHijri.year
-        if (currentHijri.month > ramadanMonth || (currentHijri.month == ramadanMonth && currentHijri.day >= 1)) {
-            targetYear++
-        }
+        if (currentHijri.month > ramadanMonth) targetYear++
         val targetJd = hijriToJulianDay(HijriDate(targetYear, ramadanMonth, 1))
         val currentJd = hijriToJulianDay(currentHijri)
         return targetJd - currentJd

@@ -257,9 +257,14 @@ class OrwaCalendarFragment : Fragment() {
         sections.forEachIndexed { index, section ->
             section.alpha = 0f
             section.translationY = 20f
+            // التقاط السياق مسبقًا: requireContext() داخل callback مؤجل يرمي
+            // IllegalStateException إذا غادر المستخدم الشاشة خلال نافذة الأنيميشن.
+            val appContext = context?.applicationContext ?: return@forEachIndexed
+            val themedContext = android.view.ContextThemeWrapper(appContext, R.style.Theme_Urwah)
             section.postDelayed({
+                if (!isAdded) return@postDelayed
                 val animator = AnimatorInflater.loadAnimator(
-                    requireContext(),
+                    themedContext,
                     R.animator.oc_fade_slide_in
                 )
                 animator.setTarget(section)

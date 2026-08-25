@@ -92,6 +92,12 @@ class ShamelaBookReaderActivity : AppCompatActivity() {
     private var onlineMode = false
     private var onlineHfPath = ""
     private var onlineLoadedPages = mutableListOf<ShamelaPage>()
+    private val onlinePagesLock = Any()
+    @Volatile
+    private var onlineCancelRequested = false
+    private val onlineSnapshotGeneration = java.util.concurrent.atomic.AtomicInteger(0)
+    @Volatile
+    private var onlineStreamJob: kotlinx.coroutines.Job? = null
     private var onlineFirstShowDone = false
 
     private var fontSize = 18f
@@ -855,11 +861,10 @@ class ShamelaBookReaderActivity : AppCompatActivity() {
         val stateArea = view.findViewById<View>(R.id.searchStateArea)
         val progress = view.findViewById<ProgressBar>(R.id.searchProgress)
 
-        searchAdapter = ReaderSearchAdapter(emptyList()) { pageIndex ->
-            navigateToPage(pageIndex)
+        searchAdapter = ReaderSearchAdapter(emptyList()) { clicked ->
+            navigateToPage(clicked.pageIndex)
             closeSearchPanel()
-            val r = searchResults.getOrNull(currentSearchIndex)
-            scrollToSearchMatch(pageIndex, etSearch.text.toString(), r?.pageMatchStart ?: -1, r?.pageMatchEnd ?: -1)
+            scrollToSearchMatch(clicked.pageIndex, etSearch.text.toString(), clicked.pageMatchStart, clicked.pageMatchEnd)
         }
         rvResults.layoutManager = LinearLayoutManager(this)
         rvResults.adapter = searchAdapter
@@ -1005,13 +1010,17 @@ class ShamelaBookReaderActivity : AppCompatActivity() {
         showSearchState(stateArea, progress, tvNoResults, loading = true)
 
         searchJob = lifecycleScope.launch {
-            val results = withContext(Dispatchers.Default) {
+            val pair = withContext(Dispatchers.Default) {
                 val found = mutableListOf<ReaderSearchAdapter.SearchResult>()
-                for ((index, page) in displayPages.withIndex()) {
+                // سقف للنتائج: استعلام شائع في كتاب ضخم قد يولّد عشرات آلاف
+                // النتائج (ذاكرة + GC + قائمة عملاقة) — يكفي 500 مع تنبيه.
+                var capped = false
+                loop@ for ((index, page) in displayPages.withIndex()) {
                     coroutineContext.ensureActive()
                     val normalized = buildNormalizedSearchText(page.text)
                     var searchFrom = 0
                     while (true) {
+                        if (found.size >= MAX_SEARCH_RESULTS) { capped = true; break@loop }
                         val matchIdx = normalized.text.indexOf(normalizedQuery, searchFrom, ignoreCase = true)
                         if (matchIdx < 0) break
 
@@ -1050,8 +1059,9 @@ class ShamelaBookReaderActivity : AppCompatActivity() {
                         searchFrom = matchIdx + normalizedQuery.length
                     }
                 }
-                found
+                found to capped
             }
+            val (results, searchCapped) = pair
             if (generation != searchGeneration) return@launch // نتيجة قديمة بعد أحدث استعلام
 
             searchResults.clear()
@@ -1069,7 +1079,12 @@ class ShamelaBookReaderActivity : AppCompatActivity() {
                 hideSearchState(stateArea, progress, tvNoResults)
                 currentSearchIndex = 0
                 searchAdapter.setActivePosition(0)
-                tvCount.text = "1 / ${results.size}"
+                if (searchCapped) {
+                    tvCount.text = "1 / ${results.size}+"
+                    Toast.makeText(this@ShamelaBookReaderActivity, "النتائج كثيرة — تُعرض أول ${results.size} نتيجة، حسّن كلمة البحث للدقة", Toast.LENGTH_SHORT).show()
+                } else {
+                    tvCount.text = "1 / ${results.size}"
+                }
                 // لا نقلب الصفحات تلقائيًا أثناء الكتابة؛ ينتقل المستخدم عند
                 // الضغط على نتيجة أو عبر التالي/السابق.
             }
@@ -1362,18 +1377,26 @@ class ShamelaBookReaderActivity : AppCompatActivity() {
                 return@launch
             }
             val (metadata, toc) = pendingRequest
-            onlineLoadedPages = mutableListOf()
+            synchronized(onlinePagesLock) { onlineLoadedPages = mutableListOf() }
+            onlineCancelRequested = false
 
             // مقارنة حداثة الإصدار قبل/أثناء القراءة (مهمة #5): تُعرَض فحسب،
             // فالقراءة المباشرة تعتمد دائمًا على آخر إصدار متاح من المصدر.
             var lastRefreshAt = 0L
             val streamError = withContext(Dispatchers.IO) {
                 try {
-                    ShamelaOnlineReader.streamPages(onlineHfPath) { page ->
-                        onlineLoadedPages.add(page)
+                    ShamelaOnlineReader.streamPages(
+                        onlineHfPath,
+                        isCancelled = { onlineCancelRequested || isFinishing || isDestroyed }
+                    ) { page ->
+                        val count: Int
+                        synchronized(onlinePagesLock) {
+                            onlineLoadedPages.add(page)
+                            count = onlineLoadedPages.size
+                        }
                         // تحديث تدريجي محدود: يُعاد الترقيم كلما وصلت دفعة كافية.
                         val now = SystemClock.elapsedRealtime()
-                        if (onlineLoadedPages.size >= PageChromeMetrics.MIN_ONLINE_PROGRESS_PAGES && now - lastRefreshAt >= PageChromeMetrics.ONLINE_REFRESH_INTERVAL_MS) {
+                        if (count >= PageChromeMetrics.MIN_ONLINE_PROGRESS_PAGES && now - lastRefreshAt >= PageChromeMetrics.ONLINE_REFRESH_INTERVAL_MS) {
                             lastRefreshAt = now
                             applyOnlineSnapshot(metadata, toc)
                         }
@@ -1383,6 +1406,8 @@ class ShamelaBookReaderActivity : AppCompatActivity() {
                     e
                 }
             }
+
+            if (isFinishing || isDestroyed) return@launch
 
             // الدفعة النهائية — تُضمن إنهاء الترقيم وتجهيز الفهرس.
             applyOnlineSnapshot(metadata, toc)
@@ -1395,34 +1420,44 @@ class ShamelaBookReaderActivity : AppCompatActivity() {
             setupToc()
 
             if (streamError != null) {
+                val shownCount = synchronized(onlinePagesLock) { onlineLoadedPages.size }
                 Toast.makeText(
                     this@ShamelaBookReaderActivity,
-                    "انقطع الاتصال أثناء الجلب، عُرضت ${onlineLoadedPages.size} صفحة",
+                    "انقطع الاتصال أثناء الجلب، عُرضت $shownCount صفحة",
                     Toast.LENGTH_LONG
                 ).show()
             }
-        }
+        }.also { onlineStreamJob = it }
     }
 
     /** يعيد الترقيم من الدفعة الحالية من الصفحات المرتجعة. */
     private fun applyOnlineSnapshot(metadata: ShamelaBook, toc: List<ShamelaTocEntry>) {
+        val generation = onlineSnapshotGeneration.incrementAndGet()
         lifecycleScope.launch {
-            val snapshot = onlineLoadedPages.toList()
+            val snapshot = synchronized(onlinePagesLock) { onlineLoadedPages.toList() }
+            // لقطة أحدث وصلت قبل بدء العمل على هذه — لا داعي للعمل إطلاقًا
+            if (generation != onlineSnapshotGeneration.get()) return@launch
             val pendingContent = ShamelaBookContent(metadata, toc, snapshot)
 
+            // مرساة موضع المستخدم الحالي قبل إعادة البناء (char offset مستقر)
             val anchorCharOffset = displayPages.getOrNull(lastIntendedPage)?.startOffset
                 ?.takeIf { it >= 0 }
                 ?: findCharOffset(lastIntendedPage)
-            val onlineRendered = displayPages.mapNotNull { it.startOffset }
-            val restoredIndex = onlineRendered.indexOfFirst { it == anchorCharOffset }
-                .let { if (it < 0) -1 else it }
 
+            // العمل الثقيل (إزالة HTML وبناء النص الكامل والترقيم) خارج الـ Main thread،
+            // بلا كتابة أي حالة مشتركة داخل الخيط الخلفي.
+            val result = withContext(Dispatchers.Default) {
+                val (newFt, newOffsets) = ShamelaPageMapper.buildFullText(pendingContent.pages) { stripHtml(it) }
+                val newMapping = ShamelaPageMapper.build(pendingContent.pages, newOffsets)
+                SnapshotResult(newFt, newMapping, paginateContent(pendingContent, newFt, newMapping))
+            }
+            if (generation != onlineSnapshotGeneration.get() || isFinishing || isDestroyed) return@launch
+
+            // تخصيص الحالة كاملةً على الـ Main thread بعد اجتياز فحص الجيل
             bookContent = pendingContent
-            val (newFt, newOffsets) = ShamelaPageMapper.buildFullText(pendingContent.pages) { stripHtml(it) }
-            fullText = newFt
-            pageMapping = ShamelaPageMapper.build(pendingContent.pages, newOffsets)
-            val pages = withContext(Dispatchers.Default) { paginateBook() }
-            displayPages = pages
+            fullText = result.fullText
+            pageMapping = result.mapping
+            displayPages = result.pages
             buildAdapterAndBind()
 
             if (!onlineFirstShowDone) {
@@ -1433,14 +1468,24 @@ class ShamelaBookReaderActivity : AppCompatActivity() {
                     lastIntendedPage = 0
                     updatePageInfo(0)
                 }
-            } else if (restoredIndex >= 0 && restoredIndex < displayPages.size) {
-                navigateToPage(restoredIndex, smoothScroll = false)
             } else {
-                lastIntendedPage = 0
-                updatePageInfo(0)
+                // استعادة الموضع عبر char offset في القائمة الجديدة (مستقر ضد إعادة الترقيم)
+                val restoredIdx = if (anchorCharOffset >= 0) findPageByCharOffset(anchorCharOffset) else -1
+                if (restoredIdx >= 0 && restoredIdx < displayPages.size) {
+                    navigateToPage(restoredIdx, smoothScroll = false)
+                } else {
+                    lastIntendedPage = 0
+                    updatePageInfo(0)
+                }
             }
         }
     }
+
+    private data class SnapshotResult(
+        val fullText: String,
+        val mapping: ShamelaPageMapper.SourceMap?,
+        val pages: List<BookTextPaginator.Page>
+    )
 
     private fun buildAdapterAndBind() {
         pageAdapter = BookPageAdapter(
@@ -1467,7 +1512,20 @@ class ShamelaBookReaderActivity : AppCompatActivity() {
 
     private fun paginateBook(): List<BookTextPaginator.Page> {
         val content = bookContent ?: return listOf(BookTextPaginator.Page(0, ""))
-        val ft = fullText.ifEmpty { content.pages.joinToString("\n\n") { stripHtml(it.body) } }
+        return paginateContent(content, fullText, pageMapping)
+    }
+
+    /**
+     * ترقيم نقي (بلا قراءة/كتابة حالة مشتركة) — آمن للاستدعاء من Dispatchers.Default.
+     * أبعاد الـ viewPager تُقرأ هنا وقد يُستدعى من خيط خلفي: قراءة int واحد محتملة
+     * القِدَم لا تسبب crash، ومع fallback إلى displayMetrics تبقى النتيجة سليمة.
+     */
+    private fun paginateContent(
+        content: ShamelaBookContent,
+        currentFullText: String,
+        mapping: ShamelaPageMapper.SourceMap?
+    ): List<BookTextPaginator.Page> {
+        val ft = currentFullText.ifEmpty { content.pages.joinToString("\n\n") { stripHtml(it.body) } }
 
         val rawWidth = if (viewPager.width > 0) viewPager.width
             else (resources.displayMetrics.widthPixels * readingWidth).toInt()
@@ -1496,8 +1554,6 @@ class ShamelaBookReaderActivity : AppCompatActivity() {
         val pageHeight = (rawHeight - verticalChromePx).toInt().coerceAtLeast(1)
 
         val pages = BookTextPaginator.paginate(this, ft, pageWidth, pageHeight, fontSize, lineSpacing, fontFile)
-
-        val mapping = pageMapping
 
         // Map each display page to its original page number via the unified mapper:
         // بداية صفحة العرض → الصفحة المصدرية الحاوية لها (بحث ثنائي على الإزاحات)
@@ -1834,6 +1890,8 @@ class ShamelaBookReaderActivity : AppCompatActivity() {
 
     override fun onDestroy() {
         super.onDestroy()
+        onlineCancelRequested = true
+        onlineStreamJob?.cancel()
         searchJob?.cancel()
         repaginateJob?.cancel()
         scrollSaveHandler?.removeCallbacksAndMessages(null)
@@ -1850,5 +1908,6 @@ class ShamelaBookReaderActivity : AppCompatActivity() {
         private const val SEARCH_HIGHLIGHT_FADE_MS = 600L
         private const val SEARCH_HIGHLIGHT_COLOR = 0x401A73E8
         private const val SEARCH_HIGHLIGHT_FADED_COLOR = 0x181A73E8
+        private const val MAX_SEARCH_RESULTS = 500
     }
 }

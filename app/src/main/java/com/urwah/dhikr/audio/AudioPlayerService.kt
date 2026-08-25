@@ -300,6 +300,24 @@ class AudioPlayerService : MediaSessionService() {
         val surahName = SurahDataProvider.allSurahs
             .find { it.number == surah }?.name ?: "سورة $surah"
 
+        // حماية من نطاق فارغ (مثلاً totalAyahs=0): coerceIn(0, -1) كان يرمي IllegalArgumentException
+        if (totalAyahs <= 0) {
+            AudioPlaybackState.update {
+                AudioPlaybackState.PlaybackUiState(
+                    isActive = false,
+                    isPlaying = false,
+                    surahNumber = surah,
+                    currentAyah = 0,
+                    totalAyahs = 0,
+                    reciterId = reciterId,
+                    reciterName = reciter.nameArabic,
+                    speed = it.speed,
+                    repeatMode = it.repeatMode
+                )
+            }
+            return
+        }
+
         val items = (rangeStart..(rangeStart + totalAyahs - 1)).map { ayah ->
             MediaItem.Builder()
                 .setUri(reciter.ayahUrl(surah, ayah))

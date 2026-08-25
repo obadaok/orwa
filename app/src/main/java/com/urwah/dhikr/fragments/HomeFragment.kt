@@ -155,10 +155,15 @@ class HomeFragment : Fragment(), com.urwah.dhikr.SearchableFragment {
         }
         if (itemResults.isNotEmpty()) {
             result.add(CategoryGroupedItem.Header("نتائج البحث في الأذكار"))
-            for ((catName, _) in itemResults.take(20)) {
-                result.add(CategoryGroupedItem.Item(
-                    DhikrCategory(catName, DhikrDataProvider.getCategoryIcon(catName))
-                ))
+            val seenCategories = mutableSetOf<String>()
+            catMatches.forEach { if (it is CategoryGroupedItem.Item) seenCategories.add(it.category.name) }
+            // تصفية التكرار: نفس التصنيف يظهر مرة واحدة حتى لو طابق عدة أذكار
+            itemResults.take(20).map { it.first }.distinct().forEach { catName ->
+                if (seenCategories.add(catName)) {
+                    result.add(CategoryGroupedItem.Item(
+                        DhikrCategory(catName, DhikrDataProvider.getCategoryIcon(catName))
+                    ))
+                }
             }
         }
         if (result.isEmpty()) {

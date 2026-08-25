@@ -5,6 +5,10 @@ import org.json.JSONObject
 import java.io.BufferedReader
 import java.io.InputStreamReader
 import java.text.Normalizer
+import java.util.concurrent.ConcurrentHashMap
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 
 data class QuranSurah(
     val number: Int,
@@ -33,7 +37,8 @@ object QuranDataLoader {
     private const val HAFS_BASMALA = "بِسۡمِ ٱللَّهِ ٱلرَّحۡمَٰنِ ٱلرَّحِيمِ"
     private const val WARSH_BASMALA = "بِسْمِ اِ۬للَّهِ اِ۬لرَّحْمَٰنِ اِ۬لرَّحِيمِ"
 
-    private val caches = mutableMapOf<String, Map<Int, QuranSurah>>()
+    private val caches = ConcurrentHashMap<String, Map<Int, QuranSurah>>()
+    private val parseLock = Any()
 
     val riwayat: List<RiwayatInfo> = listOf(
         RiwayatInfo(
@@ -191,32 +196,48 @@ object QuranDataLoader {
         }
         caches[info.id]?.let { return it }
 
-        val jsonString = readJsonFromAssets(context, info.fileName)
-        val root = JSONObject(jsonString)
+        synchronized(parseLock) {
+            caches[info.id]?.let { return it }
+            val jsonString = readJsonFromAssets(context, info.fileName)
+            val root = JSONObject(jsonString)
 
-        val result = mutableMapOf<Int, QuranSurah>()
-        for (key in root.keys()) {
-            val surahNum = key.toInt()
-            val surahObj = root.getJSONObject(key)
-            val name = surahObj.getString("n")
-            val loc = surahObj.getString("l")
-            val ayahsArray = surahObj.getJSONArray("a")
+            val result = mutableMapOf<Int, QuranSurah>()
+            for (key in root.keys()) {
+                val surahNum = key.toInt()
+                val surahObj = root.getJSONObject(key)
+                val name = surahObj.getString("n")
+                val loc = surahObj.getString("l")
+                val ayahsArray = surahObj.getJSONArray("a")
 
-            val ayahs = mutableListOf<AyahData>()
-            for (i in 0 until ayahsArray.length()) {
-                val ayahObj = ayahsArray.getJSONObject(i)
-                val ayahNum = ayahObj.getInt("n")
-                val ayahText = normalizeText(ayahObj.getString("t"))
-                if (ayahNum > 0) {
-                    ayahs.add(AyahData(surahNum, ayahNum, ayahText))
+                val ayahs = mutableListOf<AyahData>()
+                for (i in 0 until ayahsArray.length()) {
+                    val ayahObj = ayahsArray.getJSONObject(i)
+                    val ayahNum = ayahObj.getInt("n")
+                    val ayahText = normalizeText(ayahObj.getString("t"))
+                    if (ayahNum > 0) {
+                        ayahs.add(AyahData(surahNum, ayahNum, ayahText))
+                    }
                 }
+
+                result[surahNum] = QuranSurah(surahNum, name, ayahs, loc)
             }
 
-            result[surahNum] = QuranSurah(surahNum, name, ayahs, loc)
+            caches[info.id] = result
+            return result
         }
+    }
 
-        caches[info.id] = result
-        return result
+    /**
+     * تحميل مسبق للرواية الحالية في خيط خلفي عند إقلاع التطبيق حتى لا يُحلَّل
+     * ملف القرآن الكامل على الـ main thread داخل onCreate للأنشطة.
+     */
+    fun preloadAsync(context: Context) {
+        CoroutineScope(Dispatchers.Default).launch {
+            try {
+                load(context.applicationContext)
+            } catch (_: Exception) {
+            }
+        }
     }
 
     fun getSurah(context: Context, surahNumber: Int): QuranSurah? {
@@ -246,14 +267,15 @@ object QuranDataLoader {
     }
 
     private fun readJsonFromAssets(context: Context, fileName: String): String {
-        val inputStream = context.assets.open(fileName)
-        val reader = BufferedReader(InputStreamReader(inputStream, "UTF-8"))
-        val sb = StringBuilder()
-        var line: String?
-        while (reader.readLine().also { line = it } != null) {
-            sb.append(line)
+        context.assets.open(fileName).use { inputStream ->
+            BufferedReader(InputStreamReader(inputStream, "UTF-8")).use { reader ->
+                val sb = StringBuilder()
+                var line: String?
+                while (reader.readLine().also { line = it } != null) {
+                    sb.append(line)
+                }
+                return sb.toString()
+            }
         }
-        reader.close()
-        return sb.toString()
     }
 }

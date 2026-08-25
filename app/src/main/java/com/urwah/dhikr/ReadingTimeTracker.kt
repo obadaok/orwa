@@ -4,6 +4,7 @@ import android.app.Activity
 import android.app.Application
 import android.content.Context
 import android.os.Bundle
+import android.os.SystemClock
 
 object ReadingTimeTracker {
 
@@ -26,17 +27,18 @@ object ReadingTimeTracker {
 
     fun startSession(context: Context, type: Int) {
         stopSession(context)
-        sessionStart = System.currentTimeMillis()
+        // elapsedRealtime غير متأثر بتغيير ساعة النظام/المنطقة الزمنية
+        sessionStart = SystemClock.elapsedRealtime()
         sessionType = type
         prefs(context).edit()
-            .putLong(KEY_LAST_SESSION_START, sessionStart)
+            .putLong(KEY_LAST_SESSION_START, System.currentTimeMillis())
             .putInt(KEY_SESSION_TYPE, type)
             .apply()
     }
 
     fun stopSession(context: Context) {
         if (sessionStart > 0 && sessionType != TYPE_NONE) {
-            val elapsed = System.currentTimeMillis() - sessionStart
+            val elapsed = SystemClock.elapsedRealtime() - sessionStart
             val p = prefs(context).edit()
             when (sessionType) {
                 TYPE_QURAN -> p.putLong(KEY_QURAN_MS, prefs(context).getLong(KEY_QURAN_MS, 0) + elapsed)
@@ -63,11 +65,11 @@ object ReadingTimeTracker {
                 lastPause = 0L
             }
             override fun onActivityPaused(activity: Activity) {
-                lastPause = System.currentTimeMillis()
+                lastPause = SystemClock.elapsedRealtime()
             }
             override fun onActivityStopped(activity: Activity) {
                 if (lastPause > 0) {
-                    val elapsed = System.currentTimeMillis() - lastPause
+                    val elapsed = SystemClock.elapsedRealtime() - lastPause
                     addAppUsage(activity, elapsed)
                     lastPause = 0L
                 }

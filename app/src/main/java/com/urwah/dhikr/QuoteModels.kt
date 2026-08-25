@@ -50,5 +50,6 @@ data class QuoteSpanStyle(
     var isBlurred: Boolean = false,
     var isDimmed: Boolean = false,
     var isHidden: Boolean = false,
-    var scaleFactor: Float = 1f
+    var scaleFactor: Float = 1f,
+    var absoluteSize: Float = 0f  // مقاس خط مستقل بالـ sp للتحديد (0 = استخدم العام)
 ) : java.io.Serializable

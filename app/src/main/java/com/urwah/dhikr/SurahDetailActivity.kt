@@ -49,6 +49,7 @@ import com.urwah.dhikr.audio.AudioPlayerService
 import com.urwah.dhikr.audio.Reciter
 import com.urwah.dhikr.audio.ReciterCatalog
 import kotlinx.coroutines.launch
+import kotlin.math.abs
 
 class SurahDetailActivity : AppCompatActivity() {
 
@@ -261,27 +262,41 @@ class SurahDetailActivity : AppCompatActivity() {
 
         if (singleLineMode) {
             val ayahViews = containerAyahs.findAyahViews()
-            val scrollY = scrollView.scrollY
-            var closestAyah = 1
+            val viewCenter = scrollView.scrollY + scrollView.height / 3
+            var bestAyah = -1
+            var bestDist = Int.MAX_VALUE
             for (v in ayahViews) {
-                val top = v.top
-                if (top >= scrollY) {
-                    closestAyah = (v.tag as? Int) ?: 1
-                    break
+                val ayahNum = v.tag as? Int ?: continue
+                val childCenter = v.top + v.height / 2
+                val dist = abs(childCenter - viewCenter)
+                if (dist < bestDist) {
+                    bestDist = dist
+                    bestAyah = ayahNum
                 }
             }
-            ReadingTracker.savePosition(this, surahInfo.number, closestAyah)
+            if (bestAyah > 0) {
+                ReadingTracker.savePosition(this, surahInfo.number, bestAyah)
+            } else if (ayahs.isNotEmpty()) {
+                ReadingTracker.savePosition(this, surahInfo.number, ayahs.last().number)
+            }
         } else {
             continuousViewRef?.let { tv ->
                 val scrollY = scrollView.scrollY
-                val tvTop = tv.top
+                // tv.top نسبي لـ containerAyahs فقط — يجب تجميع مواضع الآباء
+                // (الترويسة والبسملة) حتى لا يُحفظ الموضع بعدّ أسطر زائدة.
+                val tvTop = accumulateTop(tv)
                 val visibleY = (scrollY - tvTop).coerceAtLeast(0)
                 val layout = tv.layout
-                if (layout != null && visibleY < layout.height) {
-                    val line = layout.getLineForVertical(visibleY)
+                val idx = if (layout != null && layout.height > 0) {
+                    val clampedY = visibleY.coerceAtMost(layout.height - 1)
+                    val line = layout.getLineForVertical(clampedY)
                     val offset = layout.getLineStart(line)
-                    val idx = continuousAyahOffsets?.indexOfFirst { (s, e) -> offset >= s && offset < e } ?: -1
-                    val closestAyah = if (idx >= 0) ayahs[idx].number else 1
+                    continuousAyahOffsets?.indexOfFirst { (s, e) -> offset >= s && offset < e } ?: -1
+                } else -1
+                val closestAyah = if (idx >= 0 && idx < ayahs.size) ayahs[idx].number
+                                  else if (visibleY >= (tv.layout?.height ?: 0) && ayahs.isNotEmpty()) ayahs.last().number
+                                  else -1
+                if (closestAyah > 0) {
                     ReadingTracker.savePosition(this, surahInfo.number, closestAyah)
                 }
             }
@@ -827,7 +842,7 @@ class SurahDetailActivity : AppCompatActivity() {
 
     private fun toHindiDigits(number: Int): String {
         val hindiDigits = arrayOf("٠", "١", "٢", "٣", "٤", "٥", "٦", "٧", "٨", "٩")
-        return number.toString().map { hindiDigits[it - '0'] }.joinToString("")
+        return number.toString().map { if (it.isDigit()) hindiDigits[it - '0'] else it }.joinToString("")
     }
 
     private fun dpToPx(dp: Float): Int =
@@ -1431,9 +1446,10 @@ class SurahDetailActivity : AppCompatActivity() {
         for ((j, startIdx) in juzAyahIndexes) {
             if (startIdx <= idx && j > juz) juz = j
         }
+        val hizb = JuzData.getHizbNumberForAyah(allAyahsGlobal, idx)
         val hindi = arrayOf("٠", "١", "٢", "٣", "٤", "٥", "٦", "٧", "٨", "٩")
-        val h = { n: Int -> n.toString().map { hindi[it - '0'] }.joinToString("") }
-        return "الجزء ${h(juz)} • الحزب ${h(juz * 2 - 1)}"
+        val h = { n: Int -> n.toString().map { if (it.isDigit()) hindi[it - '0'] else it }.joinToString("") }
+        return "الجزء ${h(juz)} • الحزب ${h(hizb)}"
     }
 
     private fun setupFocusedControls() {
@@ -1629,11 +1645,11 @@ class SurahDetailActivity : AppCompatActivity() {
     }
 
     private fun updateFocusedAyah(ayahNumber: Int) {
+        val idx = ayahs.indexOfFirst { it.number == ayahNumber }
+        if (idx < 0) return
         if (ayahNumber == lastFocusedAyah) return
         lastFocusedAyah = ayahNumber
         readingWindowKey = null
-        val idx = ayahs.indexOfFirst { it.number == ayahNumber }
-        if (idx < 0) return
         val ayah = ayahs[idx]
 
         val tvAyah = findViewById<TextView>(R.id.tvFocusedAyah)
@@ -2021,7 +2037,6 @@ class SurahDetailActivity : AppCompatActivity() {
                 this,
                 "رواية ${reciter.riwaya} غير متوفرة حالياً، تم الإبقاء على ${currentInfo.arabicName}"
             )
-            displayedRiwayatId = targetId
             return
         }
 

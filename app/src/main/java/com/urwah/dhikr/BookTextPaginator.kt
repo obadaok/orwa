@@ -31,6 +31,7 @@ object BookTextPaginator {
 
     @Volatile
     private var cachedTypeface: Typeface? = null
+    @Volatile
     private var cachedFontKey: String = ""
 
     fun getCachedTypeface(): Typeface? = cachedTypeface

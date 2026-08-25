@@ -46,6 +46,8 @@ class BookReaderActivity : AppCompatActivity() {
     private var scrollSaveHandler: Handler? = null
     private var scrollSaveRunnable: Runnable? = null
     private var lastQuery = ""
+    private var pendingScrollY = 0
+    private var lastDisplayedChapterIndex = -1
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -165,13 +167,13 @@ class BookReaderActivity : AppCompatActivity() {
         })
 
         lineSpacingSlider.progress = ((lineSpacing - 1.0f) / (3.0f - 1.0f) * 100).toInt()
-        tvLineSpacingValue.text = "${String.format("%.1f", lineSpacing)}x"
+        tvLineSpacingValue.text = String.format(java.util.Locale.US, "%.1fx", lineSpacing)
 
         lineSpacingSlider.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
             override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
                 if (!fromUser) return
                 lineSpacing = 1.0f + (progress / 100f) * (3.0f - 1.0f)
-                tvLineSpacingValue.text = "${String.format("%.1f", lineSpacing)}x"
+                tvLineSpacingValue.text = String.format(java.util.Locale.US, "%.1fx", lineSpacing)
                 tvChapterContent.setLineSpacing(0f, lineSpacing)
                 saveSettings()
             }
@@ -248,13 +250,16 @@ class BookReaderActivity : AppCompatActivity() {
 
     private fun loadBookContent() {
         bookContent = BookDataProvider.getBookContent(this, bookId)
-        val prefs = getSharedPreferences("urwah_library", Context.MODE_PRIVATE)
-        currentChapterIndex = prefs.getInt("${bookId}_chapter", 0)
+        val progress = BookDataProvider.getReadingProgress(this, bookId)
+        currentChapterIndex = progress.first
+        pendingScrollY = progress.second
     }
 
     private fun updateChapterDisplay() {
         val chapters = bookContent?.chapters ?: return
         if (chapters.isEmpty()) return
+        // حماية من فهرس محفوظ يتجاوز عدد الفصول الحالية (تغيّر المحتوى/البيانات)
+        if (currentChapterIndex < 0 || currentChapterIndex >= chapters.size) currentChapterIndex = 0
 
         val chapter = chapters[currentChapterIndex]
         tvChapterTitle.text = chapter.title
@@ -281,7 +286,21 @@ class BookReaderActivity : AppCompatActivity() {
         findViewById<android.widget.TextView>(R.id.btnNextChapter).visibility =
             if (currentChapterIndex < chapters.size - 1) View.VISIBLE else View.INVISIBLE
 
-        scrollView.scrollTo(0, 0)
+        // استعادة موضع التمرير المحفوظ عند أول عرض فقط؛ التنقل بين الفصول يبدأ من الأعلى.
+        // إغلاق البحث (نفس الفصل بلا pendingScrollY) يجب ألا يمسح موضع التمرير الحالي.
+        val targetY = pendingScrollY
+        pendingScrollY = 0
+        val chapterChanged = currentChapterIndex != lastDisplayedChapterIndex
+        lastDisplayedChapterIndex = currentChapterIndex
+        if (targetY > 0) {
+            scrollView.post {
+                val content = scrollView.getChildAt(0)
+                val maxScroll = ((content?.height ?: 0) - scrollView.height).coerceAtLeast(0)
+                scrollView.scrollTo(0, targetY.coerceIn(0, maxScroll))
+            }
+        } else if (chapterChanged) {
+            scrollView.scrollTo(0, 0)
+        }
     }
 
     private fun scheduleScrollSave() {

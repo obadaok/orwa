@@ -16,6 +16,7 @@ import android.text.Layout
 import android.text.SpannableStringBuilder
 import android.text.Spanned
 import android.text.TextWatcher
+import android.text.style.AbsoluteSizeSpan
 import android.text.style.BackgroundColorSpan
 import android.text.style.ForegroundColorSpan
 import android.text.style.RelativeSizeSpan
@@ -1013,43 +1014,83 @@ class QuoteEditorActivity : AppCompatActivity() {
             if (style.scaleFactor != 1f) {
                 ssb.setSpan(RelativeSizeSpan(style.scaleFactor), start, end, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
             }
+            if (style.absoluteSize > 0f) {
+                ssb.setSpan(AbsoluteSizeSpan(style.absoluteSize.toInt(), true), start, end, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+            }
         }
     }
 
     private val currentSpans = mutableMapOf<IntRange, QuoteSpanStyle>()
 
+    /** هل نطاقان متداخلان؟ (الاتفاق: last شبه مفتوح — يغطي [first, last)) */
+    private fun IntRange.overlapsRange(other: IntRange): Boolean = first < other.last && other.first < last
+
+    /**
+     * تعديل أنماط نطاق التحديد مع دمج المتداخل:
+     * - لو التحديد مغطّى بنطاق قائم بالكامل، نبدأ من نفس النمط (حتى يشتغل التبديل toggle صح).
+     * - النطاقات القائمة المتداخلة تُقصّ أجزاؤها المتداخلة وتُحافط على بقاياها يمين/يسار،
+     *   فلا تتراكم spans متضاربة تطبّق أثرها على نص غير المحدد.
+     */
+    private fun mutateSelectionSpans(transform: (QuoteSpanStyle) -> Unit) {
+        if (!hasSelection) return
+        val start = selStart
+        val end = selEnd
+        val covering = currentSpans.entries.firstOrNull { (k, _) -> k.first <= start && k.last >= end }
+        val style = (covering?.value?.copy() ?: QuoteSpanStyle())
+        transform(style)
+
+        val rebuilt = mutableMapOf<IntRange, QuoteSpanStyle>()
+        for ((k, v) in currentSpans) {
+            if (!k.overlapsRange(IntRange(start, end))) {
+                rebuilt[k] = v
+                continue
+            }
+            // بقايا النطاق القديم خارج التحديد تُحافط بنفس نمطها
+            if (k.first < start) rebuilt[IntRange(k.first, start - 1)] = v.copy()
+            if (k.last > end) rebuilt[IntRange(end, k.last - 1)] = v.copy()
+            // الجزء المتداخل يُستبدل بالنطاق الجديد
+        }
+        currentSpans.clear()
+        currentSpans.putAll(rebuilt)
+        if (!isDefaultStyle(style)) currentSpans[IntRange(start, end)] = style
+    }
+
     private fun applyEffectToSelection(effect: QuoteEffect) {
         if (!hasSelection) return
         pushHistory()
-        val range = selStart..selEnd
-        val existing = currentSpans[range] ?: QuoteSpanStyle()
         val highlightColor = android.graphics.Color.parseColor("#FFFFEB3B")
-        when (effect) {
-            QuoteEffect.HIGHLIGHT -> existing.bgColor =
-                if (existing.bgColor != android.graphics.Color.TRANSPARENT) android.graphics.Color.TRANSPARENT else highlightColor
-            QuoteEffect.TEXT_COLOR -> existing.textColor = currentBg.textColor
-            QuoteEffect.BOLD -> existing.isBold = !existing.isBold
-            QuoteEffect.UNDERLINE -> existing.isUnderlined = !existing.isUnderlined
-            QuoteEffect.DIM -> existing.isDimmed = !existing.isDimmed
-            QuoteEffect.HIDE -> existing.isHidden = !existing.isHidden
-            QuoteEffect.SCALE_UP -> existing.scaleFactor = if (existing.scaleFactor == 1.2f) 1f else 1.2f
-            QuoteEffect.SCALE_DOWN -> existing.scaleFactor = if (existing.scaleFactor == 0.8f) 1f else 0.8f
-            QuoteEffect.BLUR -> {}
-            QuoteEffect.NONE -> currentSpans.remove(range)
-        }
-        if (effect != QuoteEffect.NONE) {
-            if (isDefaultStyle(existing)) currentSpans.remove(range) else currentSpans[range] = existing
+        mutateSelectionSpans { existing ->
+            when (effect) {
+                QuoteEffect.HIGHLIGHT -> existing.bgColor =
+                    if (existing.bgColor != android.graphics.Color.TRANSPARENT) android.graphics.Color.TRANSPARENT else highlightColor
+                QuoteEffect.TEXT_COLOR -> existing.textColor = currentBg.textColor
+                QuoteEffect.BOLD -> existing.isBold = !existing.isBold
+                QuoteEffect.UNDERLINE -> existing.isUnderlined = !existing.isUnderlined
+                QuoteEffect.DIM -> existing.isDimmed = !existing.isDimmed
+                QuoteEffect.HIDE -> existing.isHidden = !existing.isHidden
+                QuoteEffect.SCALE_UP -> existing.scaleFactor = if (existing.scaleFactor == 1.2f) 1f else 1.2f
+                QuoteEffect.SCALE_DOWN -> existing.scaleFactor = if (existing.scaleFactor == 0.8f) 1f else 0.8f
+                QuoteEffect.BLUR -> {}
+                QuoteEffect.NONE -> {}
+            }
         }
         refreshPreview()
         updateUndoRedoUI()
         updateEffectButtonsActiveState()
     }
 
+    /** تطبيق مقاس خط مستقل (sp) على التحديد فقط — لا يمسّ باقي النص. */
+    private fun applySizeToSelection(sizeSp: Float) {
+        mutateSelectionSpans { it.absoluteSize = sizeSp }
+        refreshPreview()
+    }
+
     private fun isDefaultStyle(style: QuoteSpanStyle): Boolean {
         return style.bgColor == android.graphics.Color.TRANSPARENT &&
             style.textColor == null &&
             !style.isBold && !style.isUnderlined && !style.isBlurred &&
-            !style.isDimmed && !style.isHidden && style.scaleFactor == 1f
+            !style.isDimmed && !style.isHidden && style.scaleFactor == 1f &&
+            style.absoluteSize == 0f
     }
 
     private fun clearAllEffects() {
@@ -1470,7 +1511,13 @@ class QuoteEditorActivity : AppCompatActivity() {
         fontSizeSlider.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
             override fun onProgressChanged(seekBar: SeekBar, progress: Int, fromUser: Boolean) {
                 if (!fromUser) return
-                currentFontSize = (8 + progress).toFloat()
+                val size = (8 + progress).toFloat()
+                if (hasSelection) {
+                    // يوجد تحديد: المقاس يُطبّق على المحدد فقط ولا يمسّ باقي النص
+                    applySizeToSelection(size)
+                } else {
+                    currentFontSize = size
+                }
                 refreshPreview()
             }
             override fun onStartTrackingTouch(seekBar: SeekBar) { beginGesture() }
@@ -1486,7 +1533,7 @@ class QuoteEditorActivity : AppCompatActivity() {
             override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
                 if (!fromUser) return
                 currentLineSpacing = lineSpacingMin + (progress / 100f) * (lineSpacingMax - lineSpacingMin)
-                tvLineSpacingValue.text = "${String.format("%.1f", currentLineSpacing)}x"
+                tvLineSpacingValue.text = String.format(java.util.Locale.US, "%.1fx", currentLineSpacing)
                 refreshPreview()
             }
             override fun onStartTrackingTouch(seekBar: SeekBar?) { beginGesture() }
@@ -1500,7 +1547,7 @@ class QuoteEditorActivity : AppCompatActivity() {
             override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
                 if (!fromUser) return
                 currentParaSpacing = paraMin + (progress / 100f) * (paraMax - paraMin)
-                tvParaSpacingValue.text = "${String.format("%.1f", currentParaSpacing)}x"
+                tvParaSpacingValue.text = String.format(java.util.Locale.US, "%.1fx", currentParaSpacing)
                 refreshPreview()
             }
             override fun onStartTrackingTouch(seekBar: SeekBar?) { beginGesture() }
@@ -1644,8 +1691,8 @@ class QuoteEditorActivity : AppCompatActivity() {
         lineSpacingSlider.progress = (((currentLineSpacing - 1f) / 2f) * 100f).toInt().coerceIn(0, 100)
         paraSpacingSlider.progress = (((currentParaSpacing - 0.5f) / 2.5f) * 100f).toInt().coerceIn(0, 100)
         textWidthSlider.progress = (textWidth * 100f).toInt().coerceIn(50, 100)
-        tvLineSpacingValue.text = "${String.format("%.1f", currentLineSpacing)}x"
-        tvParaSpacingValue.text = "${String.format("%.1f", currentParaSpacing)}x"
+        tvLineSpacingValue.text = String.format(java.util.Locale.US, "%.1fx", currentLineSpacing)
+        tvParaSpacingValue.text = String.format(java.util.Locale.US, "%.1fx", currentParaSpacing)
         tvTextWidthValue.text = "${(textWidth * 100f).toInt()}%"
         updateAlignUI()
         updateBoldAllUI()
@@ -1717,6 +1764,9 @@ class QuoteEditorActivity : AppCompatActivity() {
                     }
                     if (style.scaleFactor != 1f) {
                         ssb.setSpan(RelativeSizeSpan(style.scaleFactor), localStart, localEnd, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+                    }
+                    if (style.absoluteSize > 0f) {
+                        ssb.setSpan(AbsoluteSizeSpan(style.absoluteSize.toInt(), true), localStart, localEnd, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
                     }
                 }
             }
