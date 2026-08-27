@@ -63,6 +63,10 @@ class AudioPlayerService : MediaSessionService() {
         const val CHANNEL_ID = "urwah_audio_playback"
         const val CHANNEL_NAME = "مشغل التلاوة"
 
+        /** معرف إشعار صمّام الأمان — نفس معرف media3 (1001) ليُستبدل نظيفاً. */
+        private const val FOREGROUND_SAFETY_ID = 1001
+        private const val MAX_CONSECUTIVE_ERRORS = 3
+
         fun createChannel(context: Context) {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                 val channel = NotificationChannel(
@@ -177,11 +181,15 @@ class AudioPlayerService : MediaSessionService() {
         val exoPlayer = ExoPlayer.Builder(this)
             .setAudioAttributes(AudioAttributes.DEFAULT, /* handleAudioFocus = */ true)
             .setHandleAudioBecomingNoisy(true)
+            // بدونه: عند إطفاء الشاشة يدخل CPU في السكون وتتوقف شبكة البث
+            // فصمت المشغّل رغم أن الحالة تقول «قيد التشغيل».
+            .setWakeMode(C.WAKE_MODE_NETWORK)
             .build()
         player = exoPlayer
 
         exoPlayer.addListener(object : Player.Listener {
             override fun onIsPlayingChanged(isPlaying: Boolean) {
+                if (isPlaying) consecutiveErrors = 0
                 AudioPlaybackState.update {
                     it.copy(isPlaying = isPlaying, isBuffering = false)
                 }
@@ -191,6 +199,9 @@ class AudioPlayerService : MediaSessionService() {
             }
 
             override fun onPlaybackStateChanged(playbackState: Int) {
+                if (playbackState == Player.STATE_READY || playbackState == Player.STATE_ENDED) {
+                    consecutiveErrors = 0
+                }
                 AudioPlaybackState.update {
                     it.copy(isBuffering = playbackState == Player.STATE_BUFFERING)
                 }
@@ -200,12 +211,14 @@ class AudioPlayerService : MediaSessionService() {
                 val meta = mediaItem?.mediaMetadata
                 val ayah = meta?.description?.toString()?.toIntOrNull()
                 if (ayah != null) {
-                    AudioPlaybackState.update { it.copy(currentAyah = ayah) }
+                    // تصفير الموضع والمدة فوراً حتى لا تُستعمل مدة الآية السابقة لموجّه السطر الجديد
+                    val dur = exoPlayer.duration.takeIf { it > 0 } ?: 0L
+                    AudioPlaybackState.update { it.copy(currentAyah = ayah, positionMs = 0L, durationMs = dur) }
                 }
             }
 
             override fun onPlayerError(error: PlaybackException) {
-                AudioPlaybackState.update { it.copy(isBuffering = false) }
+                handlePlaybackError(error)
             }
         })
 
@@ -214,6 +227,60 @@ class AudioPlayerService : MediaSessionService() {
         addSession(session)
         val provider = UrwahNotificationProvider(this, exoPlayer)
         setMediaNotificationProvider(provider)
+    }
+
+    /**
+     * صمّام أمان لدورة حياة الخدمة الأمامية على Android 14+ ورومات الشركات
+     * العدوانية (Honor/Huawei وغيرها): النظام يطلب استدعاء startForeground
+     * خلال مهلة قصيرة من startForegroundService، وmedia3 لا يستدعيها إلا عند
+     * بدء الصوت فعلياً — فإن تأخر التخزين المؤقت أو فشل تحميل الملف الأول
+     * تُقتل الخدمة بصمت ولا يسمع المستخدم شيئاً. نُظهر إشعاراً هادئاً فوراً،
+     * وسيستبدله media3 بإشعار الوسائط الكامل عند جاهزية التشغيل.
+     */
+    private fun enterForegroundImmediately() {
+        try {
+            val notification = androidx.core.app.NotificationCompat.Builder(this, CHANNEL_ID)
+                .setSmallIcon(R.drawable.ic_notification_small)
+                .setContentTitle("جارٍ تحضير التلاوة…")
+                .setContentText("يتم الآن الاتصال بالخادم")
+                .setOngoing(true)
+                .setOnlyAlertOnce(true)
+                .setPriority(androidx.core.app.NotificationCompat.PRIORITY_LOW)
+                .build()
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                startForeground(FOREGROUND_SAFETY_ID, notification,
+                    android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK)
+            } else {
+                startForeground(FOREGROUND_SAFETY_ID, notification)
+            }
+        } catch (_: Exception) {
+            // لا شيء يعتمد على نجاح هذا الاستدعاء؛ media3 سيتولى الإدارة لاحقاً
+        }
+    }
+
+    /**
+     * تعافٍ من أخطاء التحميل (انقطاع/404 لآية معيبة في مجلد القارئ):
+     * بدل موت التشغيل بالكامل بصمت، نتخطى الآية المعطوبة ونكمل التالية،
+     * وبعد تجاوز المحاولات نوقف بلطف مع إبلاغ المستخدم.
+     */
+    private var consecutiveErrors = 0
+
+    private fun handlePlaybackError(error: PlaybackException) {
+        val p = player ?: return
+        consecutiveErrors++
+        AudioPlaybackState.update { it.copy(isBuffering = false) }
+        if (consecutiveErrors <= MAX_CONSECUTIVE_ERRORS && p.hasNextMediaItem()) {
+            p.seekToNextMediaItem()
+            p.prepare()
+            p.play()
+        } else {
+            android.widget.Toast.makeText(
+                this,
+                "تعذّر تشغيل التلاوة، تحقق من اتصالك بالإنترنت",
+                android.widget.Toast.LENGTH_LONG
+            ).show()
+            stopPlayback()
+        }
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -226,6 +293,8 @@ class AudioPlayerService : MediaSessionService() {
                 val startAyah = intent.getIntExtra(EXTRA_START_AYAH, 1)
                 val totalAyahs = intent.getIntExtra(EXTRA_TOTAL_AYAHS, 7)
                 val reciterId = intent.getIntExtra(EXTRA_RECITER_ID, 0)
+                // دخول الـ foreground فوراً قبل أي انتظار شبكة
+                enterForegroundImmediately()
                 setupPlaylist(exoPlayer, surah, startAyah, totalAyahs, reciterId)
                 exoPlayer.prepare()
                 exoPlayer.play()
@@ -237,6 +306,7 @@ class AudioPlayerService : MediaSessionService() {
                 val endAyah = intent.getIntExtra(EXTRA_END_AYAH, startAyah)
                 val reciterId = intent.getIntExtra(EXTRA_RECITER_ID, 0)
                 val count = (endAyah - startAyah + 1).coerceAtLeast(1)
+                enterForegroundImmediately()
                 setupPlaylist(exoPlayer, surah, startAyah, count, reciterId, rangeStart = startAyah)
                 exoPlayer.prepare()
                 exoPlayer.play()
@@ -276,9 +346,10 @@ class AudioPlayerService : MediaSessionService() {
 
             ACTION_SEEK -> {
                 val position = intent.getLongExtra(EXTRA_POSITION, 0L)
-                if (position >= 0 && exoPlayer.duration > 0) {
-                    exoPlayer.seekTo(position.coerceAtMost(exoPlayer.duration))
-                    AudioPlaybackState.update { it.copy(positionMs = position) }
+                if (position >= 0) {
+                    val target = if (exoPlayer.duration > 0) position.coerceAtMost(exoPlayer.duration) else position
+                    exoPlayer.seekTo(target)
+                    AudioPlaybackState.update { it.copy(positionMs = target) }
                 }
             }
 

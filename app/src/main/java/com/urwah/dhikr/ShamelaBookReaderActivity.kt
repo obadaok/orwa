@@ -453,7 +453,7 @@ class ShamelaBookReaderActivity : AppCompatActivity() {
         // مع علامات فاصلة «≪ صفحة N ≫» تُفهم من المحرر وتُحذف عند التصدير.
         val sb = StringBuilder()
         window.forEachIndexed { i, p ->
-            val pn = p.originalPageNum ?: (winStart + i + 1)
+            val pn = p.originalPageNum ?: originalNumOfDisplay(winStart + i) ?: 1
             sb.append("≪ صفحة $pn ≫\n")
             sb.append(p.text)
             sb.append("\n")
@@ -462,7 +462,7 @@ class ShamelaBookReaderActivity : AppCompatActivity() {
         val intent = Intent(this, QuoteEditorActivity::class.java).apply {
             putExtra("PAGE_TEXT", displayPages[cur].text)
             putExtra("WINDOW_TEXT", sb.toString())
-            putExtra("PAGE_NUMBER", displayPages[cur].originalPageNum ?: (cur + 1))
+            putExtra("PAGE_NUMBER", displayPages[cur].originalPageNum ?: originalNumOfDisplay(cur) ?: 1)
             putExtra("BOOK_TITLE", bookTitle)
             putExtra("AUTHOR", meta.displayAuthor)
             putExtra("EDITION", "")
@@ -1043,7 +1043,20 @@ class ShamelaBookReaderActivity : AppCompatActivity() {
 
                         val localMatchStart = origStart - snippetStart + prefixOffset
                         val localMatchEnd = origEnd - snippetStart + prefixOffset
-                        val origNum = page.originalPageNum ?: (index + 1)
+                        val origNum = page.originalPageNum ?: run {
+                            var foundNum: Int? = null
+                            for (i in index downTo 0) {
+                                val v = displayPages[i].originalPageNum
+                                if (v != null) { foundNum = v; break }
+                            }
+                            if (foundNum == null) {
+                                for (i in index until displayPages.size) {
+                                    val v = displayPages[i].originalPageNum
+                                    if (v != null) { foundNum = v; break }
+                                }
+                            }
+                            foundNum ?: 1
+                        }
 
                         found.add(
                             ReaderSearchAdapter.SearchResult(
@@ -1558,10 +1571,11 @@ class ShamelaBookReaderActivity : AppCompatActivity() {
         // Map each display page to its original page number via the unified mapper:
         // بداية صفحة العرض → الصفحة المصدرية الحاوية لها (بحث ثنائي على الإزاحات)
         // → رقم الصفحة الأصلي من المصدر. بلا بحث نصي هشّ ولا افتراض index=pageNum-1.
+        // إذا كانت الصفحة المصدرية بلا رقم (null) نورّث آخر رقم أصلي قبله.
         return pages.map { dp ->
             val origNum = if (dp.startOffset >= 0 && mapping != null) {
                 val srcIdx = mapping.sourceIndexForCharOffset(dp.startOffset)
-                mapping.originalNumAt(srcIdx)
+                mapping.originalNumAtOrPrev(srcIdx) ?: mapping.originalNumAt(srcIdx)
             } else null
             dp.copy(originalPageNum = origNum)
         }
@@ -1618,22 +1632,31 @@ class ShamelaBookReaderActivity : AppCompatActivity() {
         return ans
     }
 
-    /** الرقم الأصلي المعروض لصفحة عرض — عبر الخريطة الموحدة فقط. */
+    /** الرقم الأصلي المعروض لصفحة عرض — عبر الخريطة الموحدة فقط (مع توريث). */
     private fun originalNumOfDisplay(position: Int): Int? {
-        val mapping = pageMapping ?: return null
+        val mapping = pageMapping ?: return displayPages.getOrNull(position)?.originalPageNum
         val dp = displayPages.getOrNull(position) ?: return null
-        if (dp.startOffset < 0) return null
-        return mapping.originalNumAt(mapping.sourceIndexForCharOffset(dp.startOffset))
+        if (dp.startOffset < 0) return dp.originalPageNum
+        val srcIdx = mapping.sourceIndexForCharOffset(dp.startOffset)
+        return mapping.originalNumAtOrPrev(srcIdx) ?: dp.originalPageNum
     }
 
     private fun updatePageInfo(position: Int) {
         if (displayPages.isEmpty()) return
         // أظهر رقم الصفحة الأصلية من المصدر بالنسبة لأكبر رقم أصلي في الكتاب
         // (وليس عدد أسطر المصدر ولا عدد الصفحات الافتراضية).
-        val current = originalNumOfDisplay(position)
-            ?: (position + 1).coerceIn(1, displayPages.size)
+        val current = originalNumOfDisplay(position) ?: run {
+            // fallback توريثي — لا نستخدم index+1 كرقم أصلي
+            for (i in position downTo 0) {
+                displayPages.getOrNull(i)?.originalPageNum?.let { return@run it }
+            }
+            for (i in position until displayPages.size) {
+                displayPages.getOrNull(i)?.originalPageNum?.let { return@run it }
+            }
+            1
+        }
         val totalOrig = pageMapping?.maxOriginalNum
-            ?: bookContent?.pages?.size?.coerceAtLeast(1)
+            ?: bookContent?.pages?.mapNotNull { it.pageNum }?.maxOrNull()
             ?: displayPages.size
         tvPageInfo.text = "صفحة $current / $totalOrig"
     }
@@ -1681,15 +1704,31 @@ class ShamelaBookReaderActivity : AppCompatActivity() {
         for (entry in content.toc) {
             val num: Int? = if (pm != null) {
                 val srcIdx = pm.sourceIndexForPageId(entry.pageId)
-                if (srcIdx >= 0) pm.originalNumAt(srcIdx) else null
+                if (srcIdx >= 0) pm.originalNumAtOrPrev(srcIdx) ?: pm.originalNumAt(srcIdx) else null
             } else null
             if (num != null) {
                 mapping[entry.titleId] = num
             } else {
-                // صفحة بلا رقم أصلي (null): أظهر فهرس العرض +1 كخيار أخير.
-                mapping[entry.titleId] = displayIndexForCharOffset(
-                    pageMapping?.startOffsetAt(pageMapping?.sourceIndexForPageId(entry.pageId) ?: -1) ?: -1
-                ).let { if (it < 0) 0 else it + 1 }
+                // صفحة بلا رقم أصلي: ورّث من أقرب صفحة سابقة لها رقم، لا تستخدم index+1
+                val srcIdx = pm?.sourceIndexForPageId(entry.pageId) ?: -1
+                val dispIdx = displayIndexForCharOffset(pm?.startOffsetAt(srcIdx) ?: -1)
+                val inherited = if (dispIdx >= 0) {
+                    displayPages.getOrNull(dispIdx)?.originalPageNum
+                        ?: originalNumOfDisplay(dispIdx)
+                } else null
+                if (inherited != null) {
+                    mapping[entry.titleId] = inherited
+                } else {
+                    // آخر حل: اقرب رقم أصلي سابق في المصدر
+                    var fallback: Int? = null
+                    if (pm != null && srcIdx >= 0) {
+                        for (i in srcIdx downTo 0) {
+                            val v = pm.originalNumAt(i)
+                            if (v != null) { fallback = v; break }
+                        }
+                    }
+                    mapping[entry.titleId] = fallback ?: 1
+                }
             }
         }
         return mapping
@@ -1778,7 +1817,7 @@ class ShamelaBookReaderActivity : AppCompatActivity() {
             ShamelaBookStorage.saveLastReadCharOffset(this, bookId, charOffset)
         }
         // ولأغراض العرض في بطاقات المكتبة نحفظ رقم الصفحة الأصلية (وليس الفهرس الافتراضي).
-        val origNum = page?.originalPageNum ?: (lastIntendedPage + 1)
+        val origNum = page?.originalPageNum ?: originalNumOfDisplay(lastIntendedPage) ?: 1
         ShamelaBookStorage.saveLastReadPage(this, bookId, origNum)
     }
 
@@ -1799,8 +1838,20 @@ class ShamelaBookReaderActivity : AppCompatActivity() {
         if (savedPageNum > 0) {
             val byOrigNum = displayPages.indexOfFirst { it.originalPageNum == savedPageNum }
             if (byOrigNum >= 0) return byOrigNum
-            // البيانات القديمة كانت تحفظ الفهرس الافتراضي مباشرة — نجربها كاحتياط أخير.
-            if (savedPageNum in displayPages.indices) return savedPageNum
+            // حاول عبر الخريطة: أول صفحة أصلية ≥ savedPageNum (يتجاوز فراغات المطبوع)
+            pageMapping?.let { map ->
+                val srcIdx = map.sourceIndexForPageNum(savedPageNum)
+                if (srcIdx >= 0) {
+                    val off = map.startOffsetAt(srcIdx)
+                    val disp = findPageByCharOffset(off)
+                    if (disp >= 0) return disp
+                }
+            }
+            // توافق قديم: البيانات قبل الإصلاح كانت تحفظ الفهرس الافتراضي (index+1)
+            // استخدمه فقط إذا لم توجد خريطة أو الرقم خارج نطاق الأرقام الأصلية
+            val pmCheck = pageMapping
+            val isLikeDisplayIndex = pmCheck == null || savedPageNum > pmCheck.maxOriginalNum
+            if (isLikeDisplayIndex && savedPageNum in displayPages.indices) return savedPageNum
         }
         return 0
     }
@@ -1810,23 +1861,29 @@ class ShamelaBookReaderActivity : AppCompatActivity() {
     // ------------------------------------------------------------------
 
     private fun findCharOffset(position: Int): Int {
-        val pageText = displayPages.getOrNull(position)?.text?.trimStart() ?: return -1
-        if (fullText.isEmpty() || pageText.isEmpty()) return -1
-        val idx = fullText.indexOf(pageText)
-        return if (idx >= 0) idx else fullText.indexOf(pageText.take(20))
+        return displayPages.getOrNull(position)?.startOffset?.takeIf { it >= 0 } ?: -1
     }
 
     private fun findPageByCharOffset(charOffset: Int): Int {
         if (charOffset < 0 || fullText.isEmpty() || displayPages.isEmpty()) return -1
-        for (i in displayPages.indices) {
-            val page = displayPages[i]
-            if (page.text.isEmpty()) continue
-            val start = page.startOffset
-            if (start >= 0 && start <= charOffset && charOffset < start + page.text.length) {
-                return i
+        var lo = 0
+        var hi = displayPages.lastIndex
+        var ans = -1
+        while (lo <= hi) {
+            val mid = (lo + hi) ushr 1
+            val start = displayPages[mid].startOffset
+            if (start < 0) {
+                lo = mid + 1
+                continue
+            }
+            if (start <= charOffset) {
+                ans = mid
+                lo = mid + 1
+            } else {
+                hi = mid - 1
             }
         }
-        return -1
+        return ans
     }
 
     private fun toggleBookmark() {

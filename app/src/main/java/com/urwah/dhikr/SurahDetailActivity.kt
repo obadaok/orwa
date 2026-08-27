@@ -104,9 +104,11 @@ class SurahDetailActivity : AppCompatActivity() {
     private var userSeeking = false
     private var isFocusedMode = false
     private var lastFocusedAyah = -1
-    private val ayahWordTrackers = HashMap<Int, com.urwah.dhikr.align.WordAlignmentTracker>()
-    private val ayahWordDurations = HashMap<Int, Long>()
+    private val readingPagers = HashMap<Int, com.urwah.dhikr.align.ReadingLinePager>()
     private var readingWindowKey: String? = null
+    /** عرض البطاقة المتاح للنص (يُقاس مرة لكل تخطيط) لتكييف كلمات السطر. */
+    private var readingCardTextWidth: Int = 0
+    private var readingCardWaqfAware: Boolean? = null
     private var allAyahsGlobal: List<AyahData> = emptyList()
     private var juzAyahIndexes: Map<Int, Int> = emptyMap()
 
@@ -1306,6 +1308,13 @@ class SurahDetailActivity : AppCompatActivity() {
             updateFocusedReadingWindow(st.currentAyah, st.positionMs, st.durationMs)
         } else {
             UrwahToast.show(this, getString(R.string.focused_mode_enter_hint))
+            // معاينة سطر القراءة لأول آية حتى لا تبقى البطاقة فارغة قبل التشغيل
+            val first = ayahs.firstOrNull()
+            if (first != null) {
+                updateFocusedAyah(first.number)
+                updateFocusedReadingWindow(first.number, 0L, 0L)
+                updateFocusedReciter(currentReciterId)
+            }
         }
 
         var downX = 0f
@@ -1409,6 +1418,9 @@ class SurahDetailActivity : AppCompatActivity() {
         findViewById<TextView>(R.id.tvPlayerMeta).visibility = View.VISIBLE
         findViewById<TextView>(R.id.tvPlayerAvatar).visibility = View.VISIBLE
         findViewById<View>(R.id.btnPlayerClose).visibility = View.VISIBLE
+        // استعادة خلفية شريط المشغّل الافتراضية (كانت مُعاد تنسيقها للمرتّل)
+        findViewById<View>(R.id.audioPlayerBar).background =
+            androidx.core.content.ContextCompat.getDrawable(this, R.drawable.bg_audio_player)
         overlay.animate().alpha(0f).setDuration(200).withEndAction {
             overlay.visibility = View.GONE
             val st = AudioPlaybackState.state.value
@@ -1463,69 +1475,41 @@ class SurahDetailActivity : AppCompatActivity() {
         val overlay = findViewById<View>(R.id.focusedRecitationOverlay)
         overlay.setBackgroundColor(p.background)
 
-        // — الشريط العلوي وبطاقة المعلومات —
+        // — أسلوب حديث مسطّح: بلا ظلال صلبة (لا Neubrutalism) —
+
+        // الشريط العلوي: شفاف يذوب في الخلفية
         findViewById<View>(R.id.topBarLayout).apply {
-            background = MurattalThemeManager.neoCardDrawable(
-                this@SurahDetailActivity, p, radiusDp = 14f, strokeDp = 2f,
-                shadowOffsetDp = 3f
-            )
+            background = null
             val lp = layoutParams
             if (lp is ViewGroup.MarginLayoutParams) {
-                lp.setMargins(dpToPx(10f), dpToPx(6f), dpToPx(10f), dpToPx(0f))
+                lp.setMargins(0, 0, 0, 0)
                 layoutParams = lp
             }
         }
-        findViewById<View>(R.id.focusedInfoCard).apply {
-            background = MurattalThemeManager.neoCardDrawable(
-                this@SurahDetailActivity, p, radiusDp = 16f, strokeDp = 2.5f,
-                shadowOffsetDp = 5f
-            )
-        }
+        // شريط المعلومات السفلي: شفاف أيضاً
+        findViewById<View>(R.id.focusedInfoCard).background = null
 
-        // — منطقة الآية (البطاقة الأصلية نفسها) —
-        findViewById<View>(R.id.focusedAyahCard).apply {
-            background = MurattalThemeManager.neoCardDrawable(
-                this@SurahDetailActivity, p, radiusDp = 22f, strokeDp = 2f,
-                shadowOffsetDp = 6f, fill = p.quranFrame
-            )
-        }
-        findViewById<TextView>(R.id.tvFocusedAyah).setTextColor(p.textPrimary)
-        listOf(
-            R.id.focusedAyahOrnamentTop,
-            R.id.focusedAyahOrnamentBottom
-        ).forEach { id ->
-            findViewById<ImageView>(id).setColorFilter(p.accent)
-        }
-
-        // — بطاقة القراءة المباشرة (الآيات الطويلة) تُلوَّن من اللوحة —
+        // بطاقة سطر القراءة: سطح ناعم بحدّ شعري من اللوحة
         findViewById<View>(R.id.focusedReadingCard).apply {
             background = MurattalThemeManager.flatCardDrawable(
-                this@SurahDetailActivity, p, radiusDp = 14f, strokeDp = 1.5f,
-                fill = withAlphaOf(p.accent, 0x12), stroke = p.accent
+                this@SurahDetailActivity, p, radiusDp = 22f, strokeDp = 1f,
+                fill = p.surface,
+                stroke = withAlphaOf(p.accent, 0x40)
             )
         }
-        findViewById<TextView>(R.id.tvFocusedReadingCard).setTextColor(p.accent)
+        findViewById<TextView>(R.id.tvFocusedReadingCard).setTextColor(p.textPrimary)
         listOf(
             R.id.focusedReadingOrnamentStart,
             R.id.focusedReadingOrnamentEnd
         ).forEach { id ->
-            findViewById<ImageView>(id).setColorFilter(p.accent)
+            findViewById<ImageView>(id)?.setColorFilter(p.accent)
         }
 
-        findViewById<TextView>(R.id.tvFocusedSurahMini).setTextColor(p.textSecondary)
+        findViewById<TextView>(R.id.tvFocusedSurahMini).setTextColor(p.textPrimary)
         findViewById<TextView>(R.id.tvFocusedAyahCounter).apply {
-            background = MurattalThemeManager.circleDrawable(
-                this@SurahDetailActivity, p, p.accent
-            ).also { drawable ->
-                drawable.setStroke(
-                    MurattalThemeManager.dpToPx(this@SurahDetailActivity, 1.5f).toInt(),
-                    p.accent
-                )
-            }
-            setTextColor(p.accentText)
-            setPadding(
-                dpToPx(14f), dpToPx(5f), dpToPx(14f), dpToPx(5f)
-            )
+            background = null
+            setTextColor(p.textSecondary)
+            setPadding(0, 0, 0, 0)
         }
         findViewById<TextView>(R.id.tvFocusedJuzHizb).setTextColor(p.textSecondary)
         findViewById<TextView>(R.id.tvFocusedReciter).setTextColor(p.textSecondary)
@@ -1541,26 +1525,18 @@ class SurahDetailActivity : AppCompatActivity() {
             }
         }
 
-        listOf(
-            R.id.focusedAyahOrnamentTop,
-            R.id.focusedAyahOrnamentBottom
-        ).forEach { id ->
-            (findViewById<View>(id) as? ImageView)?.let {
-                it.visibility = if (theme.showOrnament) View.VISIBLE else View.GONE
-            }
-        }
-
         findViewById<ProgressBar>(R.id.focusedProgress).apply {
             progressDrawable = MurattalThemeManager.seekbarProgressDrawable(
                 this@SurahDetailActivity, p
             )
         }
 
-        // — شريط المشغّل (خلفية، آفاتار، نصوص، سيكب، أزرار) —
+        // — شريط المشغّل داخل المرتّل: سطح نظيف مدوّر بلا ظل صلب —
         findViewById<View>(R.id.audioPlayerBar).apply {
-            background = MurattalThemeManager.neoCardDrawable(
-                this@SurahDetailActivity, p, radiusDp = 18f, strokeDp = 2f,
-                shadowOffsetDp = 6f
+            background = MurattalThemeManager.flatCardDrawable(
+                this@SurahDetailActivity, p, radiusDp = 24f, strokeDp = 1f,
+                fill = p.surface,
+                stroke = withAlphaOf(p.surfaceBorder, 0x26)
             )
         }
         findViewById<TextView>(R.id.tvPlayerAvatar).apply {
@@ -1611,9 +1587,12 @@ class SurahDetailActivity : AppCompatActivity() {
 
     private fun applyPaletteToPlayWindow(p: MurattalPalette) {
         findViewById<View>(R.id.playWindowDim).setBackgroundColor(p.dim)
+        // سطح ناعم مدوّر بلا ظل صلب (أسلوب حديث موحّد مع المرتّل)
         findViewById<View>(R.id.playWindowPanel).background =
-            MurattalThemeManager.neoCardDrawable(
-                this, p, radiusDp = 22f, strokeDp = 2f, shadowOffsetDp = 6f
+            MurattalThemeManager.flatCardDrawable(
+                this, p, radiusDp = 24f, strokeDp = 1f,
+                fill = p.surface,
+                stroke = withAlphaOf(p.surfaceBorder, 0x26)
             )
 
         findViewById<TextView>(R.id.tvPlayWindowReciterName).setTextColor(p.textPrimary)
@@ -1631,9 +1610,10 @@ class SurahDetailActivity : AppCompatActivity() {
             R.id.btnPlayWindowResume,
             R.id.btnPlayWindowSpeed
         ).forEach { id ->
-            findViewById<View>(id).background = MurattalThemeManager.neoCardDrawable(
-                this, p, radiusDp = 14f, strokeDp = 1.5f, shadowOffsetDp = 3f,
-                fill = p.surface
+            findViewById<View>(id).background = MurattalThemeManager.flatCardDrawable(
+                this, p, radiusDp = 16f, strokeDp = 1f,
+                fill = withAlphaOf(p.accent, 0x14),
+                stroke = withAlphaOf(p.accent, 0x33)
             )
         }
     }
@@ -1652,13 +1632,15 @@ class SurahDetailActivity : AppCompatActivity() {
         readingWindowKey = null
         val ayah = ayahs[idx]
 
-        val tvAyah = findViewById<TextView>(R.id.tvFocusedAyah)
-        tvAyah.text = "${ayah.text} ${toHindiDigits(ayah.number)}"
-        tvAyah.alpha = 0f
-        tvAyah.translationY = dpToPx(14f).toFloat()
-        tvAyah.animate().alpha(1f).translationY(0f).setDuration(280).start()
+        // الآية لا تُعرض كاملةً في وضع المرتّل؛ العرض عبر سطر القراءة فقط.
+        // توقّع: جهّز موجِّه هذه الآية والآية التالية مسبقاً لانتقال لحظي.
+        val st = AudioPlaybackState.state.value
+        obtainReadingPager(ayahNumber, ayah.text, st.durationMs.takeIf { st.surahNumber == surahNumber } ?: 0L)
+        val next = ayahs.getOrNull(idx + 1)
+        if (next != null && !readingPagers.containsKey(next.number)) {
+            obtainReadingPager(next.number, next.text, 0L)
+        }
 
-        val theme = MurattalThemeManager.current(this)
         findViewById<TextView>(R.id.tvFocusedAyahCounter).text =
             "الآية ${toHindiDigits(ayah.number)} من ${toHindiDigits(ayahs.size)}"
         findViewById<TextView>(R.id.tvFocusedJuzHizb).text =
@@ -1671,12 +1653,10 @@ class SurahDetailActivity : AppCompatActivity() {
     }
 
     /**
-     * بطاقة القراءة المباشرة للآيات الطويلة: تعرض نافذة ثابتة من ~6 كلمات من
-     * النص القرآني (مصدرها قاعدة البيانات لا تحليل الصوت)، وتتبدل كوحدة كاملة
-     * عند تجاوز نهاية المجموعة. حدود المجموعات تُقطَّع مرة واحدة عند التحميل،
-     * وبالتالي لا تغيّرها اكتشافات الكلمات العابرة، ولا تُعاد ترتيب الكلمات،
-     * ولا يتحرك النص ذهابًا وإيابًا أثناء التلاوة أو عند الرجوع لآية سابقة.
-     * كلمة القراءة الحالية لا تُلوَّن بأي حال.
+     * سطر القراءة في وضع المرتّل: كل آية تُعرض أسطراً متتابعة غير متداخلة
+     * (٤–٦ كلمات حسب عرض الشاشة وحجم الخط). الانتقال للسطر التالي يحدث
+     * بدقة عندما يدخل موضع الصوت أول كلمة بعد نهاية السطر الظاهر، والنص
+     * يُستبدل كسطرٍ كامل بانتقال ناعم — بلا أي تتبع بصري لكلمة.
      */
     private fun updateFocusedReadingWindow(ayahNumber: Int, positionMs: Long, durationMs: Long) {
         val card = findViewById<TextView>(R.id.tvFocusedReadingCard) ?: return
@@ -1686,43 +1666,108 @@ class SurahDetailActivity : AppCompatActivity() {
             return
         }
         val ayah = ayahs[idx]
-        if (com.urwah.dhikr.align.WordAlignmentTracker.tokenize(ayah.text).size <=
-            com.urwah.dhikr.align.WordAlignmentTracker.FULL_AYAH_WORD_LIMIT
-        ) {
-            // الآيات القصيرة تُعرض كاملة من البطاقة الرئيسية.
-            if (card.visibility != View.GONE) {
-                card.visibility = View.GONE
-                readingWindowKey = null
-            }
-            return
-        }
+        val pager = obtainReadingPager(ayahNumber, ayah.text, durationMs)
+        fitReadingLine(pager, card)
 
-        val tracker = ayahWordTrackers[ayahNumber] ?: com.urwah.dhikr.align.WordAlignmentTracker().also {
-            it.load(ayah.text, durationMs.coerceAtLeast(1L))
-            ayahWordTrackers[ayahNumber] = it
-            ayahWordDurations[ayahNumber] = durationMs
+        // اشتقاق مباشر من الموضع: مع تقدّم استباقي فقط أثناء التشغيل الفعلي
+        // حتى لا يتقدم النص أثناء التوقف/التخزين المؤقت بسبب LEAD.
+        val stPlay = AudioPlaybackState.state.value
+        val effectivePos = if (stPlay.isPlaying && stPlay.surahNumber == surahNumber && stPlay.currentAyah == ayahNumber) {
+            (positionMs + com.urwah.dhikr.align.ReadingLinePager.LEAD_MS).coerceAtMost(durationMs.coerceAtLeast(positionMs + com.urwah.dhikr.align.ReadingLinePager.LEAD_MS))
+        } else {
+            positionMs.coerceAtLeast(0L)
         }
-        val storedDuration = ayahWordDurations[ayahNumber] ?: 0L
-        if (durationMs > 0L && storedDuration != durationMs) {
-            // المدة الصوتية الحقيقية وصلت بعد أول عرض — يُعاد توزيع الحدود مرة
-            // واحدة فقط ثم تُثبَّت (لا إعادة ضبط متكررة أثناء التشغيل).
-            tracker.load(ayah.text, durationMs)
-            ayahWordDurations[ayahNumber] = durationMs
-        }
-
-        val wordIdx = tracker.update(positionMs)
-        if (wordIdx < 0) return
-        val window = tracker.window(wordIdx)
-        val key = "${window.startIndex}:${window.endIndex}"
-        if (key == readingWindowKey && card.visibility == View.VISIBLE) return
-        readingWindowKey = key
-        val windowWords = tracker.wordsForWindow(window)
-        if (windowWords.isEmpty()) {
+        val lineIdx = pager.lineIndexAt(effectivePos)
+        val line = pager.lineAt(lineIdx)
+        if (line.words.isEmpty()) {
             card.visibility = View.GONE
             return
         }
-        card.text = windowWords.joinToString(" ") { it.text }
+        val key = "$ayahNumber:${line.startIndex}"
+        if (key == readingWindowKey && card.visibility == View.VISIBLE) return
+        readingWindowKey = key
+
+        card.text = line.words.joinToString(" ")
         card.visibility = View.VISIBLE
+        // انتقال ناعم قصير لتبديل السطر (بلا وميض ولا حركة كلمات داخلية)
+        card.animate().cancel()
+        card.alpha = 0f
+        card.translationY = dpToPx(6f).toFloat()
+        card.animate().alpha(1f).translationY(0f).setDuration(160).start()
+    }
+
+    /**
+     * يجلب موجِّه سطور آية معينة ويحمله عند الحاجة. المدة صفر تعني تقديراً
+     * استباقياً (للآية التالية) تُصحَّح حدوده تلقائياً بوصول المدة الحقيقية.
+     */
+    private fun obtainReadingPager(
+        ayahNumber: Int,
+        text: String,
+        durationMs: Long
+    ): com.urwah.dhikr.align.ReadingLinePager {
+        val waqfAware = isWaqfAwareRiwaya(displayedRiwayatId)
+        val existing = readingPagers[ayahNumber]
+        if (existing != null) {
+            existing.isWaqfAware = waqfAware
+            if (durationMs > 0L && durationMs != existing.loadedDurationMs) {
+                // لا تعِد توزيع الأزمنة في منتصف تلاوة الآية نفسها حتى لا تقفز الأسطر
+                val st = AudioPlaybackState.state.value
+                val midAyah = isFocusedMode && ayahNumber == lastFocusedAyah && st.isPlaying && st.positionMs > 800
+                if (!midAyah) {
+                    existing.load(text, durationMs)
+                }
+                existing.loadedDurationMs = durationMs
+            }
+            return existing
+        }
+        val pager = com.urwah.dhikr.align.ReadingLinePager()
+        pager.isWaqfAware = waqfAware
+        val effective = if (durationMs > 0L) durationMs
+        else com.urwah.dhikr.align.ReadingLinePager.estimateDuration(text)
+        pager.load(text, effective)
+        pager.loadedDurationMs = if (durationMs > 0L) durationMs else 0L
+        readingPagers[ayahNumber] = pager
+        return pager
+    }
+
+    /**
+     * يكيّف عدد كلمات السطر (٦ ← ٥ ← ٤ ← ٣) حتى يتسع النص في سطرٍ واحد
+     * فعلياً داخل البطاقة — بالقياس لا بالتخمين، مع تخزين العرض المتاح.
+     */
+    private fun fitReadingLine(
+        pager: com.urwah.dhikr.align.ReadingLinePager,
+        card: TextView
+    ) {
+        if (card.width <= 0 && readingCardTextWidth <= 0) {
+            card.post { readingCardTextWidth = 0 } // إعادة المحاولة بعد التخطيط
+            return
+        }
+        if (card.width > 0) {
+            val hpad = card.paddingLeft + card.paddingRight +
+                dpToPx(24f) // هوامش TextView الجانبية داخل البطاقة
+            val avail = card.width - hpad
+            if (avail > 0) readingCardTextWidth = avail
+        }
+        if (readingCardTextWidth <= 0) return
+        // حدّث وعي الوقف قبل الملاءمة (قد تغيّر الرواية)
+        val waqfAware = isWaqfAwareRiwaya(displayedRiwayatId)
+        pager.isWaqfAware = waqfAware
+        if (pager.fittedForWidth == readingCardTextWidth &&
+            pager.lineCount > 0 && readingCardWaqfAware == waqfAware
+        ) return
+
+        var k = com.urwah.dhikr.align.ReadingLinePager.MAX_WORDS_PER_LINE
+        val paint = card.paint
+        while (k > com.urwah.dhikr.align.ReadingLinePager.MIN_WORDS_PER_LINE) {
+            // قياس مستقل عن تقسيم الوقف الحالي — خذ أول k كلمات من النص الأصلي
+            val candidateWords = pager.displayWordsForTest().take(k)
+            val candidate = candidateWords.joinToString(" ")
+            if (candidateWords.isEmpty() || paint.measureText(candidate) <= readingCardTextWidth) break
+            k--
+        }
+        pager.setWordsPerLine(k)
+        pager.fittedForWidth = readingCardTextWidth
+        readingCardWaqfAware = waqfAware
     }
 
     private fun updateFocusedReciter(reciterId: Int) {
@@ -1918,10 +1963,32 @@ class SurahDetailActivity : AppCompatActivity() {
         }
 
         findViewById<View>(R.id.btnPlayerPrevious).setOnClickListener {
+            if (isFocusedMode) {
+                val cur = AudioPlaybackState.state.value.currentAyah
+                val idx = ayahs.indexOfFirst { it.number == cur }
+                val prev = if (idx > 0) ayahs[idx - 1].number else null
+                if (prev != null) {
+                    readingWindowKey = null
+                    lastFocusedAyah = -1
+                    updateFocusedAyah(prev)
+                    updateFocusedReadingWindow(prev, 0L, 0L)
+                }
+            }
             AudioPlayerService.previous(this)
         }
 
         findViewById<View>(R.id.btnPlayerNext).setOnClickListener {
+            if (isFocusedMode) {
+                val cur = AudioPlaybackState.state.value.currentAyah
+                val idx = ayahs.indexOfFirst { it.number == cur }
+                val next = if (idx >= 0 && idx + 1 < ayahs.size) ayahs[idx + 1].number else null
+                if (next != null) {
+                    readingWindowKey = null
+                    lastFocusedAyah = -1
+                    updateFocusedAyah(next)
+                    updateFocusedReadingWindow(next, 0L, 0L)
+                }
+            }
             AudioPlayerService.next(this)
         }
 
@@ -2015,6 +2082,13 @@ class SurahDetailActivity : AppCompatActivity() {
         lastPlaybackAyah = -1
         audioPrefs.edit().putInt("selected_reciter", reciterId).apply()
         syncRiwayatWithReciter(reciterId, startAyah)
+        // في وضع المرتل: اعرض النص فوراً قبل بدء الصوت حتى لا يسبق الصوت النص
+        if (isFocusedMode) {
+            readingWindowKey = null
+            lastFocusedAyah = -1
+            updateFocusedAyah(startAyah)
+            updateFocusedReadingWindow(startAyah, 0L, 0L)
+        }
         AudioPlayerService.play(
             this,
             surahNumber,
@@ -2023,6 +2097,11 @@ class SurahDetailActivity : AppCompatActivity() {
             reciterId
         )
         showAudioPlayer()
+    }
+
+    /** هل تُطبَّق قواعد الوقف (حفص) على هذه الرواية؟ */
+    private fun isWaqfAwareRiwaya(id: String?): Boolean {
+        return id == "hafs" || id == "shouba"
     }
 
     private fun syncRiwayatWithReciter(reciterId: Int, currentAyah: Int) {
@@ -2052,8 +2131,8 @@ class SurahDetailActivity : AppCompatActivity() {
         continuousAyahOffsets = null
         playbackColorSpanActive = false
         lastPlaybackAyah = -1
-        ayahWordTrackers.clear()
-        ayahWordDurations.clear()
+        readingPagers.clear()
+        readingCardTextWidth = 0
         readingWindowKey = null
 
         renderAyahsInSingleCard(containerAyahs, ayahs, isDark)

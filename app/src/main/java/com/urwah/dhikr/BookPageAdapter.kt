@@ -71,11 +71,17 @@ class BookPageAdapter(
         }
 
         val total = originalTotalPages.coerceAtLeast(1)
-        if (page.originalPageNum != null) {
-            holder.tvPageNumber.text = "${page.originalPageNum} / $total"
-        } else {
-            holder.tvPageNumber.text = "${position + 1} / $total"
+        val displayNum = page.originalPageNum ?: run {
+            // توريث من أقرب صفحة سابقة لها رقم أصلي — لا نستخدم index+1
+            for (i in position downTo 0) {
+                pages[i].originalPageNum?.let { return@run it }
+            }
+            for (i in position until pages.size) {
+                pages[i].originalPageNum?.let { return@run it }
+            }
+            1
         }
+        holder.tvPageNumber.text = "$displayNum / $total"
 
         // مؤشر التقدم الرأسي: نستخدم scaleY بدل تعديل layoutParams.height في كل
         // حدث تمرير — تفادٍ لـ requestLayout المتكرر (رخيص جدًا كتحويل بصري فقط).

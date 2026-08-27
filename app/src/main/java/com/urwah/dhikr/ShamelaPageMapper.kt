@@ -76,6 +76,14 @@ object ShamelaPageMapper {
         fun originalNumAt(sourceIdx: Int): Int? =
             pages.getOrNull(sourceIdx)?.pageNum
 
+        /** أقرب رقم أصلي غير null عند أو قبل sourceIdx — يمنع fallback إلى index+1 */
+        fun originalNumAtOrPrev(sourceIdx: Int): Int? {
+            for (i in sourceIdx downTo 0) {
+                pages.getOrNull(i)?.pageNum?.let { return it }
+            }
+            return null
+        }
+
         /** بداية الصفحة المصدرية i داخل fullText. */
         fun startOffsetAt(sourceIdx: Int): Int =
             startOffsets.getOrElse(sourceIdx) { -1 }
