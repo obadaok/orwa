@@ -1189,6 +1189,7 @@ class SurahDetailActivity : AppCompatActivity() {
             putExtra("SURAH_NUMBER", next.number)
             putExtra("SURAH_NAME", next.name)
             putExtra("VERSE_COUNT", next.verseCount)
+            putExtra("NAVIGATING_TO_NEXT", true)
         }
         startActivity(intent)
         finish()
@@ -1252,10 +1253,13 @@ class SurahDetailActivity : AppCompatActivity() {
         scrollHandler?.removeCallbacksAndMessages(null)
         playerAutoHideHandler.removeCallbacksAndMessages(null)
         focusedAutoHideHandler.removeCallbacksAndMessages(null)
-        if (isFinishing) {
+        if (isFinishing && !isChangingConfigurations) {
             val st = AudioPlaybackState.state.value
             if (st.isActive && st.surahNumber == surahNumber) {
-                AudioPlayerService.stop(this)
+                val isNavigatingToNext = intent.getBooleanExtra("NAVIGATING_TO_NEXT", false)
+                if (!isNavigatingToNext) {
+                    AudioPlayerService.stop(this)
+                }
             }
         }
         isFocusedMode = false

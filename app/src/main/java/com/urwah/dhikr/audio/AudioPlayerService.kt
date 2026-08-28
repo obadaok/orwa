@@ -356,7 +356,7 @@ class AudioPlayerService : MediaSessionService() {
             ACTION_STOP -> stopPlayback()
         }
 
-        return START_NOT_STICKY
+        return START_STICKY
     }
 
     private fun setupPlaylist(
@@ -367,6 +367,7 @@ class AudioPlayerService : MediaSessionService() {
         reciterId: Int,
         rangeStart: Int = 1
     ) {
+        consecutiveErrors = 0
         val reciter = ReciterCatalog.getById(reciterId)
         val surahName = SurahDataProvider.allSurahs
             .find { it.number == surah }?.name ?: "سورة $surah"

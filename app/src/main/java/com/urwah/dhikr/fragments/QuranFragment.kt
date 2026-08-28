@@ -20,6 +20,8 @@ import kotlinx.coroutines.launch
 
 import com.urwah.dhikr.BookmarksActivity
 import com.urwah.dhikr.R
+import com.urwah.dhikr.MushafPageViewerActivity
+import com.urwah.dhikr.QuranDataLoader
 import com.urwah.dhikr.ReadingTracker
 import com.urwah.dhikr.SurahAdapter
 import com.urwah.dhikr.SurahCardItemAnimator
@@ -63,11 +65,7 @@ class QuranFragment : Fragment(), com.urwah.dhikr.SearchableFragment {
         adapter = SurahAdapter(
             initialItems = allSurahs,
             onItemClick = { surah ->
-                val intent = Intent(requireContext(), SurahDetailActivity::class.java)
-                intent.putExtra("SURAH_NUMBER", surah.number)
-                intent.putExtra("SURAH_NAME", surah.name)
-                intent.putExtra("VERSE_COUNT", surah.verseCount)
-                startActivity(intent)
+                openSurah(surah.number, surah.name, surah.verseCount, null)
             },
             headerView = continueBanner
         )
@@ -101,12 +99,7 @@ class QuranFragment : Fragment(), com.urwah.dhikr.SearchableFragment {
         banner.setOnClickListener {
             val surah = allSurahs.find { it.number == pos.surahNumber }
             if (surah != null) {
-                val intent = Intent(requireContext(), SurahDetailActivity::class.java)
-                intent.putExtra("SURAH_NUMBER", surah.number)
-                intent.putExtra("SURAH_NAME", surah.name)
-                intent.putExtra("VERSE_COUNT", surah.verseCount)
-                intent.putExtra("LAST_AYAH", pos.ayahNumber)
-                startActivity(intent)
+                openSurah(surah.number, surah.name, surah.verseCount, pos.ayahNumber)
             }
         }
         banner.tag = "continue_banner"
@@ -126,12 +119,7 @@ class QuranFragment : Fragment(), com.urwah.dhikr.SearchableFragment {
             existing.setOnClickListener {
                 val surah = allSurahs.find { it.number == pos.surahNumber }
                 if (surah != null) {
-                    val intent = Intent(requireContext(), SurahDetailActivity::class.java)
-                    intent.putExtra("SURAH_NUMBER", surah.number)
-                    intent.putExtra("SURAH_NAME", surah.name)
-                    intent.putExtra("VERSE_COUNT", surah.verseCount)
-                    intent.putExtra("LAST_AYAH", pos.ayahNumber)
-                    startActivity(intent)
+                    openSurah(surah.number, surah.name, surah.verseCount, pos.ayahNumber)
                 }
             }
         } else if (pos != null && existing == null) {
@@ -148,11 +136,7 @@ class QuranFragment : Fragment(), com.urwah.dhikr.SearchableFragment {
                 val filtered = SurahDataProvider.search(binding.etSearch.text.toString())
                 if (filtered.isNotEmpty()) {
                     val surah = filtered.first()
-                    val intent = Intent(requireContext(), SurahDetailActivity::class.java)
-                    intent.putExtra("SURAH_NUMBER", surah.number)
-                    intent.putExtra("SURAH_NAME", surah.name)
-                    intent.putExtra("VERSE_COUNT", surah.verseCount)
-                    startActivity(intent)
+                    openSurah(surah.number, surah.name, surah.verseCount, null)
                     hideSearch()
                 }
                 true
@@ -181,6 +165,26 @@ class QuranFragment : Fragment(), com.urwah.dhikr.SearchableFragment {
         val imm = requireContext().getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
         imm.hideSoftInputFromWindow(binding.etSearch.windowToken, 0)
         adapter?.updateList(allSurahs)
+    }
+
+    private fun openSurah(surahNumber: Int, surahName: String, verseCount: Int, lastAyah: Int?) {
+        val riwayatId = QuranDataLoader.getQiraat(requireContext())
+        if (QuranDataLoader.isImageBased(riwayatId)) {
+            val info = QuranDataLoader.getRiwayatInfo(riwayatId)
+            val intent = Intent(requireContext(), MushafPageViewerActivity::class.java)
+            intent.putExtra("riwayat_id", riwayatId)
+            intent.putExtra("image_base_url", info.imageBaseUrl)
+            startActivity(intent)
+        } else {
+            val intent = Intent(requireContext(), SurahDetailActivity::class.java)
+            intent.putExtra("SURAH_NUMBER", surahNumber)
+            intent.putExtra("SURAH_NAME", surahName)
+            intent.putExtra("VERSE_COUNT", verseCount)
+            if (lastAyah != null) {
+                intent.putExtra("LAST_AYAH", lastAyah)
+            }
+            startActivity(intent)
+        }
     }
 
     private fun filterSurahs(query: String) {

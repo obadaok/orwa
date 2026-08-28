@@ -25,7 +25,9 @@ data class RiwayatInfo(
     val fontResId: Int,
     val available: Boolean,
     val description: String,
-    val basmala: String
+    val basmala: String,
+    val type: String = "text",
+    val imageBaseUrl: String? = null
 )
 
 object QuranDataLoader {
@@ -83,51 +85,75 @@ object QuranDataLoader {
         ),
         RiwayatInfo(
             "hisham", "هشام عن ابن عامر", "قراءة ابن عامر",
-            null, R.font.uthmanic_hafs, false, "قريباً", HAFS_BASMALA
+            null, R.font.uthmanic_hafs, true, "رواية هشام عن ابن عامر الشامي",
+            HAFS_BASMALA, "image",
+            "https://raw.githubusercontent.com/multiqiraat/mushaf-qiraats/main/Hisham_An_Ibn_3amir"
         ),
         RiwayatInfo(
             "dhakwan", "ابن ذكوان عن ابن عامر", "قراءة ابن عامر",
-            null, R.font.uthmanic_hafs, false, "قريباً", HAFS_BASMALA
+            null, R.font.uthmanic_hafs, true, "رواية ابن ذكوان عن ابن عامر الشامي",
+            HAFS_BASMALA, "image",
+            "https://raw.githubusercontent.com/multiqiraat/mushaf-qiraats/main/Ibn_Dhakwan_An_Ibn_3amir"
         ),
         RiwayatInfo(
             "khalaf", "خلف عن حمزة", "قراءة حمزة",
-            null, R.font.uthmanic_hafs, false, "قريباً", HAFS_BASMALA
+            null, R.font.uthmanic_hafs, true, "رواية خلف عن حمزة الكوفي",
+            HAFS_BASMALA, "image",
+            "https://raw.githubusercontent.com/multiqiraat/mushaf-qiraats/main/Khalaf_An_Hamzah"
         ),
         RiwayatInfo(
             "khallad", "خلاد عن حمزة", "قراءة حمزة",
-            null, R.font.uthmanic_hafs, false, "قريباً", HAFS_BASMALA
+            null, R.font.uthmanic_hafs, true, "رواية خلاد عن حمزة الكوفي",
+            HAFS_BASMALA, "image",
+            "https://raw.githubusercontent.com/multiqiraat/mushaf-qiraats/main/Khalaad_An_Hamzah"
         ),
         RiwayatInfo(
             "alharith", "أبو الحارث عن الكسائي", "قراءة الكسائي",
-            null, R.font.uthmanic_hafs, false, "قريباً", HAFS_BASMALA
+            null, R.font.uthmanic_hafs, true, "رواية أبي الحارث عن الكسائي",
+            HAFS_BASMALA, "image",
+            "https://raw.githubusercontent.com/multiqiraat/mushaf-qiraats/main/Abu_Al-Harith_An_Al-Kisaae"
         ),
         RiwayatInfo(
             "duri_kisai", "الدوري عن الكسائي", "قراءة الكسائي",
-            null, R.font.uthmanic_hafs, false, "قريباً", HAFS_BASMALA
+            null, R.font.uthmanic_hafs, true, "رواية الدوري عن الكسائي",
+            HAFS_BASMALA, "image",
+            "https://raw.githubusercontent.com/multiqiraat/mushaf-qiraats/main/Ad-Duri_An_Al-Kisaae"
         ),
         RiwayatInfo(
             "ibnwardan", "ابن وردان عن أبي جعفر", "قراءة أبي جعفر",
-            null, R.font.uthmanic_hafs, false, "قريباً", HAFS_BASMALA
+            null, R.font.uthmanic_hafs, true, "رواية ابن وردان عن أبي جعفر المدني",
+            HAFS_BASMALA, "image",
+            "https://raw.githubusercontent.com/multiqiraat/mushaf-qiraats/main/Ibn_Wardaan_An_Abu_Ja3far"
         ),
         RiwayatInfo(
             "ibnjammaz", "ابن جماز عن أبي جعفر", "قراءة أبي جعفر",
-            null, R.font.uthmanic_hafs, false, "قريباً", HAFS_BASMALA
+            null, R.font.uthmanic_hafs, true, "رواية ابن جماز عن أبي جعفر المدني",
+            HAFS_BASMALA, "image",
+            "https://raw.githubusercontent.com/multiqiraat/mushaf-qiraats/main/Ibn_Jammaaz_An_Abu_Ja3far"
         ),
         RiwayatInfo(
             "ruways", "رويس عن يعقوب", "قراءة يعقوب",
-            null, R.font.uthmanic_hafs, false, "قريباً", HAFS_BASMALA
+            null, R.font.uthmanic_hafs, true, "رواية رويس عن يعقوب الحضرمي",
+            HAFS_BASMALA, "image",
+            "https://raw.githubusercontent.com/multiqiraat/mushaf-qiraats/main/Ruwais_An_Ya3qub"
         ),
         RiwayatInfo(
             "ruh", "روح عن يعقوب", "قراءة يعقوب",
-            null, R.font.uthmanic_hafs, false, "قريباً", HAFS_BASMALA
+            null, R.font.uthmanic_hafs, true, "رواية روح عن يعقوب الحضرمي",
+            HAFS_BASMALA, "image",
+            "https://raw.githubusercontent.com/multiqiraat/mushaf-qiraats/main/Rawh_An_Ya3qub"
         ),
         RiwayatInfo(
             "ishaak", "إسحاق عن خلف", "قراءة خلف العاشر",
-            null, R.font.uthmanic_hafs, false, "قريباً", HAFS_BASMALA
+            null, R.font.uthmanic_hafs, true, "رواية إسحاق عن خلف العاشر",
+            HAFS_BASMALA, "image",
+            "https://raw.githubusercontent.com/multiqiraat/mushaf-qiraats/main/Ishaq_An_Khalaf"
         ),
         RiwayatInfo(
             "idris", "إدريس عن خلف", "قراءة خلف العاشر",
-            null, R.font.uthmanic_hafs, false, "قريباً", HAFS_BASMALA
+            null, R.font.uthmanic_hafs, true, "رواية إدريس عن خلف العاشر",
+            HAFS_BASMALA, "image",
+            "https://raw.githubusercontent.com/multiqiraat/mushaf-qiraats/main/Idris_An_Khalaf"
         )
     )
 
@@ -160,6 +186,8 @@ object QuranDataLoader {
     }
 
     fun isAvailable(id: String): Boolean = getRiwayatInfo(id).available
+
+    fun isImageBased(id: String): Boolean = getRiwayatInfo(id).type == "image"
 
     fun riwayatIdForArabicName(arabicName: String?): String? {
         if (arabicName.isNullOrBlank()) return null

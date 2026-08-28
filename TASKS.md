@@ -591,3 +591,44 @@ Word Spacing، RTL، shaping، 15 سطراً، ووضوح الأرقام (راج
 - [ ] ⏳ دورات SCAN → FIX → RE-SCAN → TEST → RE-SCAN (عدة دورات) بلا Regression
 - [ ] ⏳ مراجعة كل مهمة في TASKS.md والتأكد من تحققها فعلياً (ليس فقط تغير الكود)
 - [ ] ⏳ تحديث TASKS.md بالحالة النهائية
+
+---
+
+# إضافة الـ 12 رواية المتبقية — مصحف مصور + إصلاح المشغل (2026-08-27)
+
+حالات المهام:
+- ✅ مكتملة
+- 🚧 قيد التنفيذ
+- ⏳ لم تبدأ
+- ❌ تحتاج إصلاح
+
+## 1. تحديث نموذج البيانات (QuranDataLoader.kt)
+- [x] ✅ إضافة حقل `type` لـ RiwayatInfo (text/image)
+- [x] ✅ إضافة حقل `imageBaseUrl` لـ RiwayatInfo
+- [x] ✅ تفعيل الـ 12 رواية المتبقية (available=true) مع روابط صور multiqiraat
+- [x] ✅ إضافة دالة `isImageBased(id)` للتحقق من نوع الرواية
+
+## 2. إنشاء عارض المصحف المصور (MushafPageViewerActivity)
+- [x] ✅ إنشاء `MushafPageViewerActivity.kt` مع ViewPager2 لتصفح 604 صفحة
+- [x] ✅ إنشاء layout `activity_mushaf_page_viewer.xml`
+- [x] ✅ إنشاء layout `item_mushaf_page.xml` (صورة + ProgressBar)
+- [x] ✅ تحميل الصور من GitHub raw URLs مع تخزين مؤقت (cache)
+- [x] ✅ عرض رقم الصفحة和支持 RTL
+
+## 3. تحديث نظام التوجيه
+- [x] ✅ تحديث `AndroidManifest.xml` بإضافة MushafPageViewerActivity
+- [x] ✅ تحديث `QuranFragment.kt` لتوجيه الروايات المصورة إلى MushafPageViewerActivity
+- [x] ✅ دالة `openSurah()` تختار النشاط المناسب حسب نوع الرواية
+
+## 4. إصلاح مشغل الصوت (Audio Player)
+- [x] ✅ إضافة `consecutiveErrors = 0` في بداية `setupPlaylist()` (إصلاح عدم تشغيل الصوت بعد أول خطأ)
+- [x] ✅ تغيير `START_NOT_STICKY` → `START_STICKY` (منع قتل الخدمة من النظام)
+- [x] ✅ تحديث `onDestroy()` في SurahDetailActivity لعدم إيقاف التشغيل عند التنقل للسورة التالية
+- [x] ✅ إضافة `NAVIGATING_TO_NEXT` flag في intent
+
+## 5. التحقق
+- [x] ✅ Build Debug ناجح (assembleDebug)
+- [ ] ⏳ اختبار على الجهاز: فتح رواية مصورة (هشام، خلف، إلخ)
+- [ ] ⏳ اختبار على الجهاز: تشغيل الصوت والمشغل
+- [ ] ⏳ اختبار: التبديل بين الروايات النصية والمصورة
+- [ ] ⏳ اختبار: التنقل بين السور مع استمرار الصوت

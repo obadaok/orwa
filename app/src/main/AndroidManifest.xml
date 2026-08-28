@@ -79,6 +79,10 @@
             android:name=".MurattalThemePickerActivity"
             android:exported="false" />
 
+        <activity
+            android:name=".MushafPageViewerActivity"
+            android:exported="false" />
+
         <service
             android:name=".audio.AudioPlayerService"
             android:exported="true"
